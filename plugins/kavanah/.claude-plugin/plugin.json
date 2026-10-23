@@ -1,12 +1,13 @@
 {
   "name": "kavanah",
-  "version": "1.20261023.0",
+  "version": "1.20261023.1",
   "description": "Drive your Kavanah workspace from Claude Code: tasks, projects, clients, time, planning, deals, reports and the Kavanah AI agent, through the kvn CLI.",
   "author": {
     "name": "Kavanah",
     "url": "https://kavanah.ai"
   },
   "homepage": "https://kavanah.ai/docs",
+  "license": "SEE LICENSE IN LICENSE",
   "repository": "https://github.com/aw3-technology/kavanah-claude-plugin",
   "keywords": [
     "kavanah",

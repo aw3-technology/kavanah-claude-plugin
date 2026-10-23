@@ -12,7 +12,7 @@
       "name": "kavanah",
       "source": "./plugins/kavanah",
       "description": "Drive your Kavanah workspace from Claude Code: tasks, projects, clients, time, planning, deals, reports and the Kavanah AI agent, through the kvn CLI.",
-      "version": "1.20261023.0"
+      "version": "1.20261023.1"
     }
   ]
 }

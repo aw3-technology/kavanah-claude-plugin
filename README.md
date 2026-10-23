@@ -46,5 +46,5 @@ Code:
 
 ---
 
-Version 1.20261023.0. Generated from the Kavanah repository by
+Proprietary — see [LICENSE](LICENSE). Version 1.20261023.1. Generated from the Kavanah repository by
 `npm run plugin:build`. Do not edit by hand.
