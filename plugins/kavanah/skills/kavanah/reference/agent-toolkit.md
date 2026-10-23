@@ -1,0 +1,2110 @@
+# Agent toolkit
+
+1236 tools the Kavanah AI agent can call (556 read-only).
+Generated from the live registry by `npm run skill:gen` — do not hand-edit.
+
+## How to reach these
+
+There is **no HTTP route that runs an agent tool by name**, by design. Ask the
+agent in natural language instead and let it pick:
+
+    kvn agent "create a task in Website Redesign to audit the login flow, high priority"
+    kvn agent "what's slipping this sprint?" --json
+
+That goes through `POST /api/ai-agent`, the sanctioned path, so persona scoping,
+guardrails, the action-policy decision (which may park a write for approval), the
+action ledger and undo recording all still apply. A parked action shows up in
+`kvn ai-agent.approvals.list` — the agent will tell you when it parks one.
+
+Use this list to phrase the request in terms the agent will map cleanly onto a
+tool — naming the capability ("log time", "check goals") beats describing it.
+
+**A single `kvn agent` call can create tasks, send email, or spend credits.** It is
+the full agent, not a read-only sandbox.
+
+| Scope | Tools |
+| --- | --- |
+| tasks_projects | 237 |
+| crm | 199 |
+| knowledge_files | 180 |
+| finance | 153 |
+| workflows_automations | 114 |
+| admin | 94 |
+| reports_analytics | 78 |
+| email_calendar | 71 |
+| communications | 53 |
+| dev_github | 49 |
+| unscoped | 8 |
+
+## admin (94)
+
+- **`add_org_member`** — Add a user to an organization (or update their org role). The caller must be an owner or admin of that org; only an owner can grant the 'owner' role.
+  - required: `org_id`, `user_id`
+- **`apply_blueprint`** — Create a Blueprint's selected items through their normal write paths, all switched OFF (schedules paused, rules/cadences off, meetings disarmed, campaigns not started, switches unchanged). Idempotent. Turning items on is done by a person on the Blueprint page. Undoable as a set.
+  - required: `blueprint_id`
+- **`apply_org_template`** — Apply an org template after the user approves its preview. Idempotent; series start disarmed. Admin only.
+  - required: `template`
+- **`assign_user_role`** — Grant an RBAC role to a workspace member. This changes what that member can access — it gives them every permission the role carries. Requires workspace owner/admin.
+  - required: `user_id`, `role_id`
+- **`attach_workspace_to_org`** — Attach a workspace to an organization. The caller must be an owner or admin of the org AND the owner of the workspace being attached.
+  - required: `org_id`, `workspace_id`
+- **`cancel_invite`** — Revoke a pending workspace invite. Sets status to 'declined' (so the row sticks around for audit) or fully deletes it when `hard_delete: true` is passed. Cannot be used on already-accepted invites.
+  - required: `invite_id`
+- **`change_member_role`** — Change a workspace member's role to owner, admin, or member. Confirm with user — owner role grants full control.
+  - required: `role`
+- **`check_app_endpoint`** _(read-only)_ — Check whether an owned app's tool endpoint (or, with surface_id, one of its screens) is reachable over HTTPS: an SSRF-guarded HEAD/OPTIONS against the URL in the app's CURRENT manifest. Sends no signed body and runs no tool — it proves the host answers, nothing more; a 404 or 405 still counts as reachable. Use it after the user deploys their server and before test_app_tool, and whenever an installed app's health is degraded. It reads the URL from the stored manifest, never from you, so a placeholder endpoint fails here and the fix is to publish a version with the real URL.
+  - required: `slug`
+- **`configure_app_install`** — Reconfigure an installed app without uninstalling it: pause or resume it (enabled), switch the agent's access to its tools on or off (agent_access), switch its embedded screens on or off (ui_access), or change the granted scopes. Narrowing scopes immediately narrows every API key the app holds. Only the fields you pass change. Use uninstall_app to remove it entirely.
+  - required: `slug`
+- **`create_ai_persona`** — Create a new AI Employee (persona) in this workspace. Use when the user asks to hire, add, build, or set up an AI employee/teammate/assistant. Workspace owners and admins only. Interview the user first: an AI Employee is only as good as its name, role, and instructions. Ask what job it should do, then write a substantial personality/instructions block yourself rather than echoing a one-liner back. allowed_scopes decides what the employee can actually DO. Omitted, it starts on the same groups the roster editor gives a new employee — tasks_projects, communications, reports_analytics, knowledge_files — NOT every capability. Pass an explicit list to widen or narrow that, or an empty array for every capability. Prefer the narrowest set that covers the stated job, and tell the user which groups the employee ended up with. This does NOT generate a profile picture; call generate_ai_persona_avatar afterwards (it costs credits, so confirm with the user first). Names are unique per workspace (case-insensitive): if an employee with the name already exists this refuses and returns its id — update that one with update_ai_persona instead of creating a copy.
+  - required: `name`
+- **`create_app`** — Create a new private app owned by this workspace from a manifest, seeded with its first version. The manifest's slug becomes a GLOBAL, permanent identity that cannot be reused by anyone else, so confirm the slug with the user before calling. Private apps are installable in this workspace immediately; public listing is a separate operator review. Pass the manifest as a JSON string — usually the output of draft_app_manifest after the user approved it. Next steps after this: scaffold_app_code for the server, install_app once it is deployed.
+  - required: `manifest_json`
+- **`create_escalation_rule`** — Create an escalation rule (condition + action). Condition/action types are app-defined.
+  - required: `project_ref`, `name`, `condition_type`, `action_type`
+- **`create_org`** — Create a new organization owned by the caller. Orgs sit above workspaces; the caller becomes the org owner. Any user may create an org.
+  - required: `name`
+- **`create_role`** — Create a new custom RBAC role. This defines a set of permissions that can later be assigned to members — it changes who can access what once assigned. Requires workspace owner/admin.
+  - required: `name`
+- **`create_sla_policy`** — Create an SLA policy on a project. response_time_minutes / resolution_time_minutes are positive integers.
+  - required: `project_ref`, `name`
+- **`create_support_ticket`** — File a support ticket on behalf of the current user.
+  - required: `subject`, `description`
+- **`create_time_bound_grant`** — Grant a member a role temporarily, expiring automatically at a set time. This changes what the member can access for the duration of the grant. Requires workspace owner/admin.
+  - required: `user_id`, `role_id`, `expires_at`
+- **`deactivate_member`** — Deactivate a workspace member (sets status='inactive'), removing their access. Confirm with user first.
+- **`delete_ai_persona`** — Delete an AI Employee. Workspace owners and admins only. Its schedules, boardroom seats, Slack managers, policy overrides and department links are deleted with it; tasks, boardrooms it chairs and employees reporting to it are detached. Conversations with it are kept and fall back to the default agent identity. When anything is attached, the first call deletes NOTHING and returns the list of what would go — show it to the user. The user can undo a completed delete from the chat. Cannot delete the AI Employee currently running this conversation, and cannot delete a member's digital twin.
+- **`delete_escalation_rule`** — Delete an escalation rule by id.
+  - required: `rule_id`
+- **`delete_role`** — Delete a custom RBAC role. This removes it from every member it was assigned to and drops it from overrides/grants/visibility — it revokes access for anyone who relied on it. System roles cannot be deleted. Requires workspace owner/admin.
+  - required: `role_id`
+- **`delete_sla_policy`** — Delete an SLA policy by id.
+  - required: `policy_id`
+- **`delete_trash_item_permanently`** — PERMANENTLY delete a Trash item by its trash id — this cannot be undone and the item can never be recovered. Owner/admin only. Prefer leaving items in Trash unless the user explicitly asks to purge one.
+  - required: `trash_id`
+- **`draft_app_manifest`** — Turn a plain-English description of an app into a VALID Kavanah app manifest. Use when a user says they want to build an app and describes what it should do. Returns manifest JSON that has already passed the strict validator, so it can be handed straight to create_app. Pass tool_endpoint_url when the user has told you where the app will be hosted — without it the draft uses an https://example.com placeholder that must be replaced before any tool call can succeed. This calls a model and spends workspace AI credits. It does NOT create anything — show the user the draft and let them approve it first.
+  - required: `description`
+- **`draft_blueprint`** — Turn a long operating prompt (how the firm should run: campaigns, rules, schedules, AI team, meetings, compliance, North Star) into a Blueprint: one reviewable plan of items mapped to real Kavanah capabilities, each with the quoted source sentence, monthly cost, blockers and compliance notes. Creates nothing. Spends credits (~30, one planning call). Pass blueprint_id to regenerate a new version.
+  - required: `prompt`
+- **`duplicate_role`** — Duplicate an existing role (system or custom) into a new custom role with the same permissions, as a starting point for editing. Creates a new grantable role. Requires workspace owner/admin.
+  - required: `role_id`, `new_name`
+- **`explain_user_permissions`** _(read-only)_ — Explain WHY a member has the access they have: their effective capabilities and the source of each (owner status, legacy role, assigned roles, time-bound grants, project overrides). Answers questions like 'why can Sarah access X?'. Admin only.
+  - required: `user_id`
+- **`generate_ai_persona_avatar`** — Generate a profile picture for an existing AI Employee with AI, and save it to their profile. Workspace owners and admins only. COSTS CREDITS per image — tell the user and get agreement before calling, and don't retry on a whim. There is a 10-second cooldown between generations. Create the employee first, then call this with their id. Describe the person you want to see (appearance, style, mood); the studio-headshot framing is added automatically. The image is written straight to the employee's profile — you never see the bytes, so confirm the result by telling the user to look at the roster.
+- **`get_ai_persona`** _(read-only)_ — Fetch one AI persona's full configuration by id or name (instructions, allowed_scopes, model, disclosure_policy).
+- **`get_app_manifest`** _(read-only)_ — Read the full manifest of one app this workspace owns, plus its version history (semver, review state, which is current), whether it is installed here, and any non-fatal lint warnings (over-requested scopes, a placeholder endpoint that will fail every call, a screen that can never render). Use it to answer questions about what an app declares, to find a version to roll back to, or to fetch the current manifest before proposing an edited version.
+  - required: `slug`
+- **`get_blueprint`** _(read-only)_ — Show a Blueprint: items by group with cost, blockers, compliance notes, what is applied, and the diff vs what is applied. Omit blueprint_id for the latest.
+- **`get_feature_request`** _(read-only)_ — Read one feature request by its numeric id, including its status, category, upvote count, and any admin response.
+  - required: `id`
+- **`get_org`** _(read-only)_ — Read one organization the caller belongs to (by org id), including its workspaces and members. Returns null-equivalent (an error) if the caller isn't an active member of that org.
+  - required: `org_id`
+- **`get_project_visibility`** _(read-only)_ — List project visibility restrictions: which roles/teams a project is limited to (an empty list for a project means it is visible to all). Admin only.
+- **`get_role`** _(read-only)_ — Read one RBAC role by id, including its full permission map (resource → view/create/edit/delete). Admin only.
+  - required: `role_id`
+- **`get_trash_item`** _(read-only)_ — Read one Trash item by its trash id (from list_trash_items), including its type, label, and summary. Read-only.
+  - required: `trash_id`
+- **`google_admin_get_user`** _(read-only)_ — Get one directory user by email or id (read-only). Returns email, full name, admin/suspended flags, and org-unit path. Requires Workspace admin access.
+  - required: `user_key`
+- **`google_admin_list_groups`** _(read-only)_ — List groups in the connected Google Workspace directory (read-only). Returns each group's email, name, and member count. Requires Workspace admin access.
+- **`google_admin_list_users`** _(read-only)_ — List users in the connected Google Workspace directory (read-only). Returns email, full name, admin/suspended flags, and org-unit path. Optionally filter with a directory query like 'isAdmin=true' or 'orgName=Engineering'. Requires Workspace admin access.
+- **`install_app`** — Install a community app into this workspace, or re-install one to move it onto its current version, granting it scopes. Granting a scope is consent on the workspace's behalf: the app's tools then reach the agent (once the workspace's app-agent opt-in is on) and its screens render, so name the scopes you are granting to the user before calling. Defaults to every scope the app requests; pass granted_scopes to grant fewer. After installing, the user still mints the app's signing secret on the Apps page (Apps -> the app -> Signing secret); this tool cannot, and says so. Works for apps this workspace built and for marketplace apps it can see.
+  - required: `slug`
+- **`invite_member`** — Invite an email address to the workspace. `role` defaults to 'member'; pass 'admin' to grant admin on accept. ('guest' is reserved for portal flows.) Sends an invite email and starts the row as 'pending'.
+  - required: `email`
+- **`list_ai_personas`** _(read-only)_ — List the AI Employee personas configured in this workspace. Use when the user asks 'which AI employees are available?' or wants to inspect persona capabilities, scopes, or assigned models.
+- **`list_escalation_rules`** _(read-only)_ — List escalation rules in the workspace, optionally scoped to a project.
+- **`list_feature_requests`** _(read-only)_ — List the product feature-request board (public ideas, most-upvoted first) plus the caller's own submissions and summary counts by status. Optional filters: status, category, search.
+- **`list_field_permissions`** _(read-only)_ — List all field-level permission rules in the workspace (per role, per resource field: can-view / can-edit). Admin only.
+- **`list_installed_apps`** _(read-only)_ — List every community app INSTALLED in this workspace (built here or from the marketplace): slug, pinned version, enabled, whether the agent may use its tools, whether its screens render, the scopes granted, tool-call health, and whether a newer version is available. Use it to answer 'which apps do we have', to find what to configure_app_install or uninstall_app, and to see whether an app the user just built is installed yet.
+- **`list_invites`** _(read-only)_ — List workspace invites with status, role, expiry, and the inviter. Auto-expires any pending invites past their expiry before reading. Returns up to 50 most-recent rows.
+- **`list_org_templates`** _(read-only)_ — List the org templates: whole AI organisations (board, C-suite, SVPs/VPs, directors, ICs — each with a job description, least-privilege capabilities, a reporting line and a North Star contribution) plus standing meetings between them. Returns role and series keys.
+- **`list_project_permission_overrides`** _(read-only)_ — List a member's per-project role overrides (roles that apply only within a specific project). Admin only.
+  - required: `user_id`
+- **`list_rbac_audit_log`** _(read-only)_ — Read the RBAC audit log — the record of every permission/role change (who changed what, when). Admin only.
+- **`list_role_change_requests`** _(read-only)_ — List role-change requests in the workspace (the approval queue for privileged role changes), optionally filtered by status. Admin only.
+- **`list_roles`** _(read-only)_ — List all RBAC roles in the workspace (system + custom), with their id, name, description, and permission map. Admin only.
+- **`list_sla_breaches`** _(read-only)_ — List tasks that have breached their SLA due time and have not yet been flagged as breached.
+- **`list_sla_policies`** _(read-only)_ — List SLA policies in the workspace, optionally scoped to a project.
+- **`list_support_tickets`** _(read-only)_ — List support tickets. scope='mine' returns the current user's tickets; scope='workspace' returns all (admin-only).
+- **`list_time_bound_grants`** _(read-only)_ — List all time-bound (temporary) role grants in the workspace, including active, revoked, and expired ones. Admin only.
+- **`list_trash_items`** _(read-only)_ — List the workspace's recently deleted items (the recoverable Trash) — tasks, projects, clients, members, teams, and knowledge docs. Returns each item's id, type, label, and when it was deleted. Use restore_trash_item to bring one back.
+- **`list_user_roles`** _(read-only)_ — List RBAC role assignments. With a user_id, returns that member's assigned roles; without one, returns every active member and their roles. Admin only.
+- **`list_workspace_apps`** _(read-only)_ — List the community apps this workspace has BUILT (its own, from the developer console) — slug, name, version, tool and screen counts, and whether each is installed here. Use this before drafting a new app so you can tell the user what already exists, and to find the slug for get_app_manifest, scaffold_app_code, install_app or publish_app_version. Does not list apps merely installed from the marketplace (see list_installed_apps).
+- **`peek_undo_stack`** _(read-only)_ — Check whether the calling user has anything they can undo or redo, and the label of the top entry on each stack. Use this before suggesting 'undo that' so you can tell the user what would actually be undone (e.g. 'I'll undo deleting task X — confirm?'). Per-user stacks: an admin can only undo their own actions.
+- **`preview_org_template`** _(read-only)_ — Dry run: who an org template adopts vs creates, and each series' monthly credits if armed. Admin only.
+  - required: `template`
+- **`publish_app_version`** — Add a new version to an app this workspace already owns. The manifest's slug must match the app and its version must be strictly greater than the current latest (semver). For a private app the new version becomes current immediately — but note that workspaces which already INSTALLED the app stay pinned to the version they consented to until someone re-installs, so a new screen or tool will not appear for them automatically (install_app again here to re-pin this workspace). Pass the manifest as a JSON string. This is also how a placeholder endpoint gets replaced with the real one.
+  - required: `slug`, `manifest_json`
+- **`record_bug_report`** — Record a bug report from the current user. Use this whenever a user describes something that is broken, throwing an error, behaving unexpectedly, or producing wrong output. Files an app_support_tickets row with category='bug' and automatically attaches the user's recent server/client error logs (last 15 min) into diagnostics so engineers can correlate. Prefer this over create_support_ticket for bug reports. Ask the user for reproduction steps and expected vs. actual behavior before calling. Before filing about something YOU observed in this conversation — e.g. a record you just created that a later tool says does not exist or did not persist — re-read it once first (list_projects, search_tasks or the matching get tool), and put the exact tool calls you made and what each returned, in order, into description; a re-read that finds the record means there is nothing to file.
+  - required: `title`, `description`
+- **`redo_last_action`** — Pop the top redoable action off the calling user's redo stack and re-apply it. Mirror of undo_last_action. Only succeeds if the user has undone something since their last new mutation.
+- **`remove_org_member`** — Remove a member from an organization. The caller must be an owner or admin of that org; the caller can't remove themselves and no one can remove the org owner.
+  - required: `org_id`, `user_id`
+- **`remove_project_permission_override`** — Remove a member's per-project role override, so they fall back to their workspace-wide role in that project. This changes what the member can access. Requires workspace owner/admin.
+  - required: `user_id`, `project_ref`
+- **`remove_user_role`** — Revoke an RBAC role from a workspace member. This changes what the member can access — it removes the permissions the role carried. Requires workspace owner/admin.
+  - required: `user_id`, `role_id`
+- **`rename_org`** — Rename an organization (and optionally update its description). The caller must be an owner or admin of that org.
+  - required: `org_id`, `name`
+- **`resend_invite`** — Re-send a workspace invite. Rotates the token (so the old link stops working), extends the expiry, flips the status back to 'pending' if it was expired/declined, and emails the invitee. Fails if the invite was already accepted.
+  - required: `invite_id`
+- **`restore_trash_item`** — Restore a soft-deleted item back into the workspace by its trash id. The item leaves the Trash once restored. Any workspace member may restore.
+  - required: `trash_id`
+- **`review_role_change_request`** — Approve or reject a pending role-change request. Approving APPLIES the requested role change, altering what the target member can access. You cannot review your own request. Requires workspace owner/admin.
+  - required: `request_id`, `decision`
+- **`revoke_time_bound_grant`** — Revoke a time-bound role grant early, before its expiry. This removes the temporary access immediately. Requires workspace owner/admin.
+  - required: `grant_id`
+- **`rollback_app_version`** — Make an older version of an app this workspace owns the current one (what new installs get). Name the target by semver. For a private app the target is approved on the owner's say-so; for a public app only an already-approved version can be made current. Workspaces that already installed the app stay pinned to the version they consented to — including this one — so re-run install_app here if you want this workspace on the rolled-back version too.
+  - required: `slug`, `version`
+- **`scaffold_app_code`** _(read-only)_ — Generate the complete starter project for a Kavanah app: the HTTPS server that answers its signed tool calls (one stub handler per tool with the required fields checked), the async-operation and lifecycle-event endpoints if the manifest needs them, one page per declared screen wired to the Kavanah UI bridge, package.json, .env.example and a README with the deploy-and-connect steps. Deterministic and free — no model call. Give it the slug of an app this workspace owns (uses its current manifest) OR a manifest JSON string (a draft not yet created). Returns every file with its path; hand them to the user or write them into a task. It never contains the signing secret: that is read from an environment variable the user sets after minting it on the Apps page.
+- **`set_agent_token_limits`** — Raise (or lower) how many AI-agent tokens each workspace member may use: the daily limit behind "You've reached today's agent limit", plus the hourly and per-minute burst caps. Admin-only. The limits apply to EVERY member of the workspace, not only the person asking, and take effect on the next message. Values below the floors (5,000,000 daily, 3,000,000 hourly, 1,000,000 per minute) are refused, because they would be ignored. Usage counts input, output and cache writes in full and cache reads at 10%, and the daily count resets at 00:00 UTC. Tell the user the new numbers and that the change affects everyone; they can also change it themselves in Settings → AI Agent.
+- **`set_field_permission`** — Set a field-level permission for a role: whether that role can view and/or edit a specific field of a resource. This changes what members with that role can see or change. Requires workspace owner/admin.
+  - required: `role_id`, `resource`, `field_name`
+- **`set_project_permission_override`** — Set a per-project role override for a member: within one project they act with a different role than their workspace-wide one. This changes what the member can access in that project. Requires workspace owner/admin.
+  - required: `user_id`, `project_ref`, `role_id`
+- **`set_project_visibility`** — Restrict a project's visibility to specific roles and/or teams. This changes who can see the project at all. Passing empty lists makes it visible to everyone again. Requires workspace owner/admin.
+  - required: `project_ref`
+- **`slack_create_manager`** — Put an AI employee in Slack to answer non-members (interns, students, a community) who @mention the Kavanah bot in its channels or DM it; it escalates what it can't answer. In Slack it has NO tools and NONE of this workspace's data — only its instructions and the playbook, its ONLY source of program facts: write it from what the user tells you, never invent a date, deadline or contact. YOU own it: it posts through your Slack connection and bills your credits. The result lists what still blocks it (e.g. a channel the bot must be invited to) — relay only that. Created OFF unless enabled — confirm first. No digital twins. Owners/admins only.
+- **`slack_delete_manager`** — Remove an AI Slack manager and its reply history; the AI employee is kept. To pause instead, update enabled false. Owners/admins only.
+  - required: `manager_id`
+- **`slack_list_managers`** _(read-only)_ — List the workspace's AI Slack managers: employee, channels, DMs, on/off, owner (who pays), limits, last 7 days. Pass manager_id for one in full, with its playbook. Owners/admins only.
+- **`slack_update_manager`** — Change an AI Slack manager. Fields mean what they do on slack_create_manager; omitted ones stay. playbook REPLACES it, playbook_append adds to it. The owner never changes. Switching on spends credits — confirm first. Owners/admins only.
+  - required: `manager_id`
+- **`submit_app_for_review`** — Submit a version of an owned app for platform review, the first step toward PUBLIC marketplace listing. Only a draft or previously-rejected version can be submitted; approval and listing are a Kavanah operator decision, not something this call grants. Defaults to the latest version. A private app that only this workspace uses never needs this.
+  - required: `slug`
+- **`submit_feature_request`** — Submit a new feature request on behalf of the caller. Any workspace member may submit; the submission is attributed to the caller. Use this when the user wants a capability, integration, or improvement Kavanah doesn't have today — including when YOU had to tell them you can't do something. ALWAYS ask first ("Want me to file that as a feature request?") and call this only after they agree. Requests land on the public board at Settings → Feature Requests where others can upvote them. Not for bugs — something broken is record_bug_report.
+  - required: `title`, `description`
+- **`test_app_tool`** — Send ONE signed test call to an owned app's tool endpoint and return exactly what it answered: HTTP status, latency, body, whether the call was signed, and whether the input matched the tool's schema. The payload is the same shape a real agent call sends, plus test:true and an X-Kavanah-Test header, so the app's real handler RUNS — do not test a tool whose side effect the user would not want. Requires the app to be installed here with a signing secret minted (in production an install without one is refused rather than called unsigned). Read the answer literally: 401 means the secret on the user's server does not match, 404 means their server has no handler for that tool name, a network error means the endpoint is down or private.
+  - required: `slug`, `tool_name`
+- **`undo_last_action`** — Pop the top undoable action off the calling user's stack and run its inverse. Only supports trash-style mutations on clients, projects, and tasks (the same set the Cmd+Z UI handles). The matching redo entry is pushed onto the redo stack, so the action can be re-applied with redo_last_action. Destructive in the sense that it changes data — confirm with the user before calling it for anything non-obvious.
+- **`uninstall_app`** — Uninstall a community app from this workspace. This revokes every API key the app holds and destroys its signing secret immediately, so the app can no longer call Kavanah or verify calls from it; re-installing later means minting a new secret and redeploying the app with it. The app's definition (for an app this workspace built) is kept. Confirm with the user before calling.
+  - required: `slug`
+- **`update_agent_cost_settings`** — Admin-only. Cost settings for unattended runs (schedules, AI-employee runs, automations, meetings). background_model: 'auto' (router picks the cheapest fit per run), a model id, or 'default'. auto_optimize_for: what auto optimizes for (chat + unattended). headless_daily_token_budget: daily token ceiling, null = none, 0 refused. PROPOSE first; apply only once the user agrees. Undoable.
+- **`update_ai_persona`** — Update an existing AI Employee's configuration (name, role, instructions, model, capabilities, access list, enabled, reporting line). Workspace owners and admins only. Only the fields you pass are changed. Pass allowed_scopes as an empty array to reset the employee back to inheriting every capability. Cannot edit the AI Employee currently running this conversation, and cannot edit a member's digital twin.
+- **`update_escalation_rule`** — Update an escalation rule by id.
+  - required: `rule_id`
+- **`update_role`** — Update a custom RBAC role's name, description, and/or permission map. Changing permissions changes what every member assigned this role can access. System roles cannot be edited. Requires workspace owner/admin.
+  - required: `role_id`
+- **`update_sla_policy`** — Update an SLA policy by id.
+  - required: `policy_id`
+- **`update_support_ticket_status`** — Update a support ticket's status and optionally attach a resolution note explaining what was done — the note is shown to the reporter. Admin-only. Confirm with the user before resolving or closing tickets they didn't open.
+  - required: `ticket_id`, `status`
+- **`vote_feature_request`** — Up-vote a feature request for the caller (idempotent), or withdraw the caller's vote when remove=true. Any workspace member may vote.
+  - required: `id`
+
+## communications (53)
+
+- **`create_boardroom`** — Create a standing exec meeting between AI executive personas. The personas must already exist (create them first with the persona roster if needed) — a seat references a persona by id. The meeting runs in three phases: each exec delivers a performance update on its own area using read-only tools, then the table discusses, then the chair closes with action items which become tasks. IMPORTANT: this only creates the room. It does NOT start it meeting — the workspace admin must turn on 'Exec meetings' in Settings → AI Agent and arm the boardroom, because each meeting costs real model usage. Say so when you create one.
+  - required: `name`
+- **`create_chat_channel`** — Create a new workspace chat channel with the caller as its first admin member. Use for team spaces; not for one-off DMs (use post_chat_message).
+  - required: `name`
+- **`create_discussion_thread`** — Start a new discussion thread on a project. Requires project_ref, title, body. Authored as the current user.
+  - required: `project_ref`, `title`, `body`
+- **`create_message_template`** — Create a reusable message template.
+  - required: `name`, `body`
+- **`dismiss_notification`** — Remove a notification from the current user's notification feed.
+  - required: `project_ref`, `notification_id`
+- **`forward_chat_message`** — Forward an existing message from one of the caller's direct threads into another of their direct threads. This DELIVERS a real message to the target contact — only forward on the user's behalf when they've asked you to. Forwarding into group/channel threads is not supported.
+  - required: `source_thread_id`, `message_id`, `target_thread_id`
+- **`get_boardroom`** _(read-only)_ — Get one exec boardroom in full: its seats (which persona holds which chair, and each seat's remit), the chair, the standing agenda, the cadence, and when it last met. Use before changing a boardroom, so you describe accurately what is there now.
+  - required: `boardroom`
+- **`get_exec_meeting`** _(read-only)_ — Read the full minutes of one exec meeting: every exec's performance update, the discussion round by round, and the chair's close with its action items. Use when the user wants to know what was actually SAID, not just the summary.
+  - required: `meeting_id`
+- **`get_sms_alert_status`** _(read-only)_ — Report whether SMS alerts can currently be delivered: whether the workspace has them switched on, whether a given member has a verified and consented number, and how much of the monthly message budget is spent. Read-only and free. Call this before sms_send_alert, and to answer 'why didn't I get a text?' — it distinguishes not-enrolled from opted-out from over-budget, which the send tool deliberately does not.
+- **`google_chat_list_messages`** _(read-only)_ — List recent messages in a Google Chat space. Returns sender, text, and time. Read-only.
+  - required: `space_name`
+- **`google_chat_list_spaces`** _(read-only)_ — List the Google Chat spaces (rooms + DMs) the user belongs to, with their resource name + display name. Call this first to get a space name before reading or posting.
+- **`google_chat_send_message`** — Post a text message to a Google Chat space as the user. Confirm the destination space with the user before sending to an unfamiliar space.
+  - required: `space_name`, `text`
+- **`inbox_list_unread`** _(read-only)_ — List unread messages in the user's inbox (`is:unread in:inbox` — spam, trash and archived mail excluded). Returns two sections: (1) exactly the messages the /inbox sidebar badge counts — mail synced from natively connected mailboxes — and (2) the AngelSend Gmail bridge mailbox, read live, when connected. These can be different accounts; when the user asks about the badge, answer from section 1 and never say you checked a mailbox you did not list. Bridge ids work with `inbox_reply` / `gmail_get_message`. For full Gmail search syntax use `gmail_list_messages` directly.
+- **`inbox_reply`** — Reply to a specific inbox message by id. Fetches the original message to populate Subject (`Re: …`), thread id, and In-Reply-To headers, then sends the reply via the user's connected Gmail. The agent only needs to supply the body — and optionally an explicit recipient override or HTML flag.
+  - required: `message_id`, `body`
+- **`inbox_status`** _(read-only)_ — Check the user's inbox: how many unread INBOX messages the /inbox badge counts (mail synced from natively connected Gmail / Outlook / Proton), and whether the AngelSend Gmail bridge is connected, which account it points at and its unread-in-inbox count. The badge and the bridge can be DIFFERENT mailboxes. Use this as a quick first-pass before suggesting inbox actions.
+- **`ingest_meeting_transcript`** — Process a meeting transcript (paste the text): extract a concise summary, the decisions made, action items (with owners/deadlines where stated), and topics — then optionally create tasks from the action items. Owners are matched to workspace members by name; action-item tasks land in the workspace's default project tagged 'Meeting'. Idempotent: re-ingesting the same transcript returns the prior result without duplicating tasks. Use this whenever the user shares meeting notes or a standup/call transcript.
+  - required: `title`, `transcript`
+- **`list_boardrooms`** _(read-only)_ — List this workspace's standing meeting series (boardrooms) between AI employees — exec meetings (e.g. a daily leadership sync between the Agentic CEO, COO, CRO and CFO), board meetings, department meetings and stand-ups. Shows each series' kind, who sits at each table, the cadence, the model, whether it is armed, and its estimated monthly credit cost. Use when the user asks about their exec meetings, the leadership sync, or which AI executives meet.
+- **`list_chat_channels`** _(read-only)_ — List the workspace chat channels visible to the caller (public channels plus private ones they belong to), with member counts and the caller's role. Read-only.
+- **`list_chat_messages`** _(read-only)_ — Read the message history of a single chat thread (works for direct, group, channel, and workspace_team threads). Returns top-level messages in chronological order with sender, timestamp, and message_id — thread-replies (messages with a parent) are excluded, matching the main chat pane. Use this BEFORE drafting a reply so you have full context, and to give the user feedback on a conversation. Page backwards through history with before_message_id (must be a message_id from the same thread).
+  - required: `thread_id`
+- **`list_chat_replies`** _(read-only)_ — List the threaded replies under a parent message in one of the caller's chat threads, oldest first. Read-only.
+  - required: `thread_id`, `parent_message_id`
+- **`list_chat_shared_files`** _(read-only)_ — List file/image attachments shared in the caller's chat threads, newest first. Optionally filter to one conversation (thread_id) and/or a kind. Read-only.
+- **`list_chat_threads`** _(read-only)_ — List the current user's chat threads with last-message previews and the thread kind (direct, group, channel, workspace_team). Returns thread_id values usable by list_chat_messages and post_chat_message.
+- **`list_discussion_threads`** _(read-only)_ — List recent discussion threads, optionally filtered by project_ref.
+- **`list_exec_meetings`** _(read-only)_ — List exec meetings that have actually happened, newest first: when each met, the chair's closing summary, how many tasks it produced, and what it cost in model calls. Use when the user asks what the execs decided, what came out of the leadership sync, or what the meetings are costing.
+- **`list_meeting_notes`** _(read-only)_ — List recently ingested meeting transcripts with their summaries and how many tasks each produced. Use to recall what a past meeting decided or committed to.
+- **`list_message_requests`** _(read-only)_ — List the caller's cross-workspace connection (message) requests — pending invites they've received and/or sent. Read-only. This does NOT create or respond to requests.
+- **`list_message_templates`** _(read-only)_ — List message templates in the workspace.
+- **`list_notifications`** _(read-only)_ — List the current user's in-app project/board notification feed (the same feed as the notification bell), with optional unread-only filter. Covers kanban/board events (task moved between columns, task completed), assignments, due-date/reminder, comments, milestones, overdue, meetings, project/file and discussion events, and automation alerts — scoped to projects the user is allowed to see. Returns project_ref + notification_id pairs needed by the read/snooze/dismiss tools. This does NOT include chat/DM messages (use list_chat_threads) or email (use inbox_list_unread) — check those separately for full notification coverage.
+- **`list_pinned_chat_messages`** _(read-only)_ — List the pinned messages in one of the caller's chat threads. Read-only. Pass a thread_id from list_chat_threads.
+  - required: `thread_id`
+- **`list_scheduled_messages`** _(read-only)_ — List the caller's own scheduled (send-later) chat messages in this workspace, earliest first. Optionally filter by status. Read-only — use schedule_message to create one.
+- **`mark_all_notifications_read`** — Mark every notification as read for the current user.
+- **`mark_notification_read`** — Mark a notification as read or unread for the current user.
+  - required: `project_ref`, `notification_id`, `unread`
+- **`pin_chat_message`** — Pin (or unpin) a message in one of the caller's chat threads so it stays surfaced for participants.
+  - required: `thread_id`, `message_id`
+- **`post_chat_message`** — Send a chat message into an existing thread (works for direct, group, channel, and workspace_team threads). Use list_chat_threads first to pick a thread_id, and prefer list_chat_messages first to read recent context before replying.
+  - required: `thread_id`, `content`
+- **`post_chat_reply`** — Post a threaded reply to a message in one of the caller's chat threads. This DELIVERS a real message to the thread's other participants — only reply on the user's behalf when they've asked you to.
+  - required: `thread_id`, `parent_message_id`, `content`
+- **`post_discussion_reply`** — Post a reply on an existing discussion thread.
+  - required: `thread_id`, `content`
+- **`react_to_chat_message`** — Set the caller's emoji reactions on a chat message. Replaces only the caller's own reactions on that message (other people's reactions are preserved); pass an empty list to clear the caller's reactions.
+  - required: `thread_id`, `message_id`, `emojis`
+- **`run_exec_meeting`** — Convene an exec meeting NOW, off-schedule — the execs report, discuss, and the chair files action items as tasks. Works whether or not the boardroom is armed, and does NOT arm it or disturb its cadence. THIS SPENDS: a meeting is 15-40 AI calls. Only call it when the user has clearly asked to run/hold/convene a meeting now — never as a way to answer a question you could answer with the read tools, and never on your own initiative. The meeting is queued and starts within about 5 minutes; it does not run while you wait, so tell the user to check back rather than claiming it is done. Admin only.
+  - required: `boardroom`
+- **`schedule_message`** — Schedule a message to send later. target_type: direct|group|channel; target_id: contact id, group uuid, or channel uuid.
+  - required: `target_type`, `target_id`, `content`, `scheduled_at`
+- **`search_chat_messages`** _(read-only)_ — Full-text search across the caller's own chat messages (every direct/group/channel thread they can see). Returns matching messages with a snippet, sender, time, and the thread's contact_id. Read-only.
+  - required: `query`
+- **`send_progress_report`** — Compose and deliver a project / team progress report to specific people via Kavanah's internal inbox AND/OR email — in a single call. Provide your own markdown `body` (preferred — you already know what to say), or omit it to auto-build one from this week's stats for the given project. Routing: `member_names` are workspace teammates (delivered as a Kavanah chat DM); `emails` are raw addresses (delivered via the user's connected email provider — Gmail bridge → native Gmail → AngelSend gateway, in that order). Set `channels` to control delivery: ['inbox'] = chat only, ['email'] = email only, ['inbox','email'] (default) = send to BOTH channels for member_names (DM + their email on file) and email for `emails`. Use this instead of chaining `post_chat_message` + `gmail_send_email` per recipient.
+  - required: `title`
+- **`set_notification_priority`** — Set a notification's priority for the current user. Use 'action_needed' for items requiring follow-up, 'fyi' for informational items, or null to clear.
+  - required: `project_ref`, `notification_id`, `priority`
+- **`sms_send_alert`** — Text a workspace member. COSTS MONEY per message and reaches a real phone, so use it only for things that genuinely warrant interrupting someone — an outage, a same-day deadline, an urgent approval — and prefer a notification or email otherwise. It reaches ONLY members who verified a number and consented; for anyone else it reports that and sends nothing, which is not an error to retry. Quiet hours are enforced. Keep the message under 140 characters: longer texts are split and billed per segment, and one emoji more than halves the limit.
+  - required: `member_email`, `message`
+- **`snooze_notification`** — Snooze (or un-snooze) a notification for the current user.
+  - required: `project_ref`, `notification_id`, `snoozed`
+- **`snooze_notification_until`** — Snooze a notification until a specific ISO timestamp, or pass snooze_until=null to clear the snooze. Use this when the user says 'snooze until Friday 2pm' rather than the boolean toggle.
+  - required: `project_ref`, `notification_id`
+- **`teams_list_channel_messages`** _(read-only)_ — List recent messages in a Microsoft Teams channel. Returns sender, text, and time. Read-only. Reading channel messages requires the workspace admin to have granted the ChannelMessage.Read.All scope.
+  - required: `team_id`, `channel_id`
+- **`teams_list_channels`** _(read-only)_ — List the channels in a Microsoft Teams team. Returns channel id, name, and type. Call this to get a channel id before reading or posting messages.
+  - required: `team_id`
+- **`teams_list_chats`** _(read-only)_ — List the user's Microsoft Teams 1:1 and group chats (most recent first), with their id, topic, and members. Call this to get a chat id before sending a chat message. Read-only.
+- **`teams_list_teams`** _(read-only)_ — List the Microsoft Teams the user is a member of, with their id + display name. Call this first to get a team id before listing channels.
+- **`teams_send_channel_message`** — Post a message to a Microsoft Teams channel as the user. Confirm the destination channel with the user before posting to an unfamiliar channel.
+  - required: `team_id`, `channel_id`, `text`
+- **`teams_send_chat_message`** — Send a message to a Microsoft Teams 1:1 or group chat as the user. Confirm the destination chat with the user before sending to an unfamiliar chat.
+  - required: `chat_id`, `text`
+- **`toggle_discussion_star`** — Star or unstar a discussion thread.
+  - required: `thread_id`, `starred`
+- **`update_boardroom`** — Change a standing exec meeting: rename it, reset the agenda or chair, change the cadence, change how many discussion rounds it runs, replace who sits at the table, or arm/disarm it. Only the fields you pass change. Passing `seats` REPLACES the whole table, so include every exec who should stay.
+  - required: `boardroom`
+
+## crm (199)
+
+- **`add_client_employee`** — Add an employee record to a client's roster.
+  - required: `client_id`, `name`
+- **`add_deal_contact`** — Add (and create if needed) a contact on a deal. Roles: primary, initial_closer, final_closer, owner, rr, introducer, signer, watcher, other.
+  - required: `deal_id`, `full_name`
+- **`add_firm_from_search`** — Save companies from search_companies as firms, with their roles (issuer / investor / broker_dealer). A company whose name or domain is already a firm is matched, not duplicated: its EMPTY fields are filled and the roles are added, nothing else changes. Free — no Apollo call. Undo removes only the firms this call created, and only if nobody has edited them since.
+  - required: `companies`, `roles`
+- **`add_portal_member`** — Invite a person to the client's portal with view/edit/admin access.
+  - required: `client_id`, `member_name`, `email`
+- **`analyze_deal_data_room`** — Read a deal's Google Drive data room in ONE call and record what it says: the investment profile set_deal_investment_profile would store (themes in the documents' own words, sectors, stages, geographies, minimum position, summary, source files), plus a library of 6-10 distinct insights for follow-up emails, each with the file it came from and a passage quoted verbatim from it. Every quote is checked against the extracted text and every number in an insight must appear in its quote; anything that fails is dropped, never repaired, and the result says how many were dropped. Reads up to 12 documents (offering materials first; executed paperwork in Signed Documents is skipped) through the Drive of whoever provisioned the folder, yours, or the owner's. Costs one AI call on your credits; when the folder has not changed since the last reading it returns the stored result for free unless force is true. A profile someone recorded by hand is NOT replaced unless overwrite_profile is true. Challenger cadence steps with insight_source "data_room" rotate through the insights, never repeating one to the same contact.
+  - required: `deal_id`
+- **`angelsend_delete_record`** — Run a DESTRUCTIVE AngelSend action discovered via `angelsend_search_tools`: deleting a deal, company, tag, comment, segment, follow-up rule, or chat-widget knowledge document; removing members from a segment; removing contacts from a campaign (cancels their queued sends); or removing an email suppression (`remove-email-optout`, `manage-block-list` with action 'remove'), which re-permits mail to an address that previously opted out. None of this is recoverable through the API. Always confirm with the user first and state exactly what will be removed. Rejects any action that is not destructive.
+  - required: `action`
+- **`angelsend_read`** _(read-only)_ — Run a READ-ONLY AngelSend action discovered via `angelsend_search_tools` — listing, fetching, searching, scoring, or analysing. Rejects any action that would write, so it is always safe and free to call. Actions that spend the user's AngelSend credits or run AI inference are NOT in this lane even when they only read: they go through `angelsend_write` so they stay under approval policy. `angelsend_search_tools` labels which are which.
+  - required: `action`
+- **`angelsend_search_tools`** _(read-only)_ — Search the AngelSend capability catalogue and get back the exact actions that match, each with its parameter schema. AngelSend is the user's sales/CRM platform: deals and companies, contacts and their tags/comments/custom fields, the outreach inbox, email suppression and CAN-SPAM compliance, buyer-intent signals, contact research and enrichment, draft-quality advisors, campaign authoring and launch, the knowledge base, chat-widget administration, and platform plumbing (projects, background jobs, calendar slots and bookings, Slack notes, outbound webhooks). ALWAYS call this first — it is the only way to learn an action's parameters, and guessing an action name will fail. Then pass the action you picked to `angelsend_read` or `angelsend_write`. Read-only.
+- **`angelsend_write`** — Run a non-destructive WRITING AngelSend action discovered via `angelsend_search_tools` — creating, updating, sending, or enriching. This changes the user's real CRM and can start real outreach: `reply-to-message` and `send-test-email` send email, `launch-campaign` starts sending to a campaign's whole audience, `create-booking` emails meeting confirmations, and `submit-contact-form` submits to a third-party website. Confirm with the user before any call that sends or launches. Rejects read-only actions (use `angelsend_read`) and destructive ones (use `angelsend_delete_record`).
+  - required: `action`
+- **`apply_investor_match_weights`** — Apply investor-match scoring weights. Admin only. Pass use_proposal: true to apply the proposal get_investor_match_calibration shows now (refused when there is none), weights to set an explicit set (every component, whole numbers, each within 0.5x–1.5x of its default, total 100), or reset: true for the built-in weights. reason is required and is logged with the before/after and the evidence. Re-orders every future investor ranking (the stored ranks update on the next re-rank); firms already released, approached or dismissed keep their status. Confirm with the user first.
+  - required: `reason`
+- **`archive_client`** — Archive a client (or unarchive if archived=false). Confirm with user first.
+  - required: `client_id`
+- **`archive_deal`** — Take a deal OUT of Deal Room: an archived deal leaves the board, every pipeline total, the revenue forecast and the forecast charts, and stops appearing in reports and digests. Use it for a deal that did not happen, a duplicate, or a row entered by mistake — when someone says a deal should not be in Deal Room at all. Nothing is deleted: the deal keeps its timeline, contacts and fields, get_deal still reads it, list_deals shows it with include_archived, and restore: true (or Undo) brings it back. To CORRECT a real deal whose name, contact, stage or numbers are wrong, use update_deal instead — archiving is not how you fix a mislabelled deal. `reason` is required and is written onto the deal's timeline.
+  - required: `deal_id`, `reason`
+- **`bulk_create_network_contacts`** — Save up to 200 people into the network in one call — what a LinkedIn scan, a conference list or a research pass produces. Same gap-filling rules as create_network_contact, applied per person, and it reports EVERY entry back: created, updated (with where the existing record came from), or skipped with the reason. Over 200 the whole call is refused rather than truncated, so nothing is lost silently. Duplicates inside one call are reported, not written twice. Undo removes only the contacts this call created and only while nothing has used them; a firm the call created stays.
+  - required: `contacts`
+- **`configure_angelsend_audience_sync`** — Turn the scheduled AngelSend audience sync on or off, per direction. Admin only, and it runs with YOUR AngelSend key. optouts_in (hourly) imports AngelSend's do-not-email list into this workspace's suppression list. contacts_pull (daily) gap-fills Deal Room contacts from a segment (paged) or the newest 500 leads. contacts_push (daily) ARMS unattended writes to AngelSend: it only ever CREATES leads AngelSend has never held — it never re-sends an existing address, because AngelSend's import overwrites the whole lead row, status and tags included. Only the directions you pass change.
+- **`configure_angelsend_campaign_mirror`** — Back a cadence with a native AngelSend campaign, or stop doing so. Admin only; runs with YOUR AngelSend key. ON: Kavanah creates the AngelSend campaign from the cadence's steps, hands it every enrollment that has not sent yet (both suppression lists checked first), and AngelSend sends — so volume beyond your connected mailboxes is possible on AngelSend's own sending (send_channel "resend", from a verified domain; "gmail"/"outlook" send from your own mailbox and add no capacity). Replies, meetings, opt-outs and every other Kavanah stop pull the person out of the AngelSend campaign; AngelSend's sends, replies and unsubscribes come back into Kavanah. Refused (and paused) when steps are personalized, when AngelSend has no CAN-SPAM company address (its unsubscribe footer needs one), or — under compliance mode — when AngelSend cannot be shown to carry the archive BCC. A deal cadence is mirrored per deal (pass deal_id); a network cadence without one. OFF pauses the AngelSend campaign; enrollments AngelSend never received go back to Kavanah's own sending.
+  - required: `cadence_id`, `enabled`
+- **`configure_cadence_variant_test`** — Configure how a cadence tests subjects and senders, and its OPT-IN automatic winner policy. Admin only. design 'linked' (default; arm C = subject C AND sender C, so the two are confounded) or 'factorial' (subject variant and sender assigned by two independent hashes, so each is measured on its own). auto_winner (default off; needs factorial): once every arm has min_per_arm contacts and one level's Bayesian probability to be best stays at or above threshold across two evaluations at least 24h apart, NEW enrollments shift to that winner while explore_pct of them keep being split evenly. A contact's subject and sender are fixed at their first send and never change — not by a design switch, not by a winner — and a contact keeps the same sender for every step. metric: 'reply' (default), 'positive_reply' or 'meeting'. reset_winner clears a declared winner. Every winner decision is recorded. Confirm with the user before turning auto_winner on: it changes what future contacts receive without anyone watching.
+  - required: `cadence`
+- **`configure_deal_forecast`** — Set up the revenue forecast for the workspace (admin only): the assumed fee % for deals with no recorded fee, fee bands the forecast must report separately (and never combine), a disclaimer printed on every forecast, AUTOMATIC DAILY RECALCULATION onto the deal records (off by default), and the WEEKLY FORECAST EMAIL — day, local time, timezone and which workspace members receive it. Recipients must be active members of the workspace. Only the settings you pass change; read the current ones with get_deal_forecast_settings first. To add or remove one recipient use email_recipients_add / email_recipients_remove — email_recipients REPLACES the whole list. Confirm the schedule and recipients with the user before turning the email on. Returns the full configuration as saved.
+- **`convert_issuer_to_deal`** — A prospect became a client: create a deal for the firm (in the default pipeline's first open stage unless told otherwise), link every contact we hold at the firm to it (the warmest as primary), and record on the campaign that this issuer CONVERTED and which deal it became. From then on the firm is a client — every ranking in the workspace excludes it — and the investor funnel can run on the new deal. Sends nothing.
+  - required: `campaign`, `firm_id`
+- **`convert_request_to_task`** — Convert an inbound request into a task in the named project. The new task's title is the request subject and its description embeds the submitter's contact info. Marks the request as converted so it can't be converted twice.
+  - required: `request_id`, `project_ref`
+- **`create_client`** — Create a new client. Only company is required. Omit contact_name and email when you do not know them — never invent placeholder people or addresses; a fabricated email can misdirect real client communication later.
+  - required: `company`
+- **`create_deal`** — Create a new deal in the workspace. Pipeline defaults to the workspace default. Stage defaults to the first 'open' stage. Amount/revenue are dollars (NOT cents) — the tool converts.
+  - required: `name`
+- **`create_deal_cadence`** — Define a reusable follow-up cadence: an ordered list of email steps, each a number of days after the previous. Bodies/subjects may use {{contact_name}}, {{contact_first_name}}, {{deal_name}}, {{sender_name}}, and {{booking_link}} (the cadence's booking_url — a step using it is refused unless booking_url is set). Or start from a TEMPLATE: template 'issuer-curious' is a 3-step NETWORK cadence for issuer prospecting in a curious tone — wanting to learn about their business, offering to sign their NDA first, exploring fit — that never assumes the prospect is raising; it fills the steps, kind and name you leave out. Show the user the template's copy before you create it. Creating a cadence sends NOTHING — sends only start when someone explicitly enrolls a deal contact.
+- **`create_network_contact`** — Create or update ONE person in the Deal Room network — an investor, a family-office principal, a broker-dealer contact — with NO deal attached. This is the tool for someone you found rather than someone on a live deal; add_deal_contact is for the latter and needs a deal_id. GAP-FILLS: a value already on the record is never replaced, tags are added rather than swapped, and a contact already attached to a firm keeps that firm. An address whose contact was merged away lands on the record it was merged INTO, so a scan can never un-merge what a person just merged. Undoable while nothing has used the contact.
+  - required: `full_name`
+- **`create_pipeline_stage`** — Add a stage to a pipeline (e.g. building a custom funnel like Prospect → Signed → Investor Interest → Closed → Referral). kind controls closing behavior: 'open' stages stay on the board, 'won'/'lost' mark deals closed and hide them from default views — so a mid-funnel stage like 'Signed' must be 'open' even though it sounds final. New stages append to the end unless sort_order is given.
+  - required: `name`
+- **`dismiss_bd_partner_match`** — Mark a surfaced partner pairing as not worth making. Dismissed is durable: the scan never alerts on that pairing again. Undoable.
+  - required: `match_id`
+- **`docsend_link_document`** — Attach a DocSend document name to a deal, so every view of it lands on that deal's timeline — including views by people who are not yet contacts on the deal (a partner the deck was forwarded to). Without a link, a view is only attributed when the viewer's email already matches a deal contact. Pass deal_id as null to remove an existing link.
+  - required: `document_name`
+- **`docsend_list_visits`** _(read-only)_ — List DocSend document views recorded for this workspace — who opened which document, when, for how long, and how much of it they read. Optionally filter to one deal or one document. This is engagement evidence for a fundraise or sales process: an investor who read 100% of the deck twice is a different conversation from one who opened page 1. Views arrive from a webhook and/or DocSend's notification emails, so a document nobody has opened simply has no rows. XDocs reads land in the same store (source 'xdocs'), so this lists both.
+- **`draft_bd_introduction`** _(read-only)_ — Draft a short, concrete introduction email to a broker-dealer partner about a matching deal. Returns the draft for a human to send — it does NOT send. Uses only the deal facts and the partner's stated mandate, so the note says why this specific deal fits their specific criteria rather than being a generic blast.
+  - required: `deal_id`, `firm_id`
+- **`draft_bd_partner_introduction`** _(read-only)_ — Draft an introduction between two partnered broker-dealers — the supplier whose offering answers the demander's mandate. Returns a DRAFT, with the reasons and the warmest contact at each firm, for a person to send. It sends nothing, and partners are never emailed automatically.
+  - required: `supplier_firm_id`, `demander_firm_id`
+- **`enrich_firm_profile`** — Look up a company and fold what is found into its firm record — website, LinkedIn, description, industry, location. FREE. Never overwrites a field a human curated, and never replaces a value the workspace already holds; it fills gaps only. Use it to flesh out a firm before scoring it against a deal.
+- **`enroll_contact_in_network_cadence`** — Enroll a contact in a NETWORK cadence — relationship / BD outreach that is not about a deal. This ARMS UNATTENDED OUTBOUND EMAIL exactly as enroll_deal_in_cadence does: every step sends through the enrolling user's mailbox until the sequence completes, the contact replies (stop-on-reply), or someone stops it. Confirm with the user first. ONE active network cadence per contact workspace-wide — two campaigns emailing the same person is the thing that guard exists to prevent.
+  - required: `contact_id`, `cadence`
+- **`enroll_contacts_in_cadence`** — Enroll up to 200 contacts in one cadence in a single call, and get back what happened to EACH one: enrolled (with the first send time), already enrolled, not on the deal, no email, suppressed (on a do-not-email list), archived, not found, or an error. This ARMS UNATTENDED OUTBOUND EMAIL to every contact enrolled: each step sends through your mailbox until the sequence ends, they reply, or someone stops it — confirm with the user first. For a DEAL cadence pass deal_id; a contact must be on the deal, because stop-on-reply follows the deal's contacts — pass add_to_deal to link the ones who are not (as role 'other'). For a NETWORK cadence omit deal_id. One active cadence per contact per deal, and one active network cadence per contact. More than 200 contacts is refused, not truncated. For investors on a deal, start_investor_campaign does the picking and linking for you.
+  - required: `cadence`, `contact_ids`
+- **`enroll_deal_in_cadence`** — Enroll a deal's contact in a follow-up cadence. This ARMS UNATTENDED OUTBOUND EMAIL: every step sends automatically through the enrolling user's mailbox until the sequence completes, the contact replies (stop-on-reply), or someone stops it. Confirm with the user before enrolling. One active cadence per contact per deal.
+  - required: `deal_id`, `contact_id`, `cadence`
+- **`find_bd_partner_matches`** _(read-only)_ — Which PARTNERED broker-dealers (agreed / active) offer what another partner's mandate asks for — one firm's supply_offered against the other's sectors, stages, geographies and mandate notes. Directional (A's supply for B's demand is a different introduction from B's for A's) and explained: each pairing carries its reasons, and near-misses carry why they were rejected. Pass firm_id to see one partner's pairings. Computes live; nothing is saved or sent.
+- **`find_broker_dealer_matches`** _(read-only)_ — Which partnered broker-dealers fit a deal, and WHY — scored on sector, issuance stage, geography and whether the raise fits their cheque range. Also returns the near-misses with the reason each was rejected, so 'why didn't you suggest X' has an answer. Requires the deal to carry a sector: without one, fit cannot be judged and nothing is surfaced rather than everything.
+  - required: `deal_id`
+- **`generate_forecast_charts`** — Render 8 executive revenue-forecast charts as email-ready PNG images and return their URLs plus paste-ready HTML. Use this for any forecast/pipeline report that goes out by EMAIL — chart widgets do not render in email. Charts: 1 30-day best/base/worst scenarios, 2 pipeline by stage, 3 probability by close date (50% threshold), 4 contribution waterfall (top 12 deals), 5 probability decay by deal age, 6 top revenue risks, 7 deal health matrix (LOCK NOW / CONFIRM / RED FLAG / NOISE), 8 weekly runway by stage. Each carries a computed one-line insight. Omit `deals` to read open deals straight from the Deal Room (one call, exact numbers — prefer this over copying numbers out of get_deal). In Deal Room mode the returned HTML also opens with a DEAL FACTS table built from the timeline — stage, fee, close date, last inbound / outbound, and every activity row in the last facts_since_hours (default 12), or "no change recorded" — so the email's per-deal lines are records, not prose. Then send the returned HTML with email_my_digest (is_html: true). Free; no credits.
+- **`get_angelsend_audience_sync`** _(read-only)_ — The scheduled AngelSend audience sync for this workspace: which directions are on (opt-outs in hourly; contacts pull and push daily), whose AngelSend key runs it, and each direction's last run and result. All directions are off unless an admin turned them on.
+- **`get_angelsend_campaign_mirror`** _(read-only)_ — Whether a cadence (the network campaign, or a deal / investor-funnel cadence — per deal) is backed by a native AngelSend campaign: on/off, status, the AngelSend campaign id, channel and daily limit, AngelSend's own sender capacity, the archive copy as last VERIFIED on AngelSend, AngelSend's sent/open/click/reply counts, and the last problem (e.g. why it was refused). Off unless an admin turned it on.
+  - required: `cadence_id`
+- **`get_broker_dealer_scan_coverage`** _(read-only)_ — How much of the open pipeline the hourly broker-dealer scan can actually judge: open deals, how many were scanned in the last day, how many were SKIPPED because no sector could be found (the deal's own field, its data-room profile, its category and its name were all tried), which ones, and how many were matched on an inferred sector. Use it when someone asks why a deal produced no broker-dealer matches.
+- **`get_cadence_variant_stats`** _(read-only)_ — A/B/C/D results for one cadence: sends, replies and reply RATE per arm, with the subject line and the sender display name each arm ACTUALLY went out under (and how many sends the provider could not put the requested name on — Outlook and the AngelSend send-email gateway cannot). Compare rates, never raw reply counts — arms rarely receive equal volume, and comparing counts across unequal denominators is how a losing subject gets declared the winner. Treat small samples as inconclusive rather than reporting a leader. Also reports the cadence's experiment: its design (linked = subject and sender confounded; factorial = independent), per-factor results per contact (replies, positive replies, meetings — opens are not tracked) with each level's probability to be best, the automatic winner policy and its verdict, and recent winner decisions.
+  - required: `cadence`
+- **`get_client_links`** _(read-only)_ — List the reference links on a client (dataroom, Drive folder, contract, etc). Read this before calling set_client_links, which replaces the whole list.
+  - required: `client_id`
+- **`get_client_sheet_link`** _(read-only)_ — Show how the workspace's client list (Accounts) is connected to a Google Sheet: which spreadsheet and tab it imports from, how many columns are mapped, whether the outbound mirror is on, when it last pulled in / mirrored out, and the last error. Read-only.
+- **`get_contact_research`** _(read-only)_ — Show the VERIFIED research facts held for a contact and their firm — recent posts or articles, deals the firm funded, background, news — each with its source URL, the verbatim quote that supports it, the source date, when it was retrieved and verified, and when it expires. Also shows recent research runs and why candidates were discarded. Free. Use this to answer 'what do we know about X', to check what a personalized opener may cite, or to show a compliance reviewer where a sentence came from. Facts that failed the fact-check are never stored, so an empty list means nothing passed, not that nobody looked.
+- **`get_contact_runway`** _(read-only)_ — How many days each LIVE network cadence can keep reaching NEW people before it runs out of contacts: sendable contacts never enrolled in it (has an email, not archived, not suppressed) plus those enrolled but not yet emailed, divided by its measured pace of first emails over the last week (capped by today's send capacity). Also returns the warning threshold and when admins were last warned. Admins are warned automatically — in-app and by email, at most every 3 days — when a cadence drops below the threshold (default 7 days). A cadence that sent no first email in the last week has no runway clock and is reported as not consuming contacts. Use this before promising a campaign can run for N weeks, and whenever the user asks how long their list will last.
+- **`get_contact_warmth`** _(read-only)_ — The computed warmth score (0-100) for a contact, with the component breakdown that produced it and a plain-English explanation. Seven inputs: responsiveness (reply RATE), recency of their last action, meetings granted, document read-depth, deal progression, connectedness (how many of our people they have actually answered, and how many relationships we hold at their firm), and background similarity (a shared school, employer or city with someone on our team). It deliberately ignores how much we emailed them, so it cannot be raised by sending more — and connectedness counts colleagues who were REPLIED TO, not colleagues who sent something. This is distinct from the human 'relationship_status' label, which is someone's judgement; both are shown and they can disagree.
+  - required: `contact_id`
+- **`get_deal`** _(read-only)_ — Fetch one deal by deal_id (the id list_deals prints) with its stage, amount, revenue, probability, owner, expected close, notes, its team (the lead and the members on our side, with each member's title on the deal), contact list, and its 20 most recent activity events.
+  - required: `deal_id`
+- **`get_deal_data_room_insights`** _(read-only)_ — The stored data-room reading for a deal: when it was read, which files were read or skipped and why, the sourced insight library (each insight with its file and quoted passage), how many proposed insights were dropped as unsupported, and whether the analyzer wrote the deal's investment profile. Free; reads nothing from Drive. Run analyze_deal_data_room to (re)read the room.
+  - required: `deal_id`
+- **`get_deal_forecast`** _(read-only)_ — The Deal Room revenue forecast, calculated live from the deal records: expected FEE revenue by closing week (weeks 1–4, plus overdue / later / no close date), stage distribution, confidence levels, the top 5 revenue risks each with a recommended action, and the upside if deals advance a stage. Probability = the stage's baseline probability × momentum ÷ 50, where momentum (50 = neutral) comes from counterparty emails, calls, meetings and document views on the deal's timeline, time in stage, and a passed close date. Revenue is each deal's recorded fee, or deal size × the workspace's assumed fee % when none is recorded. Deals on a forecast hold, with only internal contacts, or in a stage with no baseline are excluded and listed. Quote its figures under the labels it uses, carry any disclaimer it prints, and if it reports fee bands separately never add the bands together.
+- **`get_deal_forecast_settings`** _(read-only)_ — Read how the revenue forecast is configured: the assumed fee % for deals with no recorded fee, fee bands and their labels, the disclaimer, whether automatic daily recalculation is on (and when it last ran), and the WEEKLY FORECAST EMAIL — on or off, day, time, timezone, every recipient, subject, next send and what the last delivery did. Any member can read it. Call it before changing any of these with configure_deal_forecast, and whenever someone asks when or to whom the forecast goes out.
+- **`get_deal_investment_profile`** _(read-only)_ — The stored data-room reading for a deal: themes, sectors, stages, geographies, minimum position, summary, and which files it came from. Use it to check whether a deal is rankable before calling rank_investors_for_deal, and to see whether the profile predates a change to the data room.
+  - required: `deal_id`
+- **`get_deal_sheet_link`** _(read-only)_ — Show how a pipeline is connected to a Google Sheet: which spreadsheet and tab it imports from, how many columns are mapped, whether the outbound mirror is on (and to which tab), when it last pulled in / mirrored out, and the last error. Read-only — use before sync_deal_sheet to confirm a link exists.
+- **`get_deal_space`** _(read-only)_ — Where a deal's data room is, and what is in it: the deal's Slack channel and Google Drive folder (id and link), plus a listing of the folder's files and its sub-folders' files read through YOUR Google Drive connection. This is step one of an investor campaign — read the documents it lists with drive_read_file, then record what they say with set_deal_investment_profile. If no folder is recorded, it says so; link one that was made outside Kavanah with link_deal_drive_folder.
+  - required: `deal_id`
+- **`get_enrichment_supply`** _(read-only)_ — Whether a campaign can actually be sustained, from BOTH ends: how much send capacity remains today per mailbox (the provider caps this, not us — Gmail refuses at roughly 2,000/day for a Workspace account and 500 for a consumer one), and how many contacts still have no email address. Use it before launching or scaling a sequence. Two caveats it returns and you must repeat: only some enrichment providers report a real balance, so 'unknown' is never 'fine'; and the send count covers queued mail only, so it is a floor on today's volume rather than a full account of what the provider has seen.
+- **`get_firm`** _(read-only)_ — One firm in full, including every contact we have there with their warmth score. This is the answer to 'who do we know at this firm and how well'.
+  - required: `firm_id`
+- **`get_firm_coverage`** _(read-only)_ — How much of the workspace lives in the institution layer: total contacts, how many are attached to a firm, how many still carry an employer name with no firm, and how many firms exist. Use it to decide whether reconcile_contacts_into_firms is worth running, and to answer 'is our investor matrix actually populated'.
+- **`get_investor_match_calibration`** _(read-only)_ — How well the investor-match ranking predicted outcomes: reply and meeting rate by score band, and by scoring component (thesis, sector, stage, geography, capacity, warmth) with and without it, over approaches at least 14 days old. Shows the weights in use and, when the data supports it, a BOUNDED proposed weight change (each weight within 0.5x–1.5x of its default, at most ±5 points per application, total 100). Nothing changes until apply_investor_match_weights is run.
+- **`get_network_sheet_status`** _(read-only)_ — The Google Sheet(s) linked to the network (firms + contacts): which tab, the column mapping, when it last imported and mirrored, and the last import's summary — rows read, firms/contacts created and updated, fields filled, fields KEPT because someone edited them in Kavanah, and the cells that could not be read (an unparseable AUM, an unknown partner status). Use it before answering 'is the sheet synced' or 'why didn't X come through'.
+- **`get_pipeline_summary`** _(read-only)_ — Stage-by-stage money rollup for a pipeline: deal count, total deal amount, total revenue (fees), and probability-weighted versions of both, plus open-pipeline ('capturable') and won totals. Use for questions like 'how much capturable revenue is sitting at interest level?'. This is the source for pipeline reads, forecasts and weighted-value questions — a task board whose columns look like deal stages is not the pipeline.
+- **`get_winning_openers`** _(read-only)_ — Personalized opening sentences from past cadence sends that earned a reply (meetings first), excluding contacts who later opted out, plus the reply rate of personalized vs generic step sends. Use as examples when writing a personalize_brief or judging whether personalization is paying for itself. Changes nothing.
+- **`link_client_sheet`** — Connect a Google Sheet tab to the workspace's client list and run the first import, saving the column mapping that sync_client_sheet reuses. Call with just `spreadsheet` to list the tabs; add `tab` to map the headers and import. Clients are matched by company name — existing companies are updated, new ones created. Headers with no Kavanah field are carried through verbatim (and mirrored back) but aren't typed or displayed. Does NOT write to their sheet (only enabling the mirror does).
+  - required: `spreadsheet`
+- **`link_contact_to_firm`** — Attach a contact to a firm, or pass firm_id null to detach. Most contacts link themselves by email domain on the nightly pass; use this for the ones that cannot — a personal address, a stealth entity, someone who moved firms.
+  - required: `contact_id`
+- **`link_deal_drive_folder`** — Record the Google Drive folder that holds a deal's data room, for a folder created outside Kavanah. Accepts a folder id or any Drive folder URL. Verified through your Drive connection when you have one (a file, or a folder your Drive cannot see, is refused). Once recorded, get_deal_space reads it and the provision-client-space automation will not create a second folder. Refuses to replace a different folder already recorded unless replace is true.
+  - required: `deal_id`, `folder`
+- **`link_deal_sheet`** — Connect a Google Sheet tab to a pipeline and run the first import, which SAVES the link + column mapping that sync_deal_sheet later reuses. Call with just `spreadsheet` to list the tabs; call with `spreadsheet` + `tab` to auto-map the headers and import. Always tell the user which columns were mapped — auto-mapping is a guess. Headers with no Kavanah field are carried through verbatim (and mirrored back) but aren't typed or displayed, so one that should be a real field is worth flagging. Does NOT write anything to their sheet (that only happens if the mirror is later enabled).
+  - required: `spreadsheet`
+- **`link_network_sheet`** — Link a Google Sheet tab (the desk's partners / investors list) to the firm and contact layer, and run the first import. Call with just `spreadsheet` to list its tabs; add `tab` to map the headers and import. The import GAP-FILLS: an empty Kavanah field takes the sheet's value, a value the sheet supplied last time follows the sheet, but a value someone edited in Kavanah is never overwritten. Linking also turns on the HOURLY re-import for this tab. It never writes to the sheet — only set_network_sheet_mirror does. Money cells accept '$1.2B', '250M', '$5M - $25M'; an unreadable cell is skipped and reported, never guessed. A bare 'Name' header is not auto-mapped (it is as often the firm as the person) — pass column_mapping when the guess leaves something important unmapped.
+  - required: `spreadsheet`
+- **`list_bd_partner_matches`** _(read-only)_ — The partner pairings the hourly scan has already surfaced (and alerted on), with their status. Filter by firm or status (surfaced / dismissed).
+- **`list_clients`** _(read-only)_ — List clients in the workspace with stage, health, owner, and id.
+- **`list_deal_cadences`** _(read-only)_ — List the workspace's follow-up cadences (standing multi-step outreach sequences): each cadence's steps, day offsets, and how many active enrollments are running. Read-only.
+- **`list_deals`** _(read-only)_ — List deals in Deal Room, the workspace's pipeline of record. Filter by pipeline (id or slug), stage, owner_name, or search by deal name. Returns id, name, stage, owner, revenue, expected close date, and primary contact — call get_deal with that id as deal_id for amount, probability, notes, and activity. Default excludes closed and archived deals; set include_closed to see won/lost too, and include_archived to see deals that were archived (marked ARCHIVED, for archive_deal with restore).
+- **`list_firms`** _(read-only)_ — List institutions (investors, issuers, broker-dealers) in the workspace with their AUM, dry powder, check size, thesis, sectors and how many contacts we know there. Filter by role, sector, minimum AUM, or a text search across name and thesis. Use this to answer 'which allocators could write this cheque' before looking at individual people.
+- **`list_inbound_requests`** _(read-only)_ — List inbound submissions from external request pages. Filter by status (new|in_review|resolved|archived|all) and/or page_id. Non-admin callers see only requests against pages they own.
+- **`list_investor_matches`** _(read-only)_ — The persisted investor ranking for a deal, best first, with each firm's score, the reasons behind it, its tranche, its status and how many named contacts we hold there. Filter by status to answer specific questions: 'released' is the set being worked now, 'ranked' is what is queued behind it, 'approached' and 'dismissed' are spent. A firm showing 0 contacts needs enrichment before anyone can actually email it.
+  - required: `deal_id`
+- **`list_issuer_campaigns`** _(read-only)_ — The workspace's issuer campaigns — each a named CLIENT MANDATE (what kind of company this desk wants to represent: themes, sectors, stages, geographies, raise range) with where its prospecting stands: how many issuers are ranked, released, approached, engaged, converted and dismissed, which network cadence it enrolls into, tranche size, whether auto-release is on, and what the 6-hourly scan last did (dated). Start here when someone asks about prospecting, new clients, or the issuer pipeline. No campaigns yet means nothing is being prospected — upsert_issuer_campaign creates one.
+- **`list_issuer_matches`** _(read-only)_ — The persisted prospect ranking for an issuer campaign, best first, with each firm's score, the reasons behind it, its tranche, its status, how many named contacts we hold there and, once converted, the deal it became. Filter by status: 'released' is the set being worked now, 'ranked' is queued behind it, 'approached' has had mail sent, 'engaged' has REPLIED or taken a meeting (the leads — go and talk to them), 'converted' became a deal, 'dismissed' is off the list. A firm showing 0 contacts needs sourcing before anyone can email it.
+  - required: `campaign`
+- **`list_network_contacts`** _(read-only)_ — List PEOPLE in the network — the way to read back what a scan, an import or a research pass saved. Filter by tags (all of them must be present), by source ('linkedin', 'sheet', 'agent'), by a text search across name, email and company, or by firm_id. This is how you answer 'the family offices we found on LinkedIn': list by the tag or source you saved them under, then feed the ids to get_contact_warmth, enroll_contacts_in_cadence or merge_contacts. For the institutions rather than the people, use list_firms; for everyone at ONE firm, get_firm.
+- **`list_pipeline_stages`** _(read-only)_ — List the stages of a pipeline in board order, with each stage's kind (open = in motion, won/lost = closed), default probability, staleness threshold, and color. Use before create_deal/update_deal_stage when unsure what stages exist, or before reconfiguring stages.
+- **`list_request_page_fields`** _(read-only)_ — List the custom form fields on a request-intake page, including each field's key, label, kind, whether it's required, and its conditional visibility rule (if any). Use this to discover field keys before setting a visibility rule, or to audit a page's form.
+  - required: `request_page_id`
+- **`list_request_pages`** _(read-only)_ — List the public request-intake pages this workspace has published. Returns each page's title, share token, status, and submission counts.
+- **`list_stale_deals`** _(read-only)_ — List deals that have crossed their per-stage staleness threshold and need follow-up. Optionally filter by owner_name. Use this as the source for the daily follow-up brief.
+- **`merge_contacts`** — Merge a DUPLICATE contact into the one to keep. Admin only. The kept contact's empty fields are filled from the duplicate — nothing it already holds is overwritten, and any disagreement is reported. Every deal link, cadence enrollment, email/meeting activity, document view and sheet record pointing at the duplicate moves to the kept contact; if both were enrolled in the same sequence, the duplicate's enrollment is cancelled so the person is not mailed twice. The duplicate is archived, and future sheet syncs and AngelSend pulls route its email to the kept contact. Undoable (fields edited since are kept; cancelled enrollments stay cancelled). Confirm which record is kept before calling.
+  - required: `winner_contact_id`, `loser_contact_id`
+- **`merge_firms`** — Merge a DUPLICATE firm into the one to keep. Admin only. Empty fields on the kept firm are filled from the duplicate (roles are combined; nothing already set is overwritten; disagreements are reported). Contacts, investor matches, broker-dealer matches and partner pairings move to the kept firm; where both already had a match on the same deal, the kept firm's row stays and a human decision on the duplicate's row (dismissed, approached) carries over. The duplicate is archived and future imports route its name and domain to the kept firm. Undoable. Confirm which firm is kept before calling.
+  - required: `winner_firm_id`, `loser_firm_id`
+- **`plan_outbound_capacity`** _(read-only)_ — Answer 'can we sustain N emails a day' with arithmetic instead of a setting. Returns every mailbox that could carry load (configured limit, connected provider, or recent queued mail), what the pool can send TODAY after warm-up ramps, what it reaches at steady state and when, what the underlying providers safely support, and how many more mailboxes a target needs. Use it before promising a volume. The distinction it exists to make: raising a cap is one setting and takes a second; sustaining the volume is a property of the mailbox pool, and a single mailbox configured at 1,000/day is refused by the provider at roughly half that while the domain's reputation absorbs the damage.
+- **`propose_follow_up`** — Draft an outbound email to a deal's primary contact (or specified contact) and either save it as a Gmail draft (for human review) or schedule it for a future send. Returns the draft id or scheduled email id so the user can confirm. Use after summarizing why a follow-up is needed. In schedule mode you can also queue a multi-touch SEQUENCE via `sequence` — later touches are auto-cancelled the moment an inbound email from that contact lands on the deal (stop-on-reply).
+  - required: `deal_id`, `subject`, `body`, `mode`
+- **`rank_investors_for_deal`** — Score and rank every qualified investor in the workspace against a deal, then persist the ordering. Scoring is deterministic over the stored investment profile — thesis overlap (30), sector (20), stage (15), geography (10), capacity (15) and relationship warmth (10) — so two runs give the same order. Re-running RE-SCORES without resetting anyone's state: a firm already approached stays approached, and one a human dismissed stays dismissed. Returns the top of the list plus a sample of who was excluded and why. Ranking alone contacts nobody; release_next_investor_batch is what puts firms into the working set.
+  - required: `deal_id`
+- **`rank_issuers_for_campaign`** — Score and rank every qualified issuer in the workspace against a campaign's mandate, then persist the ordering. Deterministic over the stored mandate — theme overlap with the company's description (25), sector (20), stage (10), geography (10), raise-size fit against the mandate's range (15), timing (10: a recorded raise signal, or a last round 15-42 months old; a round closed in the last six months scores DOWN), and relationship warmth (10) — so two runs give the same order. A firm already converted to a deal by any campaign is excluded: a client is not a prospect. Re-running RE-SCORES without resetting anyone's state. Returns the top of the list plus a sample of who was excluded and why. Ranking contacts nobody; start_issuer_campaign or release_next_issuer_batch puts firms into play.
+  - required: `campaign`
+- **`recalculate_deal_forecast`** — Recalculate the revenue forecast now and write it onto every open deal (forecast probability, momentum, expected fee, close week, confidence), adding a timeline entry on each deal whose forecast moved. It never changes a deal's own probability or any field a person set. Admin only. Use when someone wants the stored forecast brought up to date immediately rather than at the daily recalculation.
+- **`recompute_contact_warmth`** — Force an immediate warmth recompute for a contact or a whole firm, instead of waiting for the hourly pass. Use after logging a meeting or importing history, when the score on screen is visibly behind reality.
+- **`reconcile_contacts_into_firms`** — Build the institution layer from contacts that already exist: group them by their free-text employer, create a firm for each, and attach them. This is what turns 'two contacts at the same fund are two strings that happen to match' into one firm with two relationships. Run it once after importing a contact list, and whenever a bulk import lands. Idempotent — it only ever fills an EMPTY firm link, so a contact someone deliberately pointed elsewhere is never overruled. Pass dry_run to see the plan before writing.
+- **`record_deal_activity`** — Append a free-form activity row to a deal's timeline. Use for notes, manual call/meeting logs, and outbound communication that didn't flow through Kavanah.
+  - required: `deal_id`, `kind`, `summary`
+- **`release_next_investor_batch`** — Move the next tranche of ranked investors into the working set for a deal — the 'now do the next hundred' step. REFUSES while firms from the current set are still open, and that refusal is the point: a second tranche arriving while the first is half-worked turns a priority order into a dump. Mark firms approached or dismissed to clear the set, or pass force to override deliberately. Releasing sends nothing; it marks who is in play.
+  - required: `deal_id`
+- **`release_next_issuer_batch`** — Move the next tranche of ranked issuers into a campaign's working set — the 'now do the next hundred' step. REFUSES while firms from the current set are still open, and that refusal is the point: a second tranche arriving while the first is half-worked turns a priority order into a dump. Mark firms dismissed (or let sends and replies mark them approached/engaged) to clear the set, or pass force to override deliberately. Releasing sends nothing; start_issuer_campaign both releases and enrolls.
+  - required: `campaign`
+- **`remove_portal_member`** — Remove a portal member by id. Confirm with user first.
+  - required: `portal_member_id`
+- **`research_contact`** — Research ONE contact on the public web now and store only facts that pass the fact-check: the supporting quote must be verbatim on the source page, still there on a second independent read, about the right person (matched on firm plus title or location, rejected on any ambiguity), dated, and judged by a separate check to fully support the statement. Everything else is discarded, never softened. THIS SPENDS CREDITS: typically 25-40 per contact (search, reading up to four pages, model calls), billed to the person asking. LinkedIn is never scraped; if the asker has AngelSend connected, its LinkedIn enrichment is used only to confirm identity. Refused if the contact was researched in the last 24 hours. Separate from the automatic research a workspace can opt into for personalized cadence steps — this works whether or not that is on.
+- **`scrappy_bulk_update_leads`** — Update many Scrappy leads at once (max 1000). Set a common `status`, and/or add/remove tags across all of them. Use for bulk qualification or re-tagging.
+  - required: `lead_ids`
+- **`scrappy_bulk_validate_emails`** — Queue Scrappy email validation for many leads at once (max 1000). Validation runs asynchronously; poll individual leads afterward with `scrappy_get_lead`.
+  - required: `lead_ids`
+- **`scrappy_create_campaign`** — Create a new Scrappy deal campaign. Only `name` is required; the target fields (industry/geography/company size) steer Scrappy's AI source discovery and account ranking.
+  - required: `name`
+- **`scrappy_create_lead`** — Manually create a Scrappy lead. `source_url` is required (the URL the lead was found at); everything else is optional contact detail. To push an existing Kavanah client into Scrappy, prefer `scrappy_push_kavanah_client` (idempotent).
+  - required: `source_url`
+- **`scrappy_get_lead`** _(read-only)_ — Fetch a single Scrappy lead by id, including job and source info. Use to inspect one lead in detail before qualifying it.
+  - required: `lead_id`
+- **`scrappy_list_accounts`** _(read-only)_ — List Scrappy 'accounts' — aggregated company view, one row per company domain with lead counts. Useful when the user asks 'which companies has Scrappy found leads at?'.
+- **`scrappy_list_campaigns`** _(read-only)_ — List Scrappy campaigns (lead-gen programs) with status (ACTIVE/PAUSED/COMPLETED/ARCHIVED) and target attributes.
+- **`scrappy_list_leads`** _(read-only)_ — List leads in the user's Scrappy account. Filter by `status` (Scrappy's lifecycle stage) and/or `company` (substring match). For the calling Kavanah workspace's clients use `list_clients` instead; Scrappy is the upstream lead funnel.
+- **`scrappy_pipeline_overview`** _(read-only)_ — Get the Scrappy pipeline funnel: total leads, leads by lifecycle status, email-validation rate, new-leads-last-7-days, and conversion rate. Use when the user asks 'how's my Scrappy pipeline?' or wants a dashboard snapshot.
+- **`scrappy_push_kavanah_client`** — Push a Kavanah client into Scrappy as a lead. Idempotent — if the client was already pushed, returns the existing Scrappy lead id without creating a duplicate. Requires the client to have either a website or a contact email (used to derive Scrappy's required sourceUrl).
+  - required: `client_id`
+- **`scrappy_update_lead`** — Update a Scrappy lead: change `status` (lifecycle stage), replace `tags`, or set `notes`. Use after the user qualifies/disqualifies a lead in conversation.
+  - required: `lead_id`
+- **`scrappy_validate_lead_email`** — Trigger Scrappy's email validation for a single lead. Returns status (VALID/INVALID/UNKNOWN) and tier. Errors if the lead has no email.
+  - required: `lead_id`
+- **`scrappy_who_am_i`** _(read-only)_ — Confirm Scrappy is connected for the calling user and return the linked account's email plus lifetime stats (sources, jobs, leads). Use as a quick health check before recommending Scrappy actions.
+- **`search_companies`** — Search Apollo.io for companies — issuers, funds, broker-dealers — by employee count, revenue, funding, industry keywords and location. Uses the CALLER'S OWN Apollo key (Settings → Integrations; organization search is on paid Apollo plans only). COSTS ONE APOLLO CREDIT PER PAGE, whatever the page holds, so use per_page up to 100 and narrow filters rather than paging. What Apollo CANNOT do, and you must not claim it did: it has no filter for funding STAGE (Series C, pre-IPO) and no knowledge of a raise IN PROGRESS. For 'later-stage companies raising $100M+', the closest honest proxy is latest_funding_min_dollars=100000000 (the LATEST COMPLETED round was $100M or more) plus exclude_public=true (drops companies Apollo lists with a stock ticker — applied after the page is fetched, so it does not save the credit). Say that it is a proxy. Results are not saved; add the ones worth keeping with add_firm_from_search.
+- **`search_prospects`** _(read-only)_ — Search millions of professional profiles for people matching a role, firm, sector or location — the discovery step for building an investor, issuer or partner list. FREE: this costs nothing and does not reveal email addresses. Results carry a record id you pass to unlock_prospect_email when you have decided who is worth paying for. Use this to build and rank a candidate list BEFORE spending anything.
+- **`set_client_health`** — Set client health to Healthy, Watch, or At Risk.
+  - required: `client_id`, `health`
+- **`set_client_links`** — Replace the full set of reference links on a client. This is a REPLACE, not an append — call get_client_links first and include any existing links you want to keep, or they are removed. Pass an empty array to clear all links.
+  - required: `client_id`, `links`
+- **`set_client_sheet_mirror`** — Turn the outbound mirror on or off for the client sheet link, and optionally rename the mirror tab. While enabled, Kavanah writes the client directory to that separate tab on every sync AND hourly in the background. The mirror tab may never be the source tab — that would overwrite the team's real data, and is rejected.
+- **`set_client_stage`** — Set client stage to Onboarding, Active, Expansion, or Paused.
+  - required: `client_id`, `stage`
+- **`set_contact_runway_threshold`** — Set how many days of new contacts a live network cadence may have left before workspace admins are warned (1–90, default 7). Admin only. Changes nothing about sending; it only moves when the warning fires.
+  - required: `threshold_days`
+- **`set_deal_investment_profile`** — Record what a deal IS, as read from its data-room materials, so investors can be ranked against it. Read the deal's data room first — get_deal_space lists its Drive folder, drive_read_file reads each document — this tool stores your reading, it does not do it for you. `themes` is the highest-value field: short phrases in the issuer's own language ("grid-scale storage", "nurse staffing"), because a firm's thesis is prose and prose matches on themes rather than on a taxonomy. Storing the profile makes the ranking REPRODUCIBLE: extraction happens once here, and every later ranking is arithmetic over it, so the same deal yields the same order and the next tranche is a stable cursor rather than a fresh opinion. Re-run it when the data room materially changes.
+  - required: `deal_id`, `themes`
+- **`set_deal_sheet_mirror`** — Turn the outbound mirror on or off for a pipeline's sheet link, and optionally rename the mirror tab. While enabled, Kavanah writes the pipeline out to that separate tab on every sync AND hourly in the background. The mirror tab may never be the source tab — that would overwrite the team's real data, and is rejected.
+- **`set_network_sheet_mirror`** — Turn the network mirror on or off, or rename its tab. When on, every hourly sync OVERWRITES the mirror tab with every firm and contact in Kavanah — unattended writes to the customer's spreadsheet, which is why this needs a clear yes from the user. The mirror refuses any tab a Kavanah sync reads from (this link's source tab or any other linked tab in the same file, ignoring case and spacing). Default mirror tab: 'Kavanah Network'.
+- **`set_outbound_daily_cap`** — Set the outbound daily cap for one mailbox, or the workspace default. ARMS higher unattended sending: the scheduled-email cron defers against this number every minute, so raising it immediately releases more mail. Admin-only, and it spends a shared, not individually recoverable, resource — the sending domain's reputation. Prefer adding a warm-up ramp (warmup_start + warmup_floor + warmup_step) over a straight raise on any identity that has not been sending at the new volume already: a domain that jumps to its cap on day one gets filtered, and the fix for that is a new domain, not a smaller number next week. Call plan_outbound_capacity first and repeat what it says about the provider ceiling.
+  - required: `daily_cap`
+- **`set_partner_status`** — Record where a broker-dealer partnership stands: prospect, contacted, agreed, active, paused or declined. This is the gate on supply/demand matching — ONLY firms at 'agreed' or 'active' are matched against live deals and alerted on. A firm merely tagged broker_dealer is one we know of; mailing them a deal is cold outreach, which is a different act needing different consent. Set 'declined' rather than deleting, so we stop re-asking someone who already said no.
+  - required: `firm_id`, `status`
+- **`set_request_field_visibility`** — Set or clear the conditional show/hide rule on a single field of a request-intake page. With a rule, the target field only appears when the controlling field's answer matches. Pass clear=true (or omit op) to remove the rule and make the field always visible. The controlling field (when) must be another existing field on the same page.
+  - required: `request_page_id`, `field_key`
+- **`staff_deal_team`** — Put the people the user confirmed onto a deal's team — ADDITIVE: adds each member (title 'Analyst' unless given) and sets the lead ONLY if the deal has no active lead; it never removes anyone and never replaces a lead (use update_deal_team for that). Each person is resolved against the workspace's ACTIVE members (email, exact name, then a unique name prefix) and all must resolve or nothing changes. The people added are emailed and pushed that they are on the deal, and — when the deal already has a Slack channel / Drive folder — invited to them through YOUR Slack and Google connections. Those invites and notices cannot be recalled; the undo takes back only the roster change. Run suggest_deal_team first, show the proposal, and only call this for the people the user agreed to. May park for approval.
+  - required: `deal_id`
+- **`start_investor_campaign`** — Run the investor funnel for a deal in one call: ranks the workspace's investors against the deal's investment profile (if it has never been ranked), releases the next tranche of firms, picks the best person at each (warmest with an email first, then the most senior title), links them to the deal and enrolls them in a DEAL cadence. Refuses when the deal has no investment profile and says what to run (get_deal_space, drive_read_file, set_deal_investment_profile). Returns a SOURCING GAP list — released firms with no contact who has an email — so you can find people there with search_prospects and unlock_prospect_email and run this again: a re-run while a tranche is open releases nothing and only enrolls firms nobody has written to yet. A firm is marked approached automatically once a step has actually been SENT to someone there on this deal. auto_release (default false, stored on the deal) lets the 6-hourly scan release and enroll the next tranche once every released firm is approached or dismissed. This ARMS UNATTENDED OUTBOUND EMAIL to up to 200 investors per call through your mailbox — confirm the cadence, tranche size and auto_release with the user first.
+  - required: `deal_id`
+- **`start_issuer_campaign`** — Run the issuer funnel for a campaign in one call: ranks the workspace's issuers against the mandate (if never ranked), releases the next tranche of firms, picks the best person at each (warmest with an email first, then the most senior title), and enrolls them in a NETWORK cadence stamped with this campaign. Refuses without a mandate (themes/sectors) and says what to run. Returns a SOURCING GAP list — released firms with nobody who has an email — so you can find people there with search_prospects and unlock_prospect_email and run this again: a re-run while a tranche is open releases nothing and only enrolls firms nobody has written to yet. A firm is marked approached automatically once a step has actually been SENT to someone there, and ENGAGED once anyone there replies or takes a meeting. auto_release (default false, stored on the campaign) lets the 6-hourly scan release and enroll the next tranche once every released firm is approached, engaged or dismissed. This ARMS UNATTENDED OUTBOUND EMAIL to up to 200 prospects per call through your mailbox — confirm the cadence, tranche size and auto_release with the user first.
+  - required: `campaign`
+- **`stop_cadence_enrollment`** — Stop a contact's active cadence on a deal. Future steps are cancelled; already-sent emails are unaffected.
+  - required: `deal_id`, `contact_id`
+- **`stop_investor_campaign`** — Stop a deal's investor campaign: auto-release is turned off and the cadence detached, so nothing more is released or enrolled automatically. Pass stop_enrollments to also cancel every ACTIVE sequence to the deal's investor contacts (future steps and any already-queued send; mail already sent stays sent). The ranking and tranche state are kept.
+  - required: `deal_id`
+- **`stop_issuer_campaign`** — Stop an issuer campaign: auto-release is turned off and the cadence detached, so nothing more is released or enrolled automatically. Pass stop_enrollments to also cancel every ACTIVE sequence this campaign started (future steps and any already-queued send; mail already sent stays sent). The mandate, ranking and tranche state are kept; pass archive to retire the campaign entirely.
+  - required: `campaign`
+- **`stop_network_cadence_enrollment`** — Stop a contact's active NETWORK cadence. Future steps are cancelled and any already-queued send is pulled back; already-sent emails are unaffected.
+  - required: `contact_id`
+- **`suggest_cadence_variants`** _(read-only)_ — Evidence for writing subject lines and choosing sender names for a NEW cadence, from this workspace's past campaigns: the automatic winner decisions on record (with the arms they beat), first-touch subject arms ranked by reply rate with their contact counts, which subject traits went with higher reply rates (question, uses the name, names the deal, a number, five words or fewer), and sender names by reply rate. Use it before create_deal_cadence, then propose 2–4 subject_variants that CITE the evidence (e.g. 'questions replied 6.1% vs 3.4% over 420 contacts'). Arms from linked cadences with a sender pool are flagged as confounded. Reports nothing as a pattern below 20 contacts per arm.
+- **`suggest_deal_team`** _(read-only)_ — Propose who should staff a deal — read-only, changes nothing, costs no AI usage. Ranks the workspace's active members for the ANALYST seat (and for the LEAD seat when the deal has no active lead) on their job title (Analyst/Associate fits the analyst seat; Director/VP/MD/Partner the lead), their skill profile (finance, analytics, research, data; biz-dev and strategy for a lead), their experience against the deal's sector / category / stage / geography, their own reported availability (unavailable people are listed but never proposed), and how many open deals and task hours they already carry. Says how many members the team needs to reach the workspace's minimum size (default 5) and proposes up to its maximum (default 10), each with the reasons. Show the proposal and let the user choose; staff_deal_team writes it.
+  - required: `deal_id`
+- **`sync_angelsend_campaign_mirror`** — Run the AngelSend campaign mirror now instead of waiting for the 10-minute sweep: removes stopped/suppressed recipients from AngelSend, reads sends/replies/unsubscribes back, re-verifies the archive copy, and hands new enrollments to AngelSend (which then emails them). Admin only.
+  - required: `cadence_id`
+- **`sync_client_sheet`** — Run a two-way sync between the workspace's client list and its linked Google Sheet, using the saved column mapping. Pulls the source tab in (matching clients by company), then — only if the mirror is enabled — writes Kavanah's client directory out to a SEPARATE mirror tab. The original tab is never written to.
+- **`sync_deal_sheet`** — Run a two-way sync between a pipeline and its linked Google Sheet, using the column mapping saved by the original import. Pulls the source tab in (creating/updating deals and contacts), then — only if the mirror is enabled — writes Kavanah's canonical state out to a SEPARATE mirror tab. The team's original tab is never written to. Requires an existing link (see get_deal_sheet_link); establishing one needs the /deals/import wizard.
+- **`sync_network_sheet`** — Run the network sheet sync now instead of waiting for the hourly job: re-import (gap-filling) and, when the mirror is on, rewrite the mirror tab with Kavanah's whole network. WRITES TO THE CUSTOMER'S SPREADSHEET when the mirror is armed. Pass link_id when more than one sheet is linked; omit it to sync every linked sheet.
+- **`unlink_network_sheet`** — Stop syncing a sheet with the network: the hourly import and mirror stop for it. Nothing already imported is removed, and the sheet itself is not touched. Relinking the same tab later picks up where it left off. Undoable.
+- **`unlock_prospect_email`** — Obtain a verified email address for ONE person. THIS SPENDS MONEY — roughly $0.02 per contact on ppl.contact, or a plan credit on Apollo or Hunter. Providers are tried cheapest-first and the first real address wins. Pass the record id from search_prospects when you have one; otherwise a name plus a company domain. Confirm with the user before unlocking in bulk, and tell them the expected cost. A record that comes back with no address still may have cost a credit.
+- **`update_client`** — Update fields on an existing client. Provide only fields to change. To change the client's links use set_client_links instead.
+  - required: `client_id`
+- **`update_deal`** — Write to a Deal Room deal: change any subset of its fields in one call — probability, stage, name (the deal's title), notes (its description), amount, fee revenue, expected close, owner, category, closers, sector / issuance stage / geography, custom fields, or a forecast hold. Only the fields you pass change. Money is in DOLLARS (not cents); revenue_dollars is the FEE, amount_dollars is the deal size — never put one in the other. Pass `reason` whenever the change comes from analysis rather than a direct instruction: it is written onto the deal's timeline with your change, which is the audit trail a desk reads later. Returns the updated deal with every field and the time of the update. `probability` is the desk's own number and feeds weighted pipeline totals; the calculated forecast lives separately (get_deal_forecast / recalculate_deal_forecast) — do not copy forecast output into probability unless the user asks for exactly that. Always pass expected_deal_name — the current name of the deal the user means — alongside deal_id: a wrong id (say, from a deal you created earlier in the conversation) is then refused instead of silently overwriting the wrong deal.
+  - required: `deal_id`
+- **`update_deal_cadence`** — Change an existing cadence: include_unsubscribe, booking_url (what {{booking_link}} renders to), name, description, enabled state, or its steps (the WHOLE list, same fields as create_deal_cadence). Admin only. A network cadence always carries the unsubscribe link and cannot turn it off. A step that renders {{booking_link}} is refused unless the cadence has a booking_url, in both directions of the edit.
+  - required: `cadence`
+- **`update_deal_contact`** — Update an investor/contact's per-deal working state: their own status within this deal (free text — e.g. 'Contacted', 'Soft-circled', 'Committed', 'Passed'), the next step and its due date, and the contact-level relationship status ('Warm', 'Cold', 'Strong'). Status and next-step live on the deal↔contact link, so the same investor can sit at different statuses on different deals. Pass null to clear a field.
+  - required: `deal_id`, `contact_id`
+- **`update_deal_stage`** — Move a deal to a new stage. Triggers a stage_change activity row and (if the new stage is won/lost) marks the deal closed.
+  - required: `deal_id`, `stage`
+- **`update_deal_team`** — Change who on OUR side is on a deal: add members (each with an optional title for what they do on this deal), remove members, or set the lead. The lead is the deal's owner — setting it here is the same write as update_deal's owner, and the previous lead stays on the team as a member. Each `member` and `lead` is resolved against the workspace's ACTIVE members: an exact email, then an exact display name (case-insensitive), then a unique name prefix. An ambiguous name is refused with the candidates listed, and a person who is not an active member cannot be added. All-or-nothing: if any name fails to resolve, nothing is changed. get_deal shows the team.
+  - required: `deal_id`
+- **`update_inbound_request_status`** — Update an inbound request's review status (new → in_review → resolved/archived). First move out of 'new' stamps first_responded_at; entering resolved/archived stamps resolved_at.
+  - required: `request_id`, `status`
+- **`update_investor_match_status`** — Mark where a firm stands on a deal: 'approached' once outreach has actually gone out, or 'dismissed' when it should not be contacted about this deal. Both clear the firm from the working set, which is what lets the next tranche be released. Dismissed is durable — a later re-ranking will not resurrect it. You rarely need 'approached' for a cadence: the 6-hourly scan sets it once a step has actually been sent to someone at the firm on this deal. Use it for outreach that happened outside a cadence (a call, a personal email).
+  - required: `deal_id`, `firm_id`, `status`
+- **`update_issuer_match_status`** — Mark where a prospect stands in a campaign: 'approached' once outreach went out outside a cadence (a call, a personal email), 'engaged' when they responded through a channel the sync cannot see (a phone call, a conference), or 'dismissed' when they should not be contacted. All three clear the firm from the working set, which is what lets the next tranche release. Dismissed is durable — a later re-ranking will not resurrect it. You rarely need the first two for a cadence: the 6-hourly scan sets approached from real sends and engaged from real replies and meetings. When a prospect becomes a client, use convert_issuer_to_deal instead.
+  - required: `campaign`, `firm_id`, `status`
+- **`update_pipeline_stage`** — Rename, reorder, recolor, or reclassify a pipeline stage. Changing kind to won/lost marks every deal currently in the stage closed (and open does the reverse) — say so when you do it. Stage deletion is deliberately not available here; point the user at the board's Manage stages dialog.
+  - required: `stage_id`
+- **`update_request_field`** — Update presentational properties of an existing field on a request-intake page: its label, whether it's required, placeholder text, or help text. Only the properties you pass are changed; the field's key, kind, options, order, and visibility rule are preserved. Use set_request_field_visibility to change conditional visibility.
+  - required: `request_page_id`, `field_key`
+- **`upsert_firm`** — Create a firm, or update the one that already holds this name or email domain. Resolves to an existing firm rather than creating a duplicate — pass the domain whenever you know it, because domain is a stronger identity than name (two funds can share a name; a mail domain belongs to one of them). Money fields are in DOLLARS and are converted for storage.
+  - required: `name`
+- **`upsert_issuer_campaign`** — Create an issuer campaign, or update one (by campaign id, or by exact name). A campaign is the desk's mandate for the clients it wants: `themes` in the desk's own words ("grid-scale storage", "founder-led roll-ups") matched against what each company says it does, plus sectors, stages, geographies and a raise range in DOLLARS (a prospect raising below raise_min is excluded; above raise_max is a penalty, not an exclusion). The mandate is what every ranking is arithmetic over, so write it once and carefully; re-run this when it changes and rank_issuers_for_campaign to re-score (nobody's status is reset). Optionally set the NETWORK cadence, tranche size (1-200, default 100) and contacts per firm (1-3, default 1) now — a DEAL cadence is refused, because prospects are on no deal. Creating or editing a mandate sends nothing and arms nothing; start_issuer_campaign does that. Money fields are converted to cents for storage.
+- **`verify_email_address`** — Check whether an email address is deliverable before sending to it. Costs a plan request. Worth it before a campaign: a bounce is charged against the sending domain's reputation, which every other campaign then shares. Verdicts are deliberately conservative — anything the provider is unsure about comes back 'risky' rather than 'deliverable'.
+  - required: `email`
+- **`xdocs_add_signature_block`** — Append a place to sign (name, signature, date) to an XDocs document, bound to one recipient. Required once per SIGNER before xdocs_send_envelope on a document written from Markdown — an envelope refuses to go to a recipient with nothing to complete. Identify the recipient by recipient_id or email; optional when the document has exactly one recipient. Fails on an uploaded PDF (fields are placed by page coordinate in the editor) and on a document out for signature.
+  - required: `document_id`
+- **`xdocs_analytics_summary`** _(read-only)_ — The headline XDocs numbers for the last 7, 30 or 90 days: views against the previous period, visitors, reading time, completion, the top documents / rooms / links / visitors, devices, and the share of anonymous views.
+- **`xdocs_close_file_request`** — Close an XDocs file request (active=false — the link says so instead of accepting files) or reopen it (active=true). Uploads already received stay.
+  - required: `request_id`
+- **`xdocs_create_document`** — Create an XDocs document from Markdown, from HTML, or from one of the account's saved templates (template_id — cannot be combined with a body). Optionally give it a signing list (recipients) now. A document written from Markdown has NO signature fields: before it can be sent for signature, call xdocs_add_signature_block once per signer. A template already has its fields, and recipients passed alongside template_id fill its slots in order. Write FINISHED text: XDocs refuses to send a document that still holds a placeholder ([COMPANY NAME], TBD, blank lines to fill in) — ask the user for the missing facts rather than leaving a gap. Returns the new document and any Markdown conversion warnings.
+- **`xdocs_create_document_comment`** — Leave a comment on an XDocs document, optionally as a reply (parent_id) or anchored to a quoted passage. The document owner, the thread and anyone @-mentioned are emailed, as they would be from the editor. Returns who was notified.
+  - required: `document_id`, `body`
+- **`xdocs_create_folder`** — Create a document folder in the XDocs workspace, after the existing ones. File documents into it with folder_id on xdocs_create_document or xdocs_update_document.
+  - required: `name`
+- **`xdocs_create_link`** — Publish a tracked XDocs link to one document or one data room, with whatever gates the user wants (see the settings). Returns the URL to share. Defaults: private, visitors must give their email, views are watermarked, downloads are off, the owner is emailed on every open. Pass deal_id to attach the DOCUMENT to a deal: every future read of that document then lands on the deal's timeline — including reads by people you never emailed, which is what a forwarded deck produces.
+- **`xdocs_create_room`** — Create an empty XDocs data room. File documents into it with xdocs_file_document_in_room, add folders with xdocs_create_room_folder, then publish a link with xdocs_create_link (room_id).
+  - required: `name`
+- **`xdocs_create_room_folder`** — Add a folder to an XDocs data room, appended after the existing ones.
+  - required: `room_id`, `name`
+- **`xdocs_delete_document`** — Move an XDocs document to the trash (restorable with xdocs_restore_document). purge=true deletes it outright, and only works on a document already in the trash that has never been sent for signature. A document out for signature cannot be deleted at all — void the envelope first. Confirm with the user before purging.
+  - required: `document_id`
+- **`xdocs_delete_link`** — Remove an XDocs share link. It stops answering at once; its visit history is kept as evidence of who read what. To pause instead of remove, use xdocs_update_link with active=false.
+  - required: `link_id`
+- **`xdocs_document_analytics`** _(read-only)_ — Where readers spent their attention in ONE XDocs document, section by section (per page for a PDF): readers, total and median time, time per hundred words, friction, how many stopped there, and what share reached each section. Optionally only visits through one link. Use it to answer 'which part of the deck loses people'.
+  - required: `document_id`
+- **`xdocs_file_document_in_room`** — File one of the account's documents into an XDocs data room, at the top level or in a folder. Idempotent: filing a document already in the room MOVES it. Refused while the room is frozen (xdocs_update_room frozen=false first).
+  - required: `room_id`, `document_id`
+- **`xdocs_get_document`** _(read-only)_ — Read one XDocs document: title, kind, status, folder, its signing list (recipients with ids — needed for xdocs_add_signature_block, and to send back on xdocs_update_document so their signature fields stay bound), the file under it, and optionally its body as Markdown. Use include_content only when you need the text. An uploaded PDF or shared file has no text body to return.
+  - required: `document_id`
+- **`xdocs_get_envelope`** _(read-only)_ — One XDocs envelope's full status: who sent it, every party (signed / declined / delegated / viewed / waiting — and whether their signing email BOUNCED), how many fields are complete, reminders, expiry, and the completion hash once done. Use it to answer 'did they sign yet?' and 'did the request even arrive?'. If the envelope is attached to a deal, this also refreshes the deal's record.
+  - required: `envelope_id`
+- **`xdocs_get_envelope_certificate`** _(read-only)_ — The evidence behind a completed XDocs envelope as data: signers, consent records, authentication, the audit trail, and whether the stored document and completion digests still verify. Use when someone asks whether an executed agreement is intact or who exactly signed and when.
+  - required: `envelope_id`
+- **`xdocs_get_file_request`** _(read-only)_ — One XDocs file request with its items, assignees and what has arrived so far.
+  - required: `request_id`
+- **`xdocs_get_link`** _(read-only)_ — One XDocs share link and its gates. The password is reported as has_password, never returned.
+  - required: `link_id`
+- **`xdocs_get_room`** _(read-only)_ — One XDocs data room with its state (frozen / archived), folders and filed documents, in the order a visitor sees them.
+  - required: `room_id`
+- **`xdocs_get_view`** _(read-only)_ — One XDocs visit with its per-section reading (per page for a PDF): which sections held attention and which were skipped.
+  - required: `view_id`
+- **`xdocs_get_visitor`** _(read-only)_ — One person's XDocs reading history by email, with their most recent visits (up to 100). 'Not found' means no visits from that address, not that the person does not exist.
+  - required: `email`
+- **`xdocs_link_document_to_deal`** — Attach an XDocs document to a Kavanah deal so that every read of it (through any link, by anyone) lands on that deal's timeline as engagement. This is what rescues a forwarded deck — someone at the fund you never emailed opens it, and the view still counts. Pass deal_id as null to detach. Reads by a known contact on an open deal attribute without this; it exists for everyone else.
+  - required: `document_id`, `deal_id`
+- **`xdocs_list_agreements`** _(read-only)_ — The XDocs agreements library: confidentiality terms written once and picked by id on any link (agreement_id). Shows how many links use each and how many people accepted it.
+- **`xdocs_list_audit_events`** _(read-only)_ — The XDocs audit trail, newest first — every recorded event across signing, sharing and documents: what happened, to what, by whom, from where. This is the EVIDENCE trail (as opposed to analytics, which is about attention). Filter by family (signing / sharing / documents), one event type (e.g. recipient.signed), search text, a date range, or one document / envelope / link.
+- **`xdocs_list_deal_documents`** _(read-only)_ — What has been sent to or read by one deal's counterparties, from Kavanah's own record, so it still answers after the connection has lapsed. Three lists: the e-signature envelopes attached to the deal with their current status and per-signer detail, the XDocs documents attached to the deal (and the link most recently published for each), and the recent reads attributed to the deal — with reading time brought up to date from XDocs when the connection is live. Use it to answer 'did they sign?' and 'has anyone at the fund actually read the deck?'.
+  - required: `deal_id`
+- **`xdocs_list_document_comments`** _(read-only)_ — The comment thread on an XDocs document, oldest first. resolved=false shows only what is still open.
+  - required: `document_id`
+- **`xdocs_list_document_versions`** _(read-only)_ — An XDocs document's version history, newest first: named restore points and the automatic snapshots taken before every body replacement. Use with xdocs_restore_document_version.
+  - required: `document_id`
+- **`xdocs_list_documents`** _(read-only)_ — List the connected XDocs account's documents, most recently edited first. Returns id, title, kind (xdoc = authored, pdf = uploaded, file = shared file), status (draft, or locked = out for signature), page count and the active envelope id if any. Filter by search text, status or kind. Use this to find a document id before sending, sharing or filing it.
+- **`xdocs_list_envelopes`** _(read-only)_ — Envelopes sent from the connected XDocs account, newest first, each with its parties and status (sent, completed, declined, voided, expired). Filter by one status.
+- **`xdocs_list_file_requests`** _(read-only)_ — XDocs file requests (ask named people for named documents), most recently changed first, with progress counts.
+- **`xdocs_list_folders`** _(read-only)_ — The XDocs workspace's document folders, in dashboard order, with how many live documents each holds — where the folder_id used by xdocs_list_documents, xdocs_create_document and xdocs_update_document comes from. Not a data room's folders (see xdocs_get_room).
+- **`xdocs_list_links`** _(read-only)_ — Tracked XDocs share links, newest first, each with its URL, whether it is PUBLIC, its gates (email required, verification, password, NDA, expiry, view cap, allowed domains, download, watermark), tags and reader features. Filter to one document or one data room, or to active links only.
+- **`xdocs_list_questions`** _(read-only)_ — Questions readers asked from inside an XDocs link, those waiting on an answer first. awaiting=true shows only threads where the reader spoke last. Filter by document, room, link or asker email.
+- **`xdocs_list_rooms`** _(read-only)_ — The account's XDocs data rooms — many documents behind one set of gates, in folders, with reading attributed per file — and whether each is FROZEN (contents locked, links still serving) or ARCHIVED (every link closed).
+- **`xdocs_list_templates`** _(read-only)_ — The account's saved XDocs templates, most recently changed first, with their recipient slots. A template keeps its signature fields and recipient slots but never the addresses, so a document made from one is ready to send once its recipients are supplied.
+- **`xdocs_list_views`** _(read-only)_ — Visits to XDocs links, newest first: who (and the name they typed accepting terms), when first and last opened, active reading time (time accrues only while a section is on screen and the tab is active — attention, not tab-left-open), separate sittings, completion, whether they downloaded or accepted the NDA, their answers to the link's capture questions, and where from. One visit is one person on one link, accumulating across every return. A visit counts once every gate was cleared. Filter by document, room, link, viewer email or a since-datetime. This is engagement evidence: an investor who read 100% of the deck twice is a different conversation from one who opened page 1.
+- **`xdocs_list_visitors`** _(read-only)_ — XDocs visits grouped by the PERSON who made them — not 'opened nine times' but 'this person has read four documents for an hour'. Per visitor: views, documents, total reading time, average completion, first/last seen, verified, accepted NDA, downloaded. Only visits that captured an address count. Filter by document, room, link, one email, or since.
+- **`xdocs_reassign_signer`** — Move an outstanding signature on an XDocs envelope to somebody else — the fields follow the new person, who is emailed, and the original stays on the envelope as delegated. Fails if that recipient already signed, declined, or passed it on, or if the address is unchanged.
+  - required: `envelope_id`, `recipient_id`, `name`, `email`
+- **`xdocs_remove_document_from_room`** — Take a document out of an XDocs data room. The document itself is untouched.
+  - required: `room_id`, `document_id`
+- **`xdocs_resolve_document_comment`** — Resolve (or reopen with resolved=false) a comment thread on an XDocs document. Pass the thread's FIRST comment — a reply cannot be resolved on its own. Works on anyone's thread.
+  - required: `document_id`, `comment_id`
+- **`xdocs_restore_document`** — Bring an XDocs document back from the trash.
+  - required: `document_id`
+- **`xdocs_restore_document_version`** — Put an earlier version of an XDocs document back. What it replaces is snapshotted first, so a restore is itself undoable via another restore. Fails while the document is out for signature.
+  - required: `document_id`, `version_id`
+- **`xdocs_save_as_template`** — Save an XDocs document as a reusable template (its recipient slots and fields are kept; addresses are stripped).
+  - required: `document_id`
+- **`xdocs_send_envelope`** — Send a prepared XDocs document for signature. THIS DISPATCHES THE SIGNATURE-REQUEST EMAILS IMMEDIATELY — there is no draft step, so confirm the document and every recipient with the user first unless they already specified both precisely. Prerequisites: the document is a draft with at least one signer, each with a name, an address and at least one field to complete (xdocs_add_signature_block). XDocs also refuses (and sends nothing) while the document is unfinished: a placeholder left in the text ([COMPANY NAME], TBD), an unresolved suggestion, or a signature line with no field — the reply names which; fix it with xdocs_update_document and send again. A shared file cannot be signed at all. A refusal saying the plan's sends are used is about the user's XDocs account, not Kavanah credits. Sending freezes a snapshot; later edits cannot change what a signer was shown, and the document stays locked until the envelope ends. Pass deal_id whenever the agreement belongs to a deal: it puts 'Sent for signature' on that deal's timeline and every later signature/decline/void/expiry is written there automatically. Returns the envelope and per-recipient delivery — the envelope is real and its links work even when one notification bounced, so report a bounce, do not re-send.
+  - required: `document_id`
+- **`xdocs_send_envelope_reminder`** — Nudge whoever an XDocs envelope is waiting on — on a sequential envelope that is one person, not everybody unsigned. Sends an email now. Fails if the envelope has ended or nobody is currently waiting.
+  - required: `envelope_id`
+- **`xdocs_send_file_request`** — Ask named people for named documents through XDocs. EACH ASSIGNEE IS EMAILED THEIR OWN UPLOAD LINK AT ONCE — confirm the list and the items with the user first. Whatever arrives becomes a document in the XDocs workspace, filed into the room/folder given. Use for diligence checklists: 'send the fund our standard DD request list'.
+  - required: `title`
+- **`xdocs_send_file_request_invites`** — Add people to an existing XDocs file request. EACH ONE IS EMAILED THEIR OWN UPLOAD LINK AT ONCE — confirm the list with the user first. Somebody already on the request is not added twice: their name is updated and they are mailed again (a fresh invitation if the first never arrived, otherwise a reminder). The request's items and room are fixed once it exists.
+  - required: `request_id`, `assignees`
+- **`xdocs_send_question_reply`** — Answer a reader's question in its XDocs thread. The reply is EMAILED to the asker when the link captured their address. Confirm the wording with the user before sending unless they dictated it.
+  - required: `thread_id`, `body`
+- **`xdocs_update_document`** — Change an XDocs document: retitle it, replace its body (the previous body is snapshotted to version history first, so this is recoverable — name that snapshot with version_label), replace its signing list, or move it between workspace folders and the curated library. recipients REPLACES the whole list: send back every recipient you are keeping WITH their id (from xdocs_get_document) — a recipient without an id is treated as somebody new with nothing yet to sign, and their old signature fields are orphaned so the document can no longer be sent. A new body on a document out for signature returns a conflict — void the envelope first.
+  - required: `document_id`
+- **`xdocs_update_link`** — Change an XDocs share link's gates or settings; omitted fields are kept. active=false switches it off (and true back on). TIGHTENING A GATE RE-GATES VISITORS WHO ALREADY CLEARED IT — adding a password or an NDA is felt by every existing reader on their next open, so say so when the user asks for it.
+  - required: `link_id`
+- **`xdocs_update_room`** — Rename or re-describe an XDocs data room, freeze or unfreeze it, archive or restore it. FROZEN locks the contents (nothing filed, moved or removed — those calls are refused) while every link keeps serving exactly what is there; unfreeze to change what is filed. ARCHIVED retires the room: every link into it immediately answers with a closed page until archived=false puts it back — confirm with the user before archiving a room people are reading.
+  - required: `room_id`
+- **`xdocs_void_envelope`** — Cancel an XDocs envelope in flight. Everyone outstanding is told the reason and the document returns to draft (and can be edited again). Irreversible for that envelope — a corrected agreement is a new send. Confirm with the user first.
+  - required: `envelope_id`, `reason`
+
+## dev_github (49)
+
+- **`cloudcode_chat`** — Run a one-shot chat completion through the user's CloudCode AI Gateway (OpenAI-compatible). Use this when the user explicitly wants their CloudCode quota / model used for a generation. For Kavanah's own agent reasoning, do nothing — the calling loop already has Claude.
+  - required: `messages`
+- **`cloudcode_create_project`** — Create a new CloudCode project owned by the connected account. Optionally link a GitHub repo by URL. Returns the new project's id.
+  - required: `name`
+- **`cloudcode_delete_file`** — Delete a file from a CloudCode project. Confirm with the user before invoking — this is not reversible from Kavanah.
+  - required: `project_id`, `path`
+- **`cloudcode_get_file`** _(read-only)_ — Read a single file's contents from a CloudCode project. `path` is the in-project file path (e.g. 'src/index.ts'). Returns the file content as text.
+  - required: `project_id`, `path`
+- **`cloudcode_get_project`** _(read-only)_ — Fetch a single CloudCode project by id. Returns name, description, and timestamps.
+  - required: `project_id`
+- **`cloudcode_list_deployments`** _(read-only)_ — List recent deployments of a CloudCode project with status and deploy URL.
+  - required: `project_id`
+- **`cloudcode_list_github_repos`** _(read-only)_ — List the user's GitHub repos via their CloudCode-linked GitHub token. Use when the user wants to import a GitHub repo into a new CloudCode project. Requires that the user has connected GitHub to CloudCode separately.
+- **`cloudcode_list_project_files`** _(read-only)_ — List files in a CloudCode project. Returns path, size, and mime type per file. Read-only.
+  - required: `project_id`
+- **`cloudcode_list_projects`** _(read-only)_ — List the user's CloudCode projects. Read-only.
+- **`cloudcode_trigger_deployment`** — Build & deploy a CloudCode project to Vercel. Defaults to 'static' deployType; pass deployType='node' for server projects. Use 'environment' to target a non-production environment. Returns a deployment id you can poll with cloudcode_list_deployments.
+  - required: `project_id`
+- **`cloudcode_upsert_file`** — Create or overwrite a file in a CloudCode project. Pass the full file content as a string. Use sparingly — this writes to the user's CloudCode workspace.
+  - required: `project_id`, `path`, `content`
+- **`cloudcode_who_am_i`** _(read-only)_ — Confirm CloudCode (cloudcode.gg) is connected for the calling user. Returns the linked CloudCode account email/id and the scopes the key was granted.
+- **`connect_github_repo`** — Connect a GitHub repository to this workspace's /dev page and immediately backfill its metadata, open pull requests, and recent commits (the same path as the Dev page's Connect Repository dialog). Identify the repo by github_repo_id (from list_connectable_github_repos) or by full_name ('owner/repo', resolved against the App-installation cache). Re-running on an already-connected repo refreshes its data. Admin-only. Requires GitHub access (App install covering the repo, or the caller's personal OAuth).
+- **`disconnect_linked_account`** — Disconnect (remove credential for) one of the user's third-party integrations. The user keeps their Kavanah account; only the OAuth token / API key is removed. Destructive: any agent tools that talk to that provider will return 'not connected' until the user re-links from Settings → Integrations. Always confirm with the user first.
+  - required: `provider_slug`
+- **`get_github_connect_status`** _(read-only)_ — Check whether GitHub is linked to this workspace: GitHub App installations (which org/user, how many repos visible), whether the calling user has connected a personal GitHub account, how many repos are connected to the /dev page, and — when something is missing — the exact connect links to share with the user (App install and personal OAuth). Call this whenever the user wants GitHub data but /dev has no repos, or asks how to connect GitHub. Read-only.
+- **`list_connectable_github_repos`** _(read-only)_ — List GitHub repositories this workspace could connect to the /dev page. Default source 'installation' reads the cached repo list from the workspace's GitHub App install(s) (fast). Pass source='oauth' to list repos visible to the calling user's connected personal GitHub account live (covers orgs without the App). Marks repos already connected to /dev. Read-only — connecting happens via connect_github_repo.
+- **`list_deployments`** _(read-only)_ — List deployments recorded on this Kavanah workspace's /dev page, newest first. Returns each deploy's id, repo id, environment, status, sha, who triggered it, start label, and duration. Read-only history — this does NOT start a deploy. Kavanah's own dev data.
+- **`list_dev_repos`** _(read-only)_ — List the code repositories connected to this Kavanah workspace's /dev page (GitHub-synced). Returns each repo's id, full name, provider, default branch, language, star + open-PR counts, health status, and last-sync label. Reads Kavanah's own dev data, not an external service.
+- **`list_incidents`** _(read-only)_ — List engineering incidents tracked on this Kavanah workspace's /dev page, newest first. Returns each incident's id, title, severity (SEV1–SEV3), owner, detected/mitigated labels, alert source, summary, and any linked task refs. Kavanah's own dev data.
+- **`list_linked_accounts`** _(read-only)_ — List the user's connected third-party integrations (a.k.a. 'Linked accounts' in Settings) with full metadata: provider slug, current status, connected-at, last-used-at, and last-status-reason. More verbose than `integrations_status`. Note: this is distinct from the browser-cookie 'Linked accounts' device account-switcher, which the agent cannot manage (it lives only in the user's browser).
+- **`list_observability_alerts`** _(read-only)_ — List observability alerts (Sentry/Datadog/PagerDuty) synced to this Kavanah workspace's /dev page, newest first. Returns each alert's id, source, title, service, severity, 24h event count, first-seen label, and any linked task ref or incident. Kavanah's own dev data.
+- **`list_pull_requests`** _(read-only)_ — List pull requests tracked on this Kavanah workspace's /dev page, newest number first. Returns each PR's id, number, repo id, title, state (draft/review/approved/merged/blocked), author, branch → base branch, linked task ref, additions/deletions, reviewer count, and CI status. Kavanah's own GitHub-synced data.
+- **`list_recent_commits`** _(read-only)_ — List the most recent commits synced to this Kavanah workspace's /dev page. Returns each commit's short sha, message, author, files-changed count, and additions/deletions. Kavanah's own GitHub-synced data.
+- **`list_task_build_statuses`** _(read-only)_ — List per-task CI build status cards on this Kavanah workspace's /dev page: for each task with active work, its branch, linked PR id, and current build state (passing/failing/running/queued/skipped) with pipeline. Kavanah's own GitHub-synced data.
+- **`list_task_lineages`** _(read-only)_ — List task→ship lineages on this Kavanah workspace's /dev page: for each traced task, the ordered chain of nodes (task → commits → PR → deploys/alerts) linking a Kavanah task to the code that shipped it. Returns the task ref, title, project, and each node's kind/id/label. Kavanah's own dev data.
+- **`namespa_create_dns_records`** — Add DNS records to a domain (up to 50 at once). Every record is validated before any is written. This ADDS — it never replaces an existing record; to change one use namespa_update_dns_record. A second SPF (v=spf1) TXT record on the same name is refused because it would break email for the whole domain; to add an email sender use namespa_setup_email, which merges SPF. List the records first so you do not duplicate one.
+  - required: `domain`, `records`
+- **`namespa_create_url_forwarding`** — Redirect a domain or subdomain to a URL, e.g. example.com → https://www.example.com. type "redirect" is a permanent 301, "302" a temporary one, "masked" keeps the domain in the address bar (a frame). The registrar may change that host's A records to serve it, and it can take up to 24 hours.
+  - required: `domain`, `forwards_to`
+- **`namespa_delete_dns_record`** — Delete one DNS record by id. Deleting the wrong A, MX or TXT record can take a website or mailbox offline, so confirm the record with the user first. Returns the deleted record in full so it can be recreated exactly.
+  - required: `domain`, `record_id`
+- **`namespa_delete_email_forwarding`** — Stop forwarding an alias. Mail to that address will bounce unless a mailbox exists for it.
+  - required: `domain`, `alias`
+- **`namespa_delete_url_forwarding`** — Remove a URL forwarding rule by id (from namespa_list_url_forwarding).
+  - required: `domain`, `forwarding_id`
+- **`namespa_get_account`** _(read-only)_ — Show the connected NameSpa account: its email, how many domains it holds, and which SCOPES the connected API key has — read (look), write (change DNS / email / settings) and purchase (register, renew, transfer). Call this first when a write or purchase is refused, or before promising the user you can make a change.
+- **`namespa_get_domain`** _(read-only)_ — Details of one domain in the user's NameSpa account: created and expiry dates, auto-renew, transfer lock, WHOIS privacy, nameservers and renewal price.
+  - required: `domain`
+- **`namespa_get_transfer_status`** _(read-only)_ — Status of the user's inbound domain transfers. A transfer usually takes about five days; a completed one becomes a normal domain in the account.
+- **`namespa_list_contacts`** _(read-only)_ — List the registrant contacts saved in the user's NameSpa account (ICANN requires one on every registration). The default one is used when a purchase names none.
+- **`namespa_list_dns_records`** _(read-only)_ — List every DNS record on a domain, each with its numeric id. The ids are what namespa_update_dns_record and namespa_delete_dns_record take. Read this before changing records so you know what is already there. Records only take effect while the domain uses NameSpa's default nameservers.
+  - required: `domain`
+- **`namespa_list_domains`** _(read-only)_ — List the domains in the user's NameSpa account with expiry date, auto-renew, transfer lock, WHOIS privacy and nameservers. Also names any transfers still in progress.
+- **`namespa_list_email_forwarding`** _(read-only)_ — List a domain's email forwarding rules (alias → destination inbox).
+  - required: `domain`
+- **`namespa_list_url_forwarding`** _(read-only)_ — List a domain's URL forwarding (redirect) rules, each with its numeric id.
+  - required: `domain`
+- **`namespa_purchase_domain`** — REGISTER a domain, paid in NameSpa credits. A registration cannot be undone or refunded. Always call namespa_quote_domain first, tell the user the total and the renewal price, and get their explicit yes in this conversation before calling. expected_price_usd must be the per-year price_usd from that quote; if the price has moved the purchase is refused and you must re-quote and re-confirm. Registering accepts the registrar's terms on the user's behalf. Only available when a workspace admin has turned on Domain purchases in Settings → AI Agent, and the NameSpa key needs the Purchase scope.
+  - required: `domain`, `expected_price_usd`, `accept_registration_terms`
+- **`namespa_quote_domain`** _(read-only)_ — Price ONE exact domain for registration: whether it is available, whether it is premium, the price per year, the total for the term, the NameSpa credits it would cost, and the renewal price. namespa_purchase_domain requires the per-year price this returns, so always quote first and show the user the total before buying.
+  - required: `domain`
+- **`namespa_renew_domain`** — RENEW a domain in the user's NameSpa account for 1-10 more years, paid in NameSpa credits. Cannot be undone. Confirm the domain and term with the user first. Only available when Domain purchases is on in Settings → AI Agent.
+  - required: `domain`
+- **`namespa_reveal_transfer_code`** — Reveal a domain's transfer authorization (EPP) code. With this code ANYONE can move the domain to another registrar, taking its website and email with it. Only call when the user has asked, in this conversation, to transfer this specific domain away, and never paste the code anywhere but back to that user. Only available when Domain purchases is on in Settings → AI Agent, and the key needs the Purchase scope.
+  - required: `domain`
+- **`namespa_search_domains`** _(read-only)_ — Search for available domain names by keyword, with first-year and renewal prices in USD (NameSpa's prices, markup included). Use for brainstorming. To price ONE exact domain for purchase, use namespa_quote_domain.
+  - required: `keyword`
+- **`namespa_set_email_forwarding`** — Forward mail for an address on the domain to another inbox, e.g. info@example.com → someone@gmail.com. Updates the rule if the alias already forwards somewhere. Use "*" as the alias for a catch-all. On a domain with no mail set up the registrar may add its own MX records to make forwarding work; on a domain that already uses a mail provider, forwarding and that provider conflict — check namespa_list_dns_records first.
+  - required: `domain`, `alias`, `forward_to`
+- **`namespa_set_nameservers`** — Point a domain at different nameservers — for example Cloudflare's or Vercel's. This MOVES THE WHOLE DOMAIN'S DNS: every record kept at NameSpa stops being served, so a website or mailbox not recreated at the new provider goes dark once it propagates (up to 48 hours). Confirm with the user first. Returns the previous nameservers so the change can be reverted.
+  - required: `domain`, `nameservers`
+- **`namespa_setup_email`** — Configure a domain's email DNS in one step: MX (where mail is delivered), SPF (who may send — MERGED into any existing SPF record, never duplicated), DKIM (signing keys) and DMARC (policy). Use provider "google" for Google Workspace; for any other provider (Microsoft 365, Fastmail, Zoho, Resend, Postmark…) pass the exact records that provider gave the user. If the domain already delivers mail somewhere else it is refused unless replace_mx is true, and an existing DMARC policy is kept unless replace_dmarc is true: ask the user before setting either. Reports each record created, updated, unchanged or removed.
+  - required: `domain`
+- **`namespa_transfer_in_domain`** — Start transferring a domain INTO NameSpa from another registrar, paid in NameSpa credits (a transfer normally adds a year). Needs the authorization (EPP) code from the current registrar, and the domain must be unlocked there. Call once WITHOUT expected_price_usd to learn the price, tell the user, then call again with it after they agree. Takes about five days; check namespa_get_transfer_status. Only available when Domain purchases is on in Settings → AI Agent.
+  - required: `domain`, `auth_code`
+- **`namespa_update_dns_record`** — Change one DNS record by id (from namespa_list_dns_records). Pass only the fields that change; the rest are kept. Returns the previous record so it can be put back.
+  - required: `domain`, `record_id`
+- **`namespa_update_domain_settings`** — Change a domain's auto-renew, WHOIS privacy or transfer lock. Turning auto-renew off means the domain EXPIRES at its expiry date unless renewed by hand; unlocking is the first step of moving a domain away, so only unlock when the user is transferring it out. Pass only the settings that change.
+  - required: `domain`
+
+## email_calendar (71)
+
+- **`angelsend_calendar_status`** _(read-only)_ — Check whether the user's AngelSend calendar is connected and which account/scopes are authorized. Call this when a calendar action fails or before assuming the calendar is available.
+- **`angelsend_create_calendar_event`** — Create an event in the user's AngelSend calendar. This is the right tool when the user asks to put a meeting on their *personal* / external calendar. For events that should live inside a Kavanah project, use `create_calendar_event` (the Kavanah one) instead.
+  - required: `title`, `start`, `end`
+- **`angelsend_credit_balance`** _(read-only)_ — Check the connected AngelSend account's own credit balance — separate from Kavanah credits, and topped up in AngelSend itself, never in Kavanah's Settings → Credits. Use when the user asks about AngelSend credits, or before recommending an AngelSend action that costs them.
+- **`angelsend_delete_calendar_event`** — Delete an AngelSend calendar event by id, removing it from the calendar. This is destructive — confirm with the user first unless they clearly asked to delete it. To merely mark an event cancelled while keeping the record, use `angelsend_update_calendar_event` with `cancel: true` instead.
+  - required: `event_id`
+- **`angelsend_get_calendar_event`** _(read-only)_ — Fetch a single AngelSend calendar event by id (returns title, time window, location, status, attendees, and a link). Use this to confirm an event's current details before updating or deleting it — get the id from `angelsend_list_calendar_events` first.
+  - required: `event_id`
+- **`angelsend_list_calendar_events`** _(read-only)_ — List events from the user's AngelSend calendar in a given time window. Pass ISO-8601 timestamps. Use this for personal-calendar / external-calendar questions; for Kavanah task due-dates use `list_calendar_tasks` instead.
+- **`angelsend_list_contacts`** _(read-only)_ — List the user's AngelSend contacts (leads) — useful for resolving a name to an email, or summarizing the user's CRM. Returns up to `limit` rows.
+- **`angelsend_send_email`** — Send an email through the user's AngelSend account. Useful for sending follow-ups, recap notes, or campaign messages on behalf of the user. Refuse marketing-style bulk sends — this is intended for 1:few personal messages.
+  - required: `to`, `subject`
+- **`angelsend_update_calendar_event`** — Update an existing AngelSend calendar event. PATCH semantics — only the fields you supply change; omitted fields are left as-is. Attendees are re-notified. Pass `cancel: true` to mark the event cancelled while keeping it on the calendar; use `angelsend_delete_calendar_event` to remove it entirely. You must know the `event_id` (use `angelsend_list_calendar_events` / `angelsend_get_calendar_event` to find it).
+  - required: `event_id`
+- **`asana_create_task`** — Create a new task in an Asana workspace. The task is owned by the connected Asana account. For tasks that should live inside a Kavanah project use `create_task` (the Kavanah one) instead.
+  - required: `workspace`, `name`
+- **`asana_list_tasks`** _(read-only)_ — List Asana tasks. Pass `workspace` (gid) to scope by workspace, or `project` (gid) to scope by project. Optionally filter by `assignee` (a user gid, or the literal string `me` for the connected user). For Kavanah's own task list use `search_tasks` instead.
+- **`asana_list_workspaces`** _(read-only)_ — List the Asana workspaces (and organizations) the connected account belongs to. Returns each workspace's gid and name. Call this first if you need a workspace gid to pass to `asana_list_tasks` or `asana_create_task`.
+- **`cancel_meeting_twin`** — Make a twin or notetaker the caller sent leave its meeting now (or never join, if it has not yet). An admin may stop anyone's. Never starts anything.
+  - required: `session_id`
+- **`cancel_recurring_email`** — Permanently delete a recurring email so it stops sending. To pause without deleting, use update_recurring_email with enabled:false instead. Get the id from list_recurring_emails.
+  - required: `id`
+- **`cancel_scheduled_email`** — Cancel a pending scheduled email so it will not be sent. Only emails that are still pending (not yet sent) can be cancelled. Get the id from list_scheduled_emails.
+  - required: `id`
+- **`create_calendar_event`** — Schedule a meeting / calendar event. Stored as a task with tag='Meeting' so it appears on calendars, timelines, and reminders. Use this when the user asks to schedule a meeting, set up an event, book time on the calendar, or anything similar — do not fall back to create_task for time-of-day events.
+  - required: `project_ref`, `title`, `start`
+- **`dispatch_meeting_twin`** — Send the caller's OWN AI twin (audio voice or video avatar) or the silent notetaker into an outside Zoom / Google Meet / Microsoft Teams / Webex meeting. Only ever the caller's own — there is no way to send someone else's. The bot is named as an AI assistant/notetaker, announces first that it is AI and that the meeting is recorded, cannot agree to terms, prices or commitments or give investment advice, leaves when anyone asks, and leaves at the minute cap. Afterwards the transcript becomes notes, action items and tasks. Call estimate_meeting_twin_cost first and tell the user the cost and the disclosure before calling this.
+  - required: `meeting_url`, `mode`
+- **`estimate_meeting_twin_cost`** _(read-only)_ — Preview sending the caller's OWN AI twin (audio or video) or the silent notetaker to an outside Zoom / Google Meet / Microsoft Teams / Webex meeting: whether it is allowed right now (and if not, exactly why, in plain words), the most it can cost (Kavanah credits and what the vendors bill the workspace), the bot's display name and the disclosure it says first. Creates nothing. Use before dispatch_meeting_twin.
+  - required: `meeting_url`, `mode`
+- **`get_meeting_twin_session`** _(read-only)_ — One twin / notetaker meeting: live status, the summary and action items once it has ended, and the transcript (who said what, including exactly what the twin said).
+  - required: `session_id`
+- **`gmail_create_draft`** — Write an email and save it as a Gmail draft WITHOUT sending it — use this when the user wants to review or edit before it goes out, or asks you to 'draft'/'write up' an email. Same backends as gmail_send_email (AngelSend Gmail bridge preferred, native Gmail OAuth fallback). The draft appears in the user's Gmail Drafts folder. To send immediately instead, use gmail_send_email; to send it later automatically, use schedule_email.
+  - required: `to`, `subject`, `body`
+- **`gmail_get_message`** _(read-only)_ — Fetch a single Gmail message by id, including the FULL parsed body, sender, recipients, subject, and labels. Use after `gmail_list_messages` to read a message's full content — this is the right tool when you need details that aren't in the list snippet (e.g. a contact's email address inside the message). Works with both the AngelSend bridge and a native Gmail connection. If only a snippet is available the response says so explicitly.
+  - required: `message_id`
+- **`gmail_get_thread`** _(read-only)_ — Fetch a Gmail conversation thread by id, returning every message in the thread with bodies. Use after `gmail_list_threads` to read a conversation. AngelSend-backed only.
+  - required: `thread_id`
+- **`gmail_list_labels`** _(read-only)_ — List all Gmail labels in the user's mailbox — both system labels (INBOX, SENT, IMPORTANT, …) and user-defined labels. Useful for discovering label ids to pass to `gmail_list_messages` / `gmail_list_threads`. AngelSend-backed only.
+- **`gmail_list_messages`** _(read-only)_ — List messages in the user's Gmail inbox. Prefers AngelSend's Gmail bridge (returns full headers + snippets); falls back to native Gmail OAuth (ids only). Supports Gmail search syntax (e.g. `from:alice@example.com newer_than:7d`, `is:unread`, `after:2026/05/01`) and pagination via `page_token`. Pass the `next_page_token` returned in the previous call to fetch the next page; stop when no token is returned.
+- **`gmail_list_threads`** _(read-only)_ — List conversation threads in the user's Gmail mailbox. Supports Gmail search syntax (`q`), label filtering, and pagination via `page_token` (same convention as `gmail_list_messages`). AngelSend-backed only.
+- **`gmail_profile`** _(read-only)_ — Show the connected Gmail account's email address and mailbox totals (messages, threads, history id). Useful for confirming which mailbox the agent is operating on. AngelSend-backed only.
+- **`gmail_send_email`** — Send an email through the user's connected Gmail account (AngelSend Gmail bridge preferred, native Gmail OAuth as fallback). Set `is_html` to true to send an HTML body. Pass `thread_id` and `in_reply_to` to reply inside an existing conversation. To attach files the user uploaded into this chat, pass their ids in `attachment_ids` (the uploaded-files list in the user's turn shows each file's id). For the AngelSend gateway send (used for outbound campaigns / non-Gmail-account sends) use `angelsend_send_email` instead.
+  - required: `to`, `subject`, `body`
+- **`google_calendar_create_event`** — Create an event in one of the user's Google calendars (defaults to the primary calendar). Use this when the user asks to put a meeting on their *personal* / Google calendar. For events that should live inside a Kavanah project use `create_calendar_event` (the Kavanah one) instead.
+  - required: `summary`, `start`, `end`
+- **`google_calendar_delete_event`** — Cancel (delete) an event in the user's Google Calendar. Get the event id from `google_calendar_list_events`. Undo re-creates it with the same details (as a new event).
+  - required: `event_id`
+- **`google_calendar_list_calendars`** _(read-only)_ — List the user's Google calendars (primary + any shared calendars they've added). Returns calendar id, name, and access role. Call this when you need a calendar id to pass to `google_calendar_list_events` or `google_calendar_create_event` (other than the user's primary calendar, which is the implicit default).
+- **`google_calendar_list_events`** _(read-only)_ — List events from one of the user's Google calendars in a given time window. Defaults to the primary calendar. Each line includes the event id that `google_calendar_update_event` / `google_calendar_delete_event` need. Use this for personal-calendar / Google-calendar questions; for Kavanah task due-dates use `list_calendar_tasks` instead. For AngelSend's calendar use `angelsend_list_calendar_events`.
+- **`google_calendar_update_event`** — Change an existing event in the user's Google Calendar: move it, rename it, or change its description, location or attendees. Only the fields you pass are changed. Get the event id from `google_calendar_list_events`. Same time rules as `google_calendar_create_event` (naked local time, never a hand-computed `Z`). Undoable.
+  - required: `event_id`
+- **`google_meet_create_space`** — Create a Google Meet space; returns its join URL + meeting code.
+- **`google_meet_get_space`** _(read-only)_ — Look up a Meet space by 'spaces/<id>' from create_space (not a meeting code).
+  - required: `name`
+- **`google_meet_get_transcript`** _(read-only)_ — Read a past Meet call's transcript and recording link (plus notes and tasks if Kavanah imported it). Give either field.
+- **`google_meet_list_conference_records`** _(read-only)_ — List recent past Meet calls with start/end times.
+- **`icloud_create_event`** — Create an event on the user's iCloud Calendar (CalDAV; lands on their first event calendar). Times are ISO datetimes — interpret the user's local times via their timezone before calling. Confirm details with the user first.
+  - required: `summary`, `start`, `end`
+- **`icloud_list_contacts`** _(read-only)_ — List the user's synced iCloud Contacts (name, emails, phones, organization). Read-only; served from the background sync's mirror.
+- **`icloud_list_events`** _(read-only)_ — List the user's iCloud Calendar events in a window (live CalDAV read across their event calendars; recurring events come back expanded). Read-only. Defaults to the next 7 days.
+- **`icloud_list_messages`** _(read-only)_ — List recent iCloud Mail INBOX messages (envelopes synced by the background sync: subject, from, to, date, unread). Read-only. Requires the user to have connected iCloud in Settings → Integrations. Bodies are not synced — this is for scanning what arrived, not reading full mail.
+- **`icloud_send_email`** — Send an email from the user's iCloud Mail account (SMTP). Confirm recipients and content with the user before sending — this leaves the workspace.
+  - required: `to`, `subject`, `body`
+- **`integrations_status`** _(read-only)_ — List the integrations (AngelSend, etc.) the current user has connected, including the account email and the most recent error if any. Call this before suggesting an external action so you know whether the user already authorized the relevant provider.
+- **`list_calendar_tasks`** _(read-only)_ — List tasks with due dates that fall in a date window, grouped for calendar/timeline views. Dates are YYYY-MM-DD; window is inclusive on both ends.
+  - required: `from`, `to`
+- **`list_meeting_twin_sessions`** _(read-only)_ — The caller's recent twin / notetaker meetings: status (joining, in the meeting, ended…), why it ended, and whether notes are ready.
+- **`list_recurring_emails`** _(read-only)_ — List the recurring emails the current user has set up, newest first. Shows id, recipients, subject, cron expression, enabled flag, last_sent_at, and next_run_at.
+- **`list_scheduled_emails`** _(read-only)_ — List the emails the current user has scheduled to send later, newest deadline first. Optionally filter by status. Use this to show the user what is queued or to find an id to cancel.
+- **`outlook_create_event`** — Create a calendar event on the user's connected Outlook / Microsoft 365 calendar via Microsoft Graph.
+  - required: `subject`, `start`, `end`
+- **`outlook_get_message`** _(read-only)_ — Fetch a single Outlook message's full body (live from Microsoft Graph) by its external id (the id returned by `outlook_list_messages`).
+  - required: `id`
+- **`outlook_list_contacts`** _(read-only)_ — List the user's Outlook / Microsoft 365 contacts already synced into Kavanah by the background sync. Returns name, email, company, and job title.
+- **`outlook_list_events`** _(read-only)_ — List the user's Outlook / Microsoft 365 calendar events in a date window (live from Microsoft Graph calendarView). Recurring events are expanded into instances within the window.
+  - required: `from`, `to`
+- **`outlook_list_messages`** _(read-only)_ — List recent Outlook / Microsoft 365 messages already synced into Kavanah by the background sync. Returns subject, from, date, and unread flag. Outlook sync stores envelopes only — use `outlook_get_message` to read a full body.
+- **`outlook_send_email`** — Send an email through the user's connected Microsoft 365 / Outlook account via Microsoft Graph. Use when the user wants to send from their Outlook/Microsoft 365 address rather than Gmail or Proton.
+  - required: `to`, `subject`, `body`
+- **`protonmail_list_messages`** _(read-only)_ — List recent ProtonMail messages already synced into Kavanah by the background ProtonMail sync. Returns subject, from, to, date, and unread flag. Use as the Proton-side equivalent of `gmail_list_messages` — the Bridge has no live search, so this reflects whatever the sync window pulled.
+- **`protonmail_send_email`** — Send an email through the user's connected ProtonMail account (via the ProtonMail Bridge — IMAP/SMTP, end-to-end encrypted). Use when the user wants to send from their Proton address rather than Gmail. The Bridge must be reachable from the Kavanah server (works on the Tauri desktop build and self-hosted deployments; will fail with a connection error on cloud deployments where the Bridge is on the user's laptop).
+  - required: `to`, `subject`, `body`
+- **`schedule_email`** — Schedule an email to be sent automatically at a future time, through the user's connected email provider. Use this when the user says 'send this tomorrow morning', 'email them next Monday', etc. The email is queued and delivered by a background worker at `scheduled_at`; nothing is sent now. To send immediately use gmail_send_email / angelsend_send_email; to just save a draft for manual review use gmail_create_draft. List or cancel queued emails with list_scheduled_emails / cancel_scheduled_email.
+  - required: `to`, `subject`, `body`, `scheduled_at`
+- **`schedule_recurring_email`** — Set up a RECURRING email that is re-sent automatically on a schedule (e.g. 'email the team a reminder every Monday at 9am', 'send this status note on the 1st of each month'). Unlike schedule_email (which fires once at a single timestamp), this fires again on every cron match until you disable or cancel it. The email goes out through the user's connected provider. LIVE-DATA PLACEHOLDERS: the subject and body may contain {{date}} (send date), {{tasks_due_today}}, {{tasks_overdue}}, {{tasks_due_within:N}} (next N days), and {{open_task_count}} — each is rendered against the workspace's live task data AT SEND TIME, so a deadline-reminder email lists the actual tasks instead of a static note. PER-PERSON placeholders {{my_tasks_due_today}}, {{my_tasks_overdue}}, {{my_tasks_due_within:N}} and {{my_open_tasks}} list only the tasks assigned to each recipient; a body using any of them is sent as a SEPARATE copy to each recipient (nobody sees anyone else's tasks), and a copy with nothing in it is skipped. Use them whenever a reminder goes to several people. {{tasks_completed_since_last_send}} lists tasks finished since the previous send, with who finished them — for a management completions summary. Prefer these placeholders for any task-reminder or status email. Use list_recurring_emails / update_recurring_email / cancel_recurring_email to manage it. For recurring REPORTS (auto-generated analytics attached as PDF/CSV), use create_report_schedule instead.
+  - required: `to`, `subject`, `body`, `cron_expression`
+- **`slack_channel_history`** _(read-only)_ — Read recent messages from a Slack channel the connected bot is a member of (Slack returns `not_in_channel` otherwise — the user must `/invite` the bot first). Returns newest-first message text with sender ids and thread markers. Use `slack_list_channels` to find the channel id, and pass the team_id it lists for a channel outside the default workspace.
+  - required: `channel`
+- **`slack_create_channel`** — Create a Slack channel through the connected bot and optionally invite workspace members to it by email. The name is normalized to Slack's rules (lowercase, dashes). Requires the Slack app to have the channels:manage scope (plus groups:write for private channels and users:read.email for email invites) — if Slack answers missing_scope, the user must re-install the Slack app with those scopes from its admin console; retrying will not help. The bot itself becomes a member automatically. For an Enterprise Grid org-wide install the workspace must be named with team_id; the tool lists the choices if it is missing.
+  - required: `name`
+- **`slack_invite_to_channel`** — Invite Slack workspace members (by email) to an existing channel the connected bot is a member of. Requires the channels:manage (or groups:write for private channels) and users:read.email bot scopes. Use slack_list_channels to find the channel id first.
+  - required: `channel`, `emails`
+- **`slack_list_channels`** _(read-only)_ — List Slack channels the connected bot can see (public + private channels the bot has been invited to). Returns channel id, name, visibility, and member count. Use this to find a channel id before posting with `slack_post_message`. Without team_id, channels from every connected Slack workspace are listed, each labelled with its workspace.
+- **`slack_list_workspaces`** _(read-only)_ — List the Slack workspaces the user has connected to Kavanah — each one's name and team_id, and which is the default (the most recently connected, used when a Slack tool is not given a team_id). An Enterprise Grid org-wide install is listed with the workspaces inside it. Call this before acting in a workspace other than the default.
+- **`slack_post_message`** — Post a message to a Slack channel through the connected bot. The bot must already be a member of the target channel — if not, Slack returns `not_in_channel` and the user has to invite the bot via `/invite @<botname>`. Posts as the bot, not the user.
+  - required: `channel`, `text`
+- **`sync_angelsend_audience`** — Reconcile the Deal Room's contacts and opt-outs with AngelSend's, so the two are one audience rather than two lists that drift. `direction` picks what runs: - 'optouts_in' (the default, and the safe one) — pull AngelSend's do-not-email list into this workspace's suppression list. Run this before any campaign. Until it has run, a person who unsubscribed from an AngelSend campaign still receives Kavanah cadence steps, because the two lists never met. - 'optouts_out' — push this workspace's own opt-outs to AngelSend. - 'contacts_in' — pull an AngelSend segment (or the whole lead list) into the Deal Room as contacts. GAP-FILLING: it never overwrites a field a person curated here. - 'contacts_out' — push Deal Room contacts into an AngelSend project as leads. Note this direction OVERWRITES the whole AngelSend row, because import-leads has no partial form: a field Kavanah does not hold is blanked there. Opted-out addresses are excluded, since importing one is how an opt-out gets quietly undone. Each direction runs on its own. Do not describe running one as having synced the audience.
+- **`telegram_bot_link_hint`** _(read-only)_ — Return the workspace bot's @username and the canonical https://t.me/<bot> URL without rotating any tokens. Useful when the user just wants to know how to reach the bot.
+- **`telegram_get_me`** _(read-only)_ — Confirm the workspace's Telegram bot is reachable and return its identity (username + id). Use this before suggesting a Telegram action to verify the integration is wired up.
+- **`telegram_link_status`** _(read-only)_ — Report whether the calling user is linked to a Telegram chat through the workspace's bot. Returns the chat id / Telegram username when connected, or hints at the binding flow when not. Use as a first step in any 'ping me on Telegram' conversation.
+- **`telegram_request_link`** — Issue (or re-issue) a Telegram deep link the calling user can click to bind their Kavanah account to a Telegram chat. Returns a `https://t.me/<bot>?start=<token>` URL plus the raw `/start <token>` paste fallback. If the user is already connected, returns the existing chat instead of rotating it.
+- **`telegram_send_message`** — Send a Telegram message via the workspace's bot. Defaults to the calling user's own linked chat (so 'ping me on Telegram' works), or pass `chat_id` to target a specific chat. Requires the user to have linked their Telegram account via Settings → Integrations.
+  - required: `text`
+- **`telegram_unlink`** — Revoke the calling user's Telegram link. Future messages from that chat will be rejected with a /start prompt. Confirm with the user before calling — they will need to re-bind via telegram_request_link.
+- **`telegram_webhook_info`** _(read-only)_ — Show the workspace bot's webhook configuration: delivery URL, pending update count, last error (if any). Useful for debugging 'why aren't my Telegram messages arriving?' incidents.
+- **`update_recurring_email`** — Update a recurring email definition. Pass only the fields you want to change (cron_expression, to/cc/bcc, subject, body, is_html, provider, reply_to, enabled). Set `enabled: false` to pause it without deleting.
+  - required: `id`
+
+## finance (153)
+
+- **`budget_vs_actual`** _(read-only)_ — Compare budgeted spend to ACTUAL ClearBooks transactions over a period and report the variance (total and, optionally, per budget line). Provide the period (start_date/end_date) and budget lines — each a category label + budgeted amount. Actuals are pulled live from ClearBooks expense transactions and matched to lines by category name (a line labeled 'Total' or with no match captures the remainder). Use for monthly/quarterly budget reviews; pair with create_goal (metric 'clearbooks_metric') to track a number over time, and escalate_to_user if a line blows past budget.
+  - required: `start_date`, `end_date`, `budget_lines`
+- **`clearbooks_apply_bill_payment`** — Point part or all of an existing ClearBooks payment at a specific bill. The bill only becomes 'paid' once nothing is left outstanding. Over-application is refused with the real remaining balance.
+  - required: `payment_id`, `bill_id`, `amount`
+- **`clearbooks_apply_vendor_credit_to_bill`** — Settle a ClearBooks bill using a vendor credit instead of cash. Use when a supplier credit note should be set against what you owe them. Recorded separately from cash payments so the same settlement is never counted twice.
+  - required: `credit_id`, `bill_id`, `amount`
+- **`clearbooks_ask_agent`** — Delegate a question or task to the ClearBooks AI accounting agent (agent-to-agent chat). The remote agent runs its own tool loop over the org's books and CAN TAKE ACTIONS there — including writes and payments — regardless of the API key's other scopes, and each call bills 1 ClearBooks AI credit to the key owner. Prefer the specific clearbooks_* tools for anything they already cover (listing invoices, metrics, reports, …); reach for this only for open-ended accounting analysis or actions no dedicated tool exposes. Admin-only. Pass conversation_id to continue a prior exchange.
+  - required: `message`
+- **`clearbooks_batch_categorize_transactions`** — Bulk-assign categories and/or GL codes to a list of existing transactions.
+  - required: `updates`
+- **`clearbooks_batch_create_transactions`** — Create many ClearBooks transactions in one call. Returns counts of created vs failed plus the new ids.
+  - required: `transactions`
+- **`clearbooks_close_accounting_period`** — Close the ClearBooks books for a date range. soft_closed still lets nominated users post (each recorded as an exception); hard_closed lets nobody post until explicitly reopened. This stops posting for EVERY other credential, not just this one. Use when the user says close the month/quarter/year or lock the books.
+  - required: `period_start`, `period_end`
+- **`clearbooks_convert_estimate_to_invoice`** — Turn an accepted ClearBooks estimate into an invoice, carrying its line items across. Use when the user says a quote was accepted, won, or should be billed. Refuses if already converted.
+  - required: `estimate_id`
+- **`clearbooks_convert_purchase_order_to_bill`** — Turn a received ClearBooks purchase order into a vendor bill, carrying its line items across. Use when goods or services on a PO have arrived and should now be payable.
+  - required: `purchase_order_id`
+- **`clearbooks_create_ach_payment`** — Initiate an ACH payment from a verified ClearBooks-linked bank account. Destructive (moves money) — confirm with the user before calling.
+  - required: `account_auth_id`, `amount`, `recipient_type`, `recipient_id`
+- **`clearbooks_create_bill`** — Create a new bill payable in ClearBooks.
+  - required: `vendor_id`, `bill_date`, `due_date`, `amount`
+- **`clearbooks_create_bill_payment`** — Record money leaving for a vendor in ClearBooks. This records the payment only — point it at specific bills afterwards with clearbooks_apply_bill_payment. Paid-but-unapplied is a legitimate state (a cheque banked before anyone decided which bills it covers).
+  - required: `payment_date`, `amount`
+- **`clearbooks_create_category`** — Create a new transaction category.
+  - required: `name`
+- **`clearbooks_create_convertible`** — Record a new SAFE or convertible note investment. Confirm with the user before recording. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+  - required: `shareholder_id`, `type`, `investment_amount`, `investment_date`
+- **`clearbooks_create_crypto_wallet`** — Register a new crypto wallet (chain + address) for ClearBooks to track.
+  - required: `chain`, `address`
+- **`clearbooks_create_custom_field`** — Define a new custom field on transactions / customers / vendors. For type=select pass an `options` array.
+  - required: `key`, `label`, `type`, `resource`
+- **`clearbooks_create_customer`** — Create a new ClearBooks customer record.
+  - required: `company_name`
+- **`clearbooks_create_data_room`** — Create a new investor data room. included_reports controls which reports the recipient sees. Optional password protects the link.
+  - required: `name`
+- **`clearbooks_create_fixed_asset`** — Register a new fixed asset (laptop, vehicle, equipment, etc.) with cost basis and useful-life years.
+  - required: `name`, `cost`, `acquired_date`
+- **`clearbooks_create_forecast`** — Create a new financial forecast scenario. assumptions is a free-form object (e.g. {mrr_growth_rate: 0.1, churn_rate: 0.02, expense_growth_rate: 0.05}).
+  - required: `name`
+- **`clearbooks_create_gl_code`** — Create a new GL code in the chart of accounts. Typical account_type values: Asset / Liability / Equity / Revenue / Expense / Operating Expense.
+  - required: `code`, `name`
+- **`clearbooks_create_holding`** — Issue shares to a shareholder. The cap table updates immediately. Destructive (dilutes existing holders) — confirm first. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+  - required: `shareholder_id`, `share_class_id`, `shares`, `purchase_price`, `purchase_date`
+- **`clearbooks_create_invoice`** — Create a draft invoice in ClearBooks. Provide a customer_id (look up with clearbooks_list_customers) and at least one line item. The created invoice starts in `draft` status — call clearbooks_send_invoice to email it to the customer.
+  - required: `customer_id`, `items`
+- **`clearbooks_create_journal_entry`** — Create a balanced double-entry journal entry. The `lines` array must have at least two entries and total debits must equal total credits.
+  - required: `entry_date`, `description`, `lines`
+- **`clearbooks_create_personnel`** — Add a new person to ClearBooks — employee, contractor, advisor, etc. Supply hourly_rate OR salary depending on engagement type.
+  - required: `first_name`, `last_name`, `email`, `type`
+- **`clearbooks_create_receipt`** — Create a receipt record. The file_path must already exist in ClearBooks storage (uploads are out of band — pass the storage path here, not the binary).
+  - required: `file_path`
+- **`clearbooks_create_recurring_invoice`** — Create a recurring invoice schedule (subscription billing). Specify frequency and the invoice template that gets re-issued each period.
+  - required: `customer_id`, `frequency`, `start_date`, `items`
+- **`clearbooks_create_share_class`** — Create a new share class. For preferred classes set liquidation_preference and seniority (1 = most senior). NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+  - required: `name`, `type`, `authorized_shares`
+- **`clearbooks_create_shareholder`** — Add a new shareholder to the cap table. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+  - required: `name`, `shareholder_type`
+- **`clearbooks_create_stock_option`** — Grant stock options to a grantee from a specific option pool. Confirm with the user before granting. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+  - required: `grantee_id`, `option_pool_id`, `shares_granted`, `exercise_price`, `grant_date`
+- **`clearbooks_create_tag`** — Create a new tag with an optional hex color.
+  - required: `name`
+- **`clearbooks_create_transaction`** — Record a new income or expense transaction in ClearBooks.
+  - required: `transaction_date`, `description`, `amount`, `transaction_type`
+- **`clearbooks_create_transaction_template`** — Create a reusable transaction template (e.g. for a recurring expense).
+  - required: `name`
+- **`clearbooks_create_vendor`** — Create a new vendor record in ClearBooks.
+  - required: `name`
+- **`clearbooks_create_vendor_credit`** — Record a credit received from a vendor in ClearBooks — a return, overbilling or refund — to be applied against their bills later. The payables mirror of a customer credit memo.
+  - required: `credit_number`
+- **`clearbooks_create_webhook`** — Subscribe to ClearBooks events. The returned secret is used to verify incoming POSTs at the configured URL — record it; ClearBooks won't show it again. Typical events: invoice.sent, invoice.paid, transaction.created, payment.received.
+  - required: `url`, `events`
+- **`clearbooks_delete_bank_account`** — Disconnect a bank account from ClearBooks (soft delete the Plaid item). Destructive — confirm first.
+  - required: `bank_account_id`
+- **`clearbooks_delete_custom_field`** — Delete a custom field definition. Destructive — confirm first.
+  - required: `field_id`
+- **`clearbooks_delete_customer`** — Delete a ClearBooks customer. Only works when the customer has no invoices. Destructive — confirm first.
+  - required: `customer_id`
+- **`clearbooks_delete_fixed_asset`** — Delete a fixed asset record. Destructive — confirm first.
+  - required: `asset_id`
+- **`clearbooks_delete_forecast`** — Delete a forecast. Destructive — confirm first.
+  - required: `forecast_id`
+- **`clearbooks_delete_invoice`** — Delete a draft ClearBooks invoice and all its line items. Only draft invoices can be deleted. Destructive — confirm first.
+  - required: `invoice_id`
+- **`clearbooks_delete_journal_entry`** — Delete a ClearBooks journal entry and all its lines. Destructive — confirm with the user first.
+  - required: `entry_id`
+- **`clearbooks_delete_personnel`** — Delete a personnel record. Destructive — confirm with the user first.
+  - required: `personnel_id`
+- **`clearbooks_delete_receipt`** — Delete a receipt record. Destructive — confirm first.
+  - required: `receipt_id`
+- **`clearbooks_delete_recurring_invoice`** — Deactivate (soft-delete) a recurring invoice. No more invoices will be issued.
+  - required: `recurring_invoice_id`
+- **`clearbooks_delete_tag`** — Delete a tag. Destructive — confirm first.
+  - required: `tag_id`
+- **`clearbooks_delete_transaction`** — Delete a ClearBooks transaction. Destructive — confirm with the user first.
+  - required: `transaction_id`
+- **`clearbooks_delete_transaction_template`** — Delete a transaction template.
+  - required: `template_id`
+- **`clearbooks_delete_webhook`** — Delete a webhook subscription. Destructive — confirm first.
+  - required: `webhook_id`
+- **`clearbooks_duplicate_invoice`** — Clone an invoice as a new draft with a fresh invoice number. Useful when re-billing a similar engagement.
+  - required: `invoice_id`
+- **`clearbooks_get_ach_payment`** _(read-only)_ — Fetch full details for a single ACH payment.
+  - required: `ach_payment_id`
+- **`clearbooks_get_bank_account`** _(read-only)_ — Fetch one ClearBooks-linked bank connection (Plaid item) with balances and auth records.
+  - required: `bank_account_id`
+- **`clearbooks_get_bank_account_balances`** _(read-only)_ — Get current + available balances for a specific bank connection.
+  - required: `bank_account_id`
+- **`clearbooks_get_bank_account_transactions`** _(read-only)_ — Get the imported transactions for a specific bank connection. Use start_date / end_date to scope a window.
+  - required: `bank_account_id`
+- **`clearbooks_get_budget_vs_actual`** _(read-only)_ — Compare a ClearBooks budget against actuals, optionally grouped by account, class, location or project. Note the sign convention: expenses are negative, so a NEGATIVE variance on an expense line means overspend.
+  - required: `budget_id`
+- **`clearbooks_get_business_info`** _(read-only)_ — Get the company profile (legal name, EIN, incorporation date, fiscal year, mailing address).
+- **`clearbooks_get_cap_table`** _(read-only)_ — Get the full ClearBooks cap-table summary — authorized/issued shares, option pool size, shareholder count, share classes, and outstanding convertibles. Use for investor reporting and dilution questions.
+- **`clearbooks_get_current_metrics`** _(read-only)_ — Get the live ClearBooks finance snapshot: MRR, ARR, revenue, expenses, net income, burn rate, runway. Use for 'what's our runway', 'how's the burn looking', investor-ready answers.
+- **`clearbooks_get_customer`** _(read-only)_ — Fetch one ClearBooks customer with full details.
+  - required: `customer_id`
+- **`clearbooks_get_data_room`** _(read-only)_ — Fetch a data-room configuration including its included reports.
+  - required: `data_room_id`
+- **`clearbooks_get_forecast`** _(read-only)_ — Fetch a forecast with all period projections.
+  - required: `forecast_id`
+- **`clearbooks_get_gl_code`** _(read-only)_ — Fetch a single GL code with its account type and metadata.
+  - required: `gl_code_id`
+- **`clearbooks_get_inventory_valuation`** _(read-only)_ — Value ClearBooks stock on hand from its actual cost layers, per item, with a reorder flag. Use for 'what is our inventory worth', the balance-sheet stock figure, or 'what needs reordering'. Only items tracked for inventory appear.
+- **`clearbooks_get_invoice`** _(read-only)_ — Fetch one ClearBooks invoice including line items and customer details.
+  - required: `invoice_id`
+- **`clearbooks_get_invoice_pdf`** _(read-only)_ — Return the snapshot + PDF endpoint for a ClearBooks invoice. The pdf_endpoint URL can be opened by the user to download the rendered PDF.
+  - required: `invoice_id`
+- **`clearbooks_get_journal_entry`** _(read-only)_ — Fetch a single ClearBooks journal entry with all its lines.
+  - required: `entry_id`
+- **`clearbooks_get_metrics_history`** _(read-only)_ — Get the ClearBooks metrics series over the last N months (default 12). Useful for 'how has MRR grown' or month-over-month comparisons.
+- **`clearbooks_get_period_status`** _(read-only)_ — Check whether a date can still be posted to in ClearBooks BEFORE attempting a write. Closed books are enforced server-side, so creating a transaction, journal entry, invoice or bill dated inside a closed period fails with a conflict. Call this first whenever posting to a past date — a date no period covers is open. Returns the period's lock state (open / soft_closed / hard_closed) and a plain postable flag.
+- **`clearbooks_get_personnel`** _(read-only)_ — Fetch a single personnel record with full details.
+  - required: `personnel_id`
+- **`clearbooks_get_plaid_auth`** _(read-only)_ — Get a single Plaid auth record with masked account/routing numbers.
+  - required: `auth_id`
+- **`clearbooks_get_recurring_invoice`** _(read-only)_ — Fetch a single recurring invoice configuration.
+  - required: `recurring_invoice_id`
+- **`clearbooks_get_report`** _(read-only)_ — Generate a financial report. Supported types: summary, by_category, income_statement, balance_sheet. Optional start_date / end_date scope the period.
+  - required: `type`
+- **`clearbooks_get_sales_tax_nexus_exposure`** _(read-only)_ — Which US states the business has crossed, or is approaching, an economic-nexus threshold in WITHOUT being registered to collect sales tax. Use for 'where do we need to register', 'do we have nexus', or Wayfair questions. An exceeded threshold with no registration is an accruing liability, not a notification.
+- **`clearbooks_get_sales_tax_rate`** _(read-only)_ — Look up the sales tax rate for one location, broken into state/county/city/special components. Most specific match wins: postal code, then city, then state. Pass amount to also get the tax on it. A location with no rate on file answers found=false rather than an error.
+  - required: `state_code`
+- **`clearbooks_get_shareholder`** _(read-only)_ — Fetch a shareholder with all holdings, option grants, and convertible instruments. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+  - required: `shareholder_id`
+- **`clearbooks_get_transaction`** _(read-only)_ — Fetch one ClearBooks transaction by id with full details.
+  - required: `transaction_id`
+- **`clearbooks_list_accounting_periods`** _(read-only)_ — List ClearBooks accounting periods and their lock state. Use for 'are the books closed for March', 'which periods are locked', or before a bulk backdated import.
+- **`clearbooks_list_ach_payments`** _(read-only)_ — List ACH payments, optionally filtered by status.
+- **`clearbooks_list_audit_logs`** _(read-only)_ — List the ClearBooks audit trail — who changed what and when. Use for 'who did X', recent changes, or activity history on a specific record.
+- **`clearbooks_list_bank_accounts`** _(read-only)_ — List ClearBooks-linked bank accounts (Plaid) with current balances. Use for 'how much cash do we have', 'what's the operating balance'.
+- **`clearbooks_list_bill_balances`** _(read-only)_ — What is genuinely still owed per ClearBooks bill, with ageing buckets. PREFER THIS over listing bills or an AP-ageing report whenever partial payments or credit notes might exist: a bill's status has no 'partial' value, so a half-paid bill still reads 'pending' and its full face value looks outstanding. This nets both cash payments and vendor credits against each bill.
+- **`clearbooks_list_bills`** _(read-only)_ — List bills payable, optionally filtered by status or vendor.
+- **`clearbooks_list_budgets`** _(read-only)_ — List ClearBooks budgets. A budget is the frozen plan actuals are measured against — distinct from a forecast, which revises.
+- **`clearbooks_list_categories`** _(read-only)_ — List active ClearBooks transaction categories.
+- **`clearbooks_list_convertibles`** _(read-only)_ — List SAFEs and Convertible Notes. Optional `converted` filter to scope to outstanding vs converted. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+- **`clearbooks_list_crypto_positions`** _(read-only)_ — List current open tax lots / holdings (asset, quantity, cost basis).
+- **`clearbooks_list_crypto_transactions`** _(read-only)_ — List crypto transactions across all tracked wallets. Optionally scope to one wallet or a date range.
+- **`clearbooks_list_crypto_wallets`** _(read-only)_ — List tracked crypto wallets across all chains.
+- **`clearbooks_list_custom_fields`** _(read-only)_ — List custom field definitions across all resources.
+- **`clearbooks_list_customers`** _(read-only)_ — List ClearBooks customers, optionally search by company name or email. Use to look up a customer_id before creating an invoice.
+- **`clearbooks_list_data_rooms`** _(read-only)_ — List investor data rooms (active links, view counts, expiry).
+- **`clearbooks_list_estimates`** _(read-only)_ — List ClearBooks quotes/estimates. An estimate precedes an invoice and is NOT revenue until converted — do not count these toward sales.
+- **`clearbooks_list_exchange_rates`** _(read-only)_ — List recent FX rates. Optional filters: base, quote, as_of (effective date).
+- **`clearbooks_list_fixed_assets`** _(read-only)_ — List all fixed assets and their depreciation schedules.
+- **`clearbooks_list_forecasts`** _(read-only)_ — List active ClearBooks forecasts.
+- **`clearbooks_list_gl_codes`** _(read-only)_ — List ClearBooks GL codes. Optional account_type filter (Asset, Liability, Equity, Revenue, Expense).
+- **`clearbooks_list_holdings`** _(read-only)_ — List share holdings on the cap table, optionally scoped to one shareholder or share class. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+- **`clearbooks_list_invoices`** _(read-only)_ — List ClearBooks invoices, optionally filtered by status. Use to answer 'what's outstanding', 'who hasn't paid', 'show me drafts', etc. Reads live from ClearBooks (not the local sync mirror) so the numbers are current.
+- **`clearbooks_list_items`** _(read-only)_ — List ClearBooks products and services — the priced catalogue used on invoices, estimates and purchase orders. Use for 'what do we sell' or pricing questions.
+- **`clearbooks_list_journal_entries`** _(read-only)_ — List ClearBooks journal entries, optionally filtered by date range.
+- **`clearbooks_list_merchants`** _(read-only)_ — List ClearBooks merchants (transaction counterparties), including default GL code / category and per-merchant transaction counts.
+- **`clearbooks_list_option_pools`** _(read-only)_ — List option pools with authorized / issued / reserved share counts. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+- **`clearbooks_list_personnel`** _(read-only)_ — List employees, contractors, advisors, officers, etc. tracked in ClearBooks.
+- **`clearbooks_list_plaid_auth`** _(read-only)_ — List linked Plaid auth records (masked account / routing numbers, verification status).
+- **`clearbooks_list_plaid_balances`** _(read-only)_ — Get all account balances from Plaid with summary totals (total_current, total_available, account_count).
+- **`clearbooks_list_plaid_identity`** _(read-only)_ — List account-holder identity data from Plaid for KYC / compliance. Read-only.
+- **`clearbooks_list_plaid_items`** _(read-only)_ — List all Plaid item connections and their sync status / products.
+- **`clearbooks_list_purchase_orders`** _(read-only)_ — List ClearBooks purchase orders — what has been ordered from vendors but not necessarily received or billed. Use for open commitments or committed spend not yet in the P&L.
+- **`clearbooks_list_receipts`** _(read-only)_ — List receipts, optionally scoped to one transaction id.
+- **`clearbooks_list_recurring_invoices`** _(read-only)_ — List recurring invoice schedules — subscriptions, retainers, etc.
+- **`clearbooks_list_share_classes`** _(read-only)_ — List all share classes (Common, Preferred Series A, etc.) with authorized share counts and preferences. NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+- **`clearbooks_list_shareholders`** _(read-only)_ — List ClearBooks shareholders, optionally filtered by type (founder, investor, employee, advisor). NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+- **`clearbooks_list_stock_options`** _(read-only)_ — List stock option grants, optionally filtered by status (active / exercised / cancelled / expired). NOT CURRENTLY AVAILABLE: ClearBooks does not implement this endpoint — the cap-table API is the summary and one investment by id, nothing else. This call always fails. Do not offer it; use clearbooks_get_cap_table for the summary and tell the user equity has to be recorded in ClearBooks directly for now.
+- **`clearbooks_list_tags`** _(read-only)_ — List all ClearBooks tags.
+- **`clearbooks_list_time_entries`** _(read-only)_ — List tracked time in ClearBooks. Use for billable hours, utilisation, unbilled work in progress, or what to put on the next invoice.
+- **`clearbooks_list_transaction_templates`** _(read-only)_ — List reusable transaction templates (e.g. 'Monthly AWS').
+- **`clearbooks_list_transactions`** _(read-only)_ — List ClearBooks transactions (income + expenses) with optional date range, type, category, or merchant filters.
+- **`clearbooks_list_vendors`** _(read-only)_ — List ClearBooks vendors.
+- **`clearbooks_list_webhooks`** _(read-only)_ — List the ClearBooks webhook subscriptions registered for this organization.
+- **`clearbooks_record_invoice_payment`** — Record a payment against a ClearBooks invoice and mark it `paid`. Use when the user says the customer paid via wire/check/ACH outside ClearBooks's own payment flow.
+  - required: `invoice_id`, `amount`, `payment_date`
+- **`clearbooks_remind_invoice`** — Send a payment reminder email for an overdue invoice. Urgency controls the tone — gentle / firm / final.
+  - required: `invoice_id`
+- **`clearbooks_reopen_accounting_period`** — Reopen a closed ClearBooks period so postings are accepted again. A reason is required and is recorded against the period — reopening is itself an audited event.
+  - required: `period_id`, `reason`
+- **`clearbooks_send_invoice`** — Email a ClearBooks invoice to the customer and mark it `sent`. Optional custom message and CC list.
+  - required: `invoice_id`
+- **`clearbooks_update_ach_payment`** — Update an ACH payment's status or trace number. Usually used by automation reconciling against the ACH file return.
+  - required: `ach_payment_id`
+- **`clearbooks_update_customer`** — Update a ClearBooks customer record. Only supply the fields that should change.
+  - required: `customer_id`
+- **`clearbooks_update_fixed_asset`** — Update a fixed asset — including marking it disposed by setting disposed_date.
+  - required: `asset_id`
+- **`clearbooks_update_invoice`** — Update a draft ClearBooks invoice — status, dates, notes. Only draft invoices can be edited; sent/paid invoices are immutable.
+  - required: `invoice_id`
+- **`clearbooks_update_merchant`** — Update a merchant's defaults — pre-pick the GL code and category that should auto-apply to its future transactions.
+  - required: `merchant_id`
+- **`clearbooks_update_personnel`** — Update an existing personnel record — title, comp, status, dates.
+  - required: `personnel_id`
+- **`clearbooks_update_recurring_invoice`** — Update a recurring invoice — change frequency, end date, active status, or template.
+  - required: `recurring_invoice_id`
+- **`clearbooks_update_transaction`** — Update an existing ClearBooks transaction. Only supply the fields that should change.
+  - required: `transaction_id`
+- **`clearbooks_update_webhook`** — Update a webhook subscription — toggle active, change URL or events.
+  - required: `webhook_id`
+- **`clearbooks_upsert_business_info`** — Create or update the company profile. This is an upsert — only supply fields you want to change.
+- **`clearbooks_upsert_exchange_rate`** — Upsert a custom FX rate for a base/quote pair on a specific date.
+  - required: `base`, `quote`, `rate`, `as_of`
+- **`clearbooks_verify_connection`** _(read-only)_ — Probe the user's ClearBooks connection. Returns the organization id, scopes, and rate-limit tier from /me. Use when the user wants to confirm what's connected or troubleshoot a 403.
+- **`clearbooks_void_invoice`** — Void/cancel a ClearBooks invoice with an optional reason. Use when an invoice was issued in error. Destructive — confirm with the user first.
+  - required: `invoice_id`
+- **`stripe_create_customer`** — Create a customer record on the connected Stripe account. This creates NO charge and takes no money — it is the address-book entry a future invoice or subscription attaches to. For a customer in Kavanah's own CRM use `create_client` instead; the two are separate records.
+- **`stripe_create_invoice`** — Create a DRAFT invoice on the connected Stripe account: one or more line items, then the invoice itself. Nobody is charged and nothing is emailed — the draft sits in Stripe until someone calls `stripe_send_invoice` or issues it from the dashboard. Every agent-created invoice is set to collect by EMAIL, never by automatically charging a saved card, so issuing one is always a request the customer must act on. Amounts are given in the MAJOR unit of the currency (20.50 means $20.50, not 2050). Use `stripe_list_customers` for the customer id.
+  - required: `customer_id`, `line_items`
+- **`stripe_create_payment_link`** — Create a Stripe Payment Link — a reusable public URL that takes real money from anyone who opens it. Requires a `price_id` from stripe_list_products. ALWAYS confirm the exact price with the user before creating one, and quote the price back to them: the link cannot be edited afterwards, only deactivated in the Stripe dashboard, and anyone holding the URL can pay through it.
+  - required: `price_id`
+- **`stripe_create_refund`** — Refund a Stripe charge — this MOVES REAL MONEY back to the customer and cannot be undone from Kavanah or from Stripe. Requires a charge id (ch_… or py_…) from stripe_list_charges. Omit `amount` for a full refund; pass it for a partial one, in the MAJOR unit of the charge's currency (20.50 means $20.50, not 2050). NEVER call this without the user explicitly confirming the charge id and the amount in the same turn. This tool is only available when a workspace admin has turned on Stripe money movement in Settings → AI Agent.
+  - required: `charge_id`
+- **`stripe_create_subscription`** — Start a recurring subscription for an existing Stripe customer. THIS BEGINS BILLING: Stripe charges the customer's stored payment method on the price's schedule, starting immediately unless you pass `trial_days`. Requires a `price_id` from stripe_list_products and a customer who already has a payment method on file. ALWAYS confirm the customer, the price and the amount with the user before calling. This tool is only available when a workspace admin has turned on Stripe money movement in Settings → AI Agent.
+  - required: `customer_id`, `price_id`
+- **`stripe_get_account`** _(read-only)_ — Show the connected Stripe account: business name, country, default currency, whether charges and payouts are enabled, and — importantly — whether the connected key is LIVE or TEST mode. Call this first when a Stripe number looks wrong or empty: a test-mode key reads a separate, usually near-empty dataset, so "no revenue" often means "test key", not "no sales".
+- **`stripe_get_balance`** _(read-only)_ — Current Stripe balance, split into available and pending, per currency. This is money Stripe is holding, NOT revenue and NOT the bank balance — funds sit pending until they settle and then leave on the payout schedule. Use stripe_revenue_summary for what the business earned.
+- **`stripe_get_customer`** _(read-only)_ — Fetch one Stripe customer by id (cus_…), with their active subscriptions. Get an id from stripe_list_customers.
+  - required: `customer_id`
+- **`stripe_get_invoice`** _(read-only)_ — Fetch one Stripe invoice by id (in_…), including its totals, status, and the hosted invoice + PDF links you can give the customer.
+  - required: `invoice_id`
+- **`stripe_list_charges`** _(read-only)_ — List payments (charges) on the connected account, newest first. Optionally filter to one customer or to charges created in the last N days. Amounts are reported in the charge's own currency; refunds are shown against the original charge.
+- **`stripe_list_customers`** _(read-only)_ — List customers on the connected Stripe account, newest first. `email` filters by EXACT address — Stripe's list endpoint has no substring or name search, so a partial email or a company name finds nothing. For Kavanah's own client records use `list_clients` instead.
+- **`stripe_list_invoices`** _(read-only)_ — List Stripe invoices, newest first. Filter by `status` (draft, open, paid, uncollectible, void) or by customer. "open" is the one to use for unpaid/outstanding invoices — a draft has not been sent to anyone and must not be described as owed.
+- **`stripe_list_products`** _(read-only)_ — List products in the Stripe catalog with their default price ids. Use this to find the `price_…` id that stripe_create_payment_link needs.
+- **`stripe_list_subscriptions`** _(read-only)_ — List Stripe subscriptions with their status, price items and renewal date. Defaults to `active`; pass "all" to include cancelled and past-due ones. `cancel_at_period_end` is the churn signal — a subscription can be status "active" and already scheduled to end.
+- **`stripe_revenue_summary`** _(read-only)_ — The headline revenue picture: estimated monthly recurring revenue (MRR) from active subscriptions, net charge volume over a recent window, and current balance — each reported PER CURRENCY, never summed across currencies (there is no exchange rate here and inventing one would invent revenue). MRR is an ESTIMATE from list prices: it normalises every interval to a month and ignores discounts, coupons, taxes, proration and trials. It also CANNOT price metered (usage-based) or tiered subscriptions, so those are counted and reported separately — if that count is non-zero, say so when quoting the figure rather than presenting the total as complete.
+- **`stripe_send_invoice`** — Finalize a DRAFT Stripe invoice and EMAIL it to the customer. This is the moment the invoice becomes a real demand for payment and leaves the building — it cannot be un-sent, and finalizing also locks the amounts. Confirm the invoice id and its total with the user before calling. Nobody is charged by this; the customer receives a payment link and chooses to pay.
+  - required: `invoice_id`
+
+## knowledge_files (180)
+
+- **`add_document_block_comment`** — Comment on a specific block within a document. Reply to an existing comment by passing parent_comment_id.
+  - required: `document_id`, `block_id`, `body`
+- **`add_proof_annotation`** — Drop a proofing pin (annotation comment) on an image / PDF attachment for design review. Coordinates are NORMALIZED fractions of the rendered media box (0..1), NOT pixels, so they stay correct across zoom/resize: x=0 is the left edge, x=1 the right; y=0 the top, y=1 the bottom. The author is taken from the calling user. Optionally link the pin to a task.
+  - required: `file_id`, `x`, `y`
+- **`apply_interview_writes`** — Commit the staged draft to the real workspace config, after the user has confirmed it. Admin-only (charter/team-context are admin-maintained) — a non-admin's proposal is kept staged for an admin to apply. Only call this once the user has seen the draft from propose_interview_writes and said yes.
+  - required: `interview_id`
+- **`ask_knowledge_base`** _(read-only)_ — Answer a QUESTION from this workspace's own knowledge — tasks, discussion threads, docs, decisions, retros, onboarding, glossary, and saved agent memories — instead of guessing. Retrieves the most relevant sources across all those surfaces, then has an LLM synthesize a grounded answer that CITES the exact sources it used. PREFER this over search_knowledge_documents whenever the user asks a question ('why did we choose X?', 'what's blocking Y?', 'who owns Z?') rather than for a specific document to open — search_knowledge_documents only finds a doc by title, this actually answers. If nothing in the workspace matches, it says so instead of inventing an answer. Slow (one LLM call, several seconds); keep the question focused.
+  - required: `question`
+- **`check_against_kvn`** _(read-only)_ — Check a proposed piece of work against the company + project KVN charter BEFORE committing to it. Returns 'aligned', 'negated' (the charter forbids it), or 'false_friend' (it looks like it serves the Vision but serves a proxy for it instead), citing the exact charter line. Advisory and read-only — use it when the user is DELIBERATING ('should we do X?', 'is this worth doing?', 'does this fit our roadmap?'). You do not need to call this before create_task: the KVN gate already checks every task/project write automatically and will refuse it.
+  - required: `subject`
+- **`condense_thread_and_save`** — Condense one long discussion thread AND save the result straight into the knowledge base as a block-structured document (tagged 'Thread Summary', undoable). SLOW (one LLM call). Prefer this over condense_thread_to_document + create_knowledge_document when the user wants the summary kept — one call, no re-typing the content.
+  - required: `thread_id`
+- **`condense_thread_to_document`** _(read-only)_ — Condense one long discussion thread into a tidy documentation DRAFT — a proposed title, 3–5 sourced sections, and any decisions the conversation reached. SLOW (one LLM call). Read-only: it returns the draft but does NOT save it; use condense_thread_and_save to condense-and-persist in one step, or create_knowledge_document to save an edited draft.
+  - required: `thread_id`
+- **`create_autolink_rule`** — Create an auto-link rule so a phrase (literal or regex) automatically links to a target. WRITES a rule to the workspace. Regex patterns are validated and rejected if they risk catastrophic backtracking (ReDoS) — auto-link patterns never need nested quantifiers.
+  - required: `pattern`, `target_ref`
+- **`create_decision`** — Record a decision. Status defaults to 'active'. Provide context, what was chosen, and why.
+  - required: `title`
+- **`create_document_from_template`** — Instantiate a new document from a template. Block ids are regenerated so new comments don't collide with the template's comments. Title and project_ref override the template defaults when supplied.
+  - required: `template_id`
+- **`create_glossary_term`** — Add a glossary term.
+  - required: `term`
+- **`create_knowledge_document`** — Create a knowledge document. Prefer structured `blocks` over `body` — each block has {id, type, text} where type is one of paragraph, heading_1..3, bulleted_list_item, numbered_list_item, todo, quote, callout, code, divider. Use [[Page Title]] inside text to link to another doc. Set is_template=true to register a reusable template; pair with template_category to surface it under a heading in the templates gallery.
+  - required: `title`
+- **`create_onboarding_doc`** — Create or replace an onboarding doc for a role.
+  - required: `role`
+- **`create_resource_request`** — Create a resource (staffing) request for a project.
+  - required: `project_ref`, `role_needed`, `hours_needed`
+- **`create_retro`** — Create a sprint retro. wins/misses/surprises are arrays of { id, text } items.
+  - required: `sprint_label`
+- **`create_share_link`** — Mint a public, read-only share link for a project or a saved view. Anyone with the resulting URL gets a locked-down, sanitized projection (task title/status/priority/due-date and assignee INITIALS only — no PII) with no session required. Admin-only at the API layer; non-admins get a permission error. Returns the one-time public URL (the underlying token is shown only here and never recoverable later).
+  - required: `resource_type`, `resource_id`
+- **`decide_resource_request`** — Approve, deny, or fulfill a resource request. Sets decided_at automatically.
+  - required: `request_id`, `status`
+- **`delete_decision`** — Delete a decision. Confirm with the user before calling.
+  - required: `decision_id`
+- **`delete_document_block_comment`** — Delete a block comment by id.
+  - required: `comment_id`
+- **`delete_glossary_term`** — Delete a glossary term. Confirm before calling.
+  - required: `term_id`
+- **`delete_knowledge_document`** — Delete a knowledge document. Confirm with the user before calling.
+  - required: `document_id`
+- **`delete_onboarding_doc`** — Delete an onboarding doc. Confirm before calling.
+  - required: `doc_id`
+- **`delete_project_file`** — Delete a file from a project. Only call after the user confirms.
+  - required: `project_ref`, `file_id`
+- **`delete_proof_annotation`** — Permanently delete a proofing pin by its id. Use list_proof_annotations to find the id. Irreversible.
+  - required: `annotation_id`
+- **`delete_resource_request`** — Delete a resource request.
+  - required: `request_id`
+- **`delete_retro`** — Delete a sprint retro by id. Confirm before calling.
+  - required: `retro_id`
+- **`drive_create_folder`** — Create a new (empty) folder in the user's Google Drive. Returns the new folder's id and web-view link. Pass parent_folder_id to nest it inside an existing folder; omit it to create the folder at the top level of My Drive. To populate the folder afterward, create files with drive_create_text_file (parent_folder_id = this folder's id) or move existing items in with drive_move_file.
+  - required: `name`
+- **`drive_create_text_file`** — Create a new text file in the user's Google Drive with the given UTF-8 content. Returns the new file's id and (when available) a web-view link. Use this to save notes, transcripts, or short documents to Drive — for binary uploads or large files use the Drive UI directly. IMPORTANT: create at most ONE file per response — never batch several file creations in one turn, and for a long document keep the content focused (a very large content argument can exceed the response window and fail). When asked to save multiple documents, create the first, wait for its result, then continue with the next in your following response.
+  - required: `name`
+- **`drive_delete_file`** — Delete a Google Drive file or folder. By default the item is moved to the Drive trash (recoverable, and undoable). Set permanent=true to delete it irreversibly — there is NO undo for a permanent delete, so only use it when the user explicitly asks to delete permanently. Deleting a folder removes everything inside it; confirm with the user before deleting a folder. Pass the id, not a URL.
+  - required: `file_id`
+- **`drive_get_file`** _(read-only)_ — Look up a single Google Drive file or folder by its id and return its metadata (name, MIME type, modified time, size, web-view link, parent folder, trashed flag). When the user pastes a file URL like `https://docs.google.com/document/d/<FILE_ID>/edit` or `https://drive.google.com/file/d/<FILE_ID>/view`, extract the `<FILE_ID>` (the segment after `/d/`) and pass it here. IGNORE any `/u/<N>/` or `?u=<N>` part of the URL — it is only the account index signed into the user's browser and is irrelevant to this connector, which uses Kavanah's own server-side OAuth token. If the MIME type is `application/vnd.google-apps.folder`, use drive_list_files with `query: "'<FILE_ID>' in parents"` to see what's inside.
+  - required: `file_id`
+- **`drive_import_to_knowledge`** — Deep-dive Google Drive content INTO the company knowledge base: reads up to 20 Drive files (by explicit file_ids, or a Drive query like "'<folderId>' in parents") and creates one knowledge document per file. mode='full_text' (default) stores the file's text; mode='summarize' condenses each file with an LLM first (slower, one call per file). Imports are idempotent — each document is tagged with its Drive file id, so re-importing skips already-imported files unless overwrite=true (which refreshes the existing document). PDFs and uploaded Word/Excel/PowerPoint files are read by converting a temporary copy, so a whole data-room folder can be imported in one call. Folders, images and video are skipped with a reason. Optionally file everything under a parent knowledge document and/or a project.
+- **`drive_list_files`** _(read-only)_ — List files in the user's Google Drive. The connector uses the full `drive` scope, so ALL of the user's Drive files are visible (not just files created with or opened through Kavanah). Supports Drive's query syntax (e.g. `name contains 'report'`, `mimeType='application/pdf'`, `modifiedTime > '2026-01-01'`). When the user gives a Drive folder URL like `https://drive.google.com/drive/u/4/folders/<FOLDER_ID>`, extract the trailing `<FOLDER_ID>` and list the folder's contents with `query: "'<FOLDER_ID>' in parents"`. IGNORE the `/u/<N>/` segment in the URL: it is only the account index of whichever Google account is signed into the user's *browser*, and has NOTHING to do with which account this connector is authorized for. This tool authenticates with Kavanah's own server-side OAuth token, not the browser session, so `/u/0/`, `/u/4/`, etc. are all irrelevant here — never tell the user a folder is inaccessible because of the `/u/N/` number. If a folder ID genuinely returns nothing or errors, the real causes are that the connected Google account lacks access to that folder (ask them to share it with the connected account) or the folder is empty.
+- **`drive_move_file`** — Move a Google Drive file or folder into a different folder. By default the item is removed from its current parent folder(s) and placed in the new one (a true move). Set keep_in_current=true to instead ADD the new folder as an additional location (the item then appears in both). Pass ids, not URLs (the `/d/<id>` or `/folders/<id>` segment).
+  - required: `file_id`, `new_parent_folder_id`
+- **`drive_read_file`** _(read-only)_ — Read a Google Drive file's CONTENT as plain text. Google Docs/Slides export as text, Sheets as CSV, and text-like uploads (txt/md/csv/json/code) download directly. PDFs and uploaded Word/Excel/PowerPoint files ARE readable too — Drive converts a temporary copy to read them, which is how a deal data room full of PPMs and decks gets analysed; the user's file is never modified. A scanned, image-only PDF will come back with a note saying so rather than blank text. Images, video and archives are still refused with a reason. Use it to inspect a file before answering questions about it — for bulk import into the knowledge base use drive_import_to_knowledge instead.
+  - required: `file_id`
+- **`drive_rename_file`** — Rename a Google Drive file OR folder. Pass the item's id (the `/d/<id>` or `/folders/<id>` segment of a Drive URL — ignore any `/u/<N>/` part) and the new name. Returns the updated name and link.
+  - required: `file_id`, `new_name`
+- **`duplicate_project_file`** — Duplicate a project file (creates a `_copy` version).
+  - required: `project_ref`, `file_id`
+- **`find_course_lessons`** _(read-only)_ — Search the course catalogue for lessons relevant to a topic. Scores each lesson against the query using title, subtitle, learning objectives, and section headings, and returns the top matches with their slugs, their course, and why they matched. Use whenever a user asks a how-to, setup, or methodology question the courses cover — 'how do I connect Gmail?', 'what can the AI agent actually do?', 'how do I set up approvals?', 'what's the right way to estimate?'. Then call get_course_lesson on the top hit if the user wants the full answer.
+  - required: `query`
+- **`find_ui_feature`** _(read-only)_ — Find where a feature, button, page, or setting lives in the Kavanah UI. Searches the product map by name, keywords, location, and description, and returns the best-matching surfaces with their sidebar location and route. Use this whenever the user asks 'where is …?', 'how do I get to …?', 'which page has …?', or 'is there a … in Kavanah?'. Then call get_feature_guide for step-by-step instructions on the top hit if the user wants to actually do the thing.
+  - required: `query`
+- **`forget_memory`** — Delete a saved memory by id (from recall_memories) when it is wrong or obsolete. If a fact CHANGED, forget the old memory and `remember` the new version.
+  - required: `memory_id`
+- **`generate_image`** — Generate a picture from a text description with AI, and show it in this conversation. Use for illustrations, concept art, mockup imagery, logos, headers, or any 'draw me / make me a picture of' request. COSTS CREDITS per image — say so and get the user's agreement before the first call, and do not silently retry for a better result. There is a 10-second cooldown between images. NOT for charts or diagrams: to plot data use a chart widget, and for a flow/box diagram write the SVG yourself — both are free and sharper than a generated raster. You never see the image itself. This returns a URL plus the exact widget tag to emit; copy that tag into your reply verbatim and the picture renders inline for the user.
+  - required: `prompt`
+- **`generate_project_kvn`** _(read-only)_ — AI-draft a single axis of a PROJECT's KVN charter, grounded in the company charter and this project's own other axes. Returns the draft WITHOUT saving — call set_project_kvn to persist. Reach for this whenever a project has no charter and work is being created under it: the project Negation is the one the enforcement gate actually reads, so a project without one is a project where nothing is checked. Draft all three axes (three calls), show them to the user, and save them once they agree — do not save a Negation the user has not seen, because every task created in that project is checked against it.
+  - required: `project_ref`, `axis`
+- **`generate_task_kvn`** _(read-only)_ — AI-draft one axis of a task's KVN block, using the company charter and the task itself for grounding. Returns the draft text WITHOUT saving — call set_task_kvn to persist. Use to fill in missing axes when delegating.
+  - required: `task_id`, `axis`
+- **`generate_workspace_kvn`** _(read-only)_ — AI-draft a single axis of the company's KVN charter, using the other two axes and workspace context (projects, clients) for grounding. Returns the draft text WITHOUT saving — call set_workspace_kvn to persist. Use when the user says 'help me write our vision', 'draft a negation', etc.
+  - required: `axis`
+- **`get_agent_conversation`** _(read-only)_ — Read the transcript of ONE of the current user's past AI-agent conversations by id (from list/search_agent_conversations). Returns the displayed user/assistant turns, most recent last. Read-only, self-scoped.
+  - required: `conversation_id`
+- **`get_company_profile`** _(read-only)_ — Read this workspace's structured company profile: legal name, address, phone, website, support email, tax id / EIN, industry, plus freeform key facts. Check here FIRST when the user asks for a basic org fact (address, zip code, EIN, phone) — before searching documents or email.
+- **`get_course_lesson`** _(read-only)_ — Read a single lesson in full — title, subtitle, learning objectives, prose sections, the 'Kavanah in practice' steps, the lesson's metrics block, key takeaways, and any citations. Use after find_course_lessons or list_course_lessons identifies the right lesson, when the user asks how a Kavanah feature works or how to set it up, or when a metric needs its canonical definition (the metrics block is the source of truth). Lesson slugs are unique across the whole catalogue, so `course` is optional — pass it only to disambiguate intent.
+  - required: `slug`
+- **`get_document_publish_status`** _(read-only)_ — Read the current publication record (active state, token, display options).
+  - required: `document_id`
+- **`get_document_tree`** _(read-only)_ — Read the knowledge library's page hierarchy (parent → child nesting) for the workspace, rendered as an indented outline with each page's id and title. Use this before moving a page so you know the current structure and the ids to pass to set_document_parent. Templates are excluded (they are never tree nodes).
+- **`get_feature_guide`** _(read-only)_ — Get full detail for one Kavanah surface: exactly where it is (sidebar path + route), the key buttons/actions on the page, a step-by-step how-to for the common task, and related surfaces. Use after find_ui_feature identifies the right feature, or directly when you already know the feature id/name (e.g. 'projects-tasks', 'Integrations', 'KVN'). This is the canonical source for walking a user through a task — quote its steps rather than improvising UI directions.
+  - required: `feature`
+- **`get_god_mode_setup_status`** _(read-only)_ — Read the God Mode setup checklist (what's left to set up) — the live status of everything the deal machine needs: each person's Google accounts (Gmail, Calendar, Drive, Docs, Sheets, Slides; a revoked grant reads as 'reconnect'), sending capacity, the sending domain's SPF/DKIM/DMARC with the exact records to add, compliance mode + archive address, the email finder (Apollo/Hunter/ppl.contact), XDocs + the engagement envelope rule, AngelSend + audience sync, Slack permissions, Stripe, the remote browser, linked spreadsheets, the Drive folder for client spaces, cadence booking links, the deal automation chain, the North Star, AI employees, reply supervision (FINRA 3110) and the agent switches with their credit cost. Returns the open items, each with a status, a plain-language reason and the link that fixes it. Owners/admins get the whole workspace; a member gets only their own connections. Read-only.
+- **`get_knowledge_document`** _(read-only)_ — Fetch a single knowledge document by id. Returns title, tags, icon, template state, and either the structured block list (preferred — each block has a stable id usable in add_document_block_comment) or the legacy markdown body when blocks haven't been written.
+  - required: `document_id`
+- **`get_knowledge_index_stats`** _(read-only)_ — Report how much of this workspace is indexed for knowledge retrieval: total chunks and a per-surface breakdown (Tasks, Discussions, Replies, Docs, Decisions, Retros, Onboarding, Glossary, Memories) plus when it was last refreshed. Read-only — use it to gauge whether ask_knowledge_base has enough to draw on.
+- **`get_north_star`** _(read-only)_ — Read the North Star for the workspace or a project — the one metric that makes the Vision falsifiable. Returns where it stands now, its target and direction, the trend across recent readings, and how much of the open work in scope actually declares a contribution to it. A project without its own metric INHERITS the workspace's, and the answer says so. Use when the user asks what to prioritise, whether work is moving the needle, how progress is measured, or 'are we on track?'.
+- **`get_project_kvn`** _(read-only)_ — Read a project's KVN charter — the K/V/N constitution every task in that project inherits from, plus the project's false-friends list. Call this before recommending an approach for a project task so the recommendation respects the project's negation space.
+  - required: `project_ref`
+- **`get_project_readme`** _(read-only)_ — Read a project's 'Living README' — an executive snapshot (what the project is, where it stands, what's in flight, constraints, open risks) with cited sources. Read-only. Pass project_ref to target a specific project; omitted, it uses the workspace's first project. Returns null-ish text if no README has been generated yet (use regenerate_project_readme to build one).
+- **`get_workspace_kvn`** _(read-only)_ — Read the company's standing KVN charter (Know-how / Vision / Negation). Use this whenever the user asks about company vision, what the company does/refuses, capabilities, or anti-goals. Already injected at the top of the system prompt — call this only when you need fresh values mid-conversation.
+- **`google_docs_append`** — Append content to the end of an existing Google Doc (any doc the user has, by id). Use this to add a section, a meeting note, or a log entry. Markdown renders as real Docs formatting (headings, bold, bullets, numbered lists, links, code). Prefix the text with a leading newline if you want it to start on a fresh line.
+  - required: `document_id`, `text`
+- **`google_docs_create`** — Create a new Google Doc with the given title and optional initial body. Returns the new document's id and a shareable edit URL. Use this to draft notes, summaries, proposals, or reports into the user's Google Docs. Markdown in `text` renders as REAL Docs formatting — `#` headings, `**bold**`, `*italic*`, `- ` bullets, `1. ` numbered lists, [links](url), and ``` code blocks — so write documents in Markdown rather than plain text when structure matters.
+  - required: `title`
+- **`google_docs_get`** _(read-only)_ — Read the full plain-text content (and title) of a Google Doc. The `document_id` is the id in the doc's URL (`/document/d/<id>/edit`). Tables, images, and rich formatting are flattened to text.
+  - required: `document_id`
+- **`google_drive_activity_query`** _(read-only)_ — Query the Google Drive activity feed (read-only). Returns recent activity entries with timestamp, action (edit/create/move/comment/…), and the file titles touched. Optionally scope to one file via item_name ('items/<fileId>') or pass an EBNF time filter.
+- **`google_forms_add_question`** — Append a question to a Google Form. `kind` is 'text' (short answer), 'paragraph' (long answer), or 'choice' (single-select radio — supply `options`).
+  - required: `form_id`, `title`, `kind`
+- **`google_forms_create`** — Create a new Google Form with the given title. Returns its id and edit URL. Add questions with google_forms_add_question.
+  - required: `title`
+- **`google_forms_get`** _(read-only)_ — Read a Google Form's structure: title, description, responder URL, and the list of questions (with type, required flag, and choice options). The `form_id` is in the form's edit URL (`/forms/d/<id>/edit`).
+  - required: `form_id`
+- **`google_forms_list_responses`** _(read-only)_ — Read the submitted responses to a Google Form (most recent first). Returns each response's answers keyed by question id. Read-only.
+  - required: `form_id`
+- **`google_sheets_append_rows`** — Append one or more rows after the last row of data in a tab (a 'log a new entry' operation). `range` is usually just the tab name (e.g. `Sheet1`); Sheets finds the table and inserts below it. `values` is an array of rows.
+  - required: `spreadsheet_id`, `range`, `values`
+- **`google_sheets_get`** _(read-only)_ — Inspect a Google Sheets spreadsheet's metadata — its title and the list of tabs (with row/column counts). Use this first to discover tab names before reading or writing ranges. The `spreadsheet_id` is the long id in the sheet's URL (`/spreadsheets/d/<id>/edit`).
+  - required: `spreadsheet_id`
+- **`google_sheets_read_range`** _(read-only)_ — Read the cell values in an A1 range of a Google Sheet (e.g. `Sheet1!A1:D50`). Returns the rows as text. Defaults to unformatted values; pass render_option to control formatting.
+  - required: `spreadsheet_id`, `range`
+- **`google_sheets_update_range`** — Overwrite the cell values in an A1 range of a Google Sheet. `values` is an array of rows (each row an array of cells). The range's top-left cell anchors the write. Use `USER_ENTERED` (default) to let Sheets parse numbers/dates/formulas, or `RAW` to write strings verbatim.
+  - required: `spreadsheet_id`, `range`, `values`
+- **`google_slides_add_image`** — Insert an image (by public https URL) onto a specific slide. The URL must be publicly reachable by Google. Position/size in points; defaults to a 300×200 box if omitted.
+  - required: `presentation_id`, `slide_object_id`, `image_url`
+- **`google_slides_add_slide`** — Append a new slide to a presentation and (optionally) fill its title/body text. Use this to build a deck slide by slide. For free-form placement, follow up with google_slides_add_text_box / google_slides_add_image targeting the returned slide id (re-read with google_slides_get to get ids).
+  - required: `presentation_id`
+- **`google_slides_add_text_box`** — Add a free-floating text box with text to a specific slide. Get the slide's object id from google_slides_get. Position/size are in points on a 720×405 (16:9) canvas; sensible defaults are used if omitted.
+  - required: `presentation_id`, `slide_object_id`, `text`
+- **`google_slides_create`** — Create a new (empty) Google Slides presentation with the given title. Returns its id and a shareable edit URL. Follow up with google_slides_add_slide to add content.
+  - required: `title`
+- **`google_slides_delete_object`** — Delete a slide or a single element (shape/image/etc.) by its object id (from google_slides_get). Deleting a slide id removes the whole slide.
+  - required: `presentation_id`, `object_id`
+- **`google_slides_duplicate_object`** — Duplicate a slide or element by its object id (from google_slides_get). Returns the new object's id. Duplicating a slide id copies the whole slide.
+  - required: `presentation_id`, `object_id`
+- **`google_slides_get`** _(read-only)_ — Read a Google Slides presentation: its title, slide count, the plain text of each slide, and each slide's object id plus the object ids/kinds of the elements on it (so you can target a specific slide or shape with the edit tools). The `presentation_id` is the id in the deck's URL (`/presentation/d/<id>/edit`).
+  - required: `presentation_id`
+- **`google_slides_insert_text`** — Insert text into an existing shape or placeholder by its object id (from google_slides_get). Appends at insertion_index (default 0 = start).
+  - required: `presentation_id`, `object_id`, `text`
+- **`google_slides_replace_text`** — Find-and-replace text across the entire presentation — ideal for filling a templated deck (e.g. replace {{client}} with a name). Returns how many occurrences changed.
+  - required: `presentation_id`, `find`, `replace`
+- **`list_agent_conversations`** _(read-only)_ — List the current user's most recent AI-agent conversations (id, title, last activity). Read-only, self-scoped — only the calling user's own chats. Use when the user refers vaguely to an earlier session ('that chat from last week') and you need to find it; feed an id to get_agent_conversation.
+- **`list_app_navigation`** _(read-only)_ — List the whole Kavanah navigation map — every page/surface grouped by area (Main, Inbox, Build, Insights, Workspace, Settings, Admin, global), each with its sidebar location, route, and a one-line description, plus the keyboard shortcuts. Use to answer broad questions like 'what can Kavanah do?', 'give me a tour', 'what's in the sidebar?', or to orient a brand-new user during onboarding.
+- **`list_autolink_rules`** _(read-only)_ — List this workspace's auto-link rules — patterns (literal or regex) that turn matching phrases in text into links to a doc, decision, glossary term, or code target. Read-only.
+- **`list_condensable_threads`** _(read-only)_ — List discussion threads that are long enough to be worth condensing into a clean document (enough replies or body). Read-only. Returns each thread's id, title, message count, and participants — feed an id to condense_thread_to_document.
+- **`list_course_lessons`** _(read-only)_ — List the course curriculum. Kavanah ships 7 free courses, 231 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.
+- **`list_decision_suggestions`** _(read-only)_ — List AI-DETECTED decision candidates awaiting human review — statements in documents or meeting transcripts that look like decisions worth recording. Each carries the suggested title, what was decided, a verbatim source quote, the source it came from, and a confidence level. Read-only. The suggestions are assistive and may miss decisions; only a human review (review_decision_suggestion, or Knowledge → Decisions → Suggested) turns one into a real decision record.
+- **`list_decisions`** _(read-only)_ — List architecture / product decisions, most-recently decided first.
+- **`list_docs_pages`** _(read-only)_ — List every page of Kavanah's official documentation, grouped by section (Getting Started, Core Features, Dev & AI, Integrations & Apps, API Reference), with each page's slug and title. Use to see what documentation exists before reading a page, or to tell the user what the /docs site covers.
+- **`list_document_backlinks`** _(read-only)_ — List documents that link to this one (via @-mentions or wiki-style title references). Returns id + title for each source document.
+  - required: `document_id`
+- **`list_document_block_comments`** _(read-only)_ — List block-level comments on a document. Each comment is anchored to one block; replies carry parent_comment_id.
+  - required: `document_id`
+- **`list_document_templates`** _(read-only)_ — List all documents flagged as templates. Use before create_document_from_template to find the right template_id.
+- **`list_engineering_notes`** _(read-only)_ — List every internal engineering note with its title and the sections inside it. Use to orient before searching, or to answer 'what internal notes exist?' / 'what areas are documented?'.
+- **`list_glossary`** _(read-only)_ — List glossary terms.
+- **`list_knowledge_documents`** _(read-only)_ — List knowledge-base documents in the workspace, newest-updated first.
+- **`list_negation_hits`** _(read-only)_ — Read the negation ledger — the work this workspace REFUSED, and which charter lines did the refusing. Returns totals, how many were overridden anyway, and the most-cited Negations. Use for 'what did we say no to this quarter?', for the charter review (a Negation with zero hits is either irrelevant or invisible; one with many hits is earning its keep), and whenever the user asks whether the charter is actually doing anything.
+- **`list_onboarding_docs`** _(read-only)_ — List role-based onboarding docs.
+- **`list_project_files`** _(read-only)_ — List files attached to a project.
+  - required: `project_ref`
+- **`list_proof_annotations`** _(read-only)_ — List every proofing annotation (review pin) on an image / PDF attachment, oldest first. Each pin carries a comment, normalized x/y position (0..1), page number, author, and resolved flag. Use to review feedback on a design file before acting on it.
+  - required: `file_id`
+- **`list_resource_requests`** _(read-only)_ — List resource (staffing) requests in the workspace, newest first.
+- **`list_retros`** _(read-only)_ — List sprint retros, most recent first.
+- **`list_share_links`** _(read-only)_ — List the workspace's public read-only share links (the tokenized links that let anyone view a project or saved view WITHOUT signing in). Newest first. Optionally filter by resource_type and/or resource_id. The raw token is never stored, so this returns link metadata (id, resource, permission, expiry, revoked/created timestamps) — NOT a usable URL. Use create_share_link to mint a new link and get its URL.
+- **`list_stale_documents`** _(read-only)_ — List knowledge documents flagged as STALE — places where a doc contradicts a more recent decision. Each flag carries a severity (critical/warning/info), the reasons, the quoted contradictions, and a suggested action. Read-only; the flags are produced by rescan_stale_documents.
+- **`mindmap_create`** — WRITE. Create a new mind map. Optionally attach an initial React Flow graph ({nodes, edges}) as a JSON object, a project ref, and a title (defaults to "Untitled").
+- **`mindmap_delete`** — WRITE. Permanently delete a mind map by id.
+  - required: `id`
+- **`mindmap_get`** _(read-only)_ — READ-ONLY. Fetch a single mind map by id. Returns its title, project ref, timestamps, and a compact summary of the graph (node/edge counts) rather than dumping the full React Flow payload.
+  - required: `id`
+- **`mindmap_list`** _(read-only)_ — READ-ONLY. List all mind maps in the current workspace (most-recently-updated first). Returns each mind map's id, title, optional project ref, and timestamps — not the graph itself.
+- **`mindmap_rename`** — WRITE. Rename a mind map (changes the title only, leaves the graph untouched).
+  - required: `id`, `title`
+- **`mindmap_update_graph`** — WRITE. Replace a mind map's graph with a new React Flow {nodes, edges} document (passed through opaquely). Uses last-write-wins unless an expected_updated_at guard is supplied.
+  - required: `id`, `graph`
+- **`notion_append_to_page`** — Append text content to an existing Notion page. Pass `page_id` and `content` (plain text; blank lines separate paragraphs).
+  - required: `page_id`, `content`
+- **`notion_create_page`** — Create a Notion page. Provide exactly one parent: `parent_page_id` (a sub-page) or `parent_database_id` (a new database row). The page is created in the connected Notion workspace, NOT in Kavanah. For a Kavanah task use `create_task` instead.
+  - required: `title`
+- **`notion_get_page`** _(read-only)_ — Fetch a Notion page's metadata: its title, URL, and a flat list of its properties (for database rows). Pass `page_id`. Use `notion_read_page` to get the page body text.
+  - required: `page_id`
+- **`notion_import_database_as_tasks`** — Import the rows of a Notion database into a Kavanah project as tasks (one row → one task). Pass `database_id` and the Kavanah `project_ref` to import into. Rows already imported are skipped, so re-running is safe. Each task's title comes from the row title; other properties become the description; status/due-date are mapped when present.
+  - required: `database_id`, `project_ref`
+- **`notion_list_databases`** _(read-only)_ — List the Notion databases the connected integration can see. Returns each database's id and title. Use a database id with `notion_query_database` (read rows) or `notion_create_page` (add a row).
+- **`notion_query_database`** _(read-only)_ — List the rows (pages) in a Notion database. Pass `database_id` (from `notion_list_databases` or `notion_search`). Returns each row's id, title, and key property values. To bring these rows into Kavanah as tasks, use `notion_import_database_as_tasks`.
+  - required: `database_id`
+- **`notion_read_page`** _(read-only)_ — Read a Notion page's body content as plain markdown-ish text (top-level blocks). Pass `page_id` (from `notion_search` or `notion_get_page`).
+  - required: `page_id`
+- **`notion_search`** _(read-only)_ — Search the connected Notion workspace for pages and databases by text. Returns each match's id, title, type (page/database), and URL. Use `notion_read_page` to read a page's body. For Kavanah's own knowledge base use `search_knowledge` instead.
+- **`organize_knowledge_library`** — Organize the knowledge base Library into a tidy page tree. Reads the live documents (id, title, tags, current parent), has an LLM propose 3–10 topical sections with each document filed under one, and either RETURNS the proposal (default — a dry run, nothing changes) or APPLIES it with apply=true: missing section pages are created and documents are re-parented. Documents the proposal leaves out stay where they are; cycles are rejected per-move. SLOW (one LLM call over the whole library). Run the dry run first and show the user the proposal before applying unless they explicitly asked you to just organize it.
+- **`preview_autolink_matches`** _(read-only)_ — Preview which of the workspace's auto-link rules would fire on a piece of text — without changing anything. Read-only, no LLM. Returns each matched phrase and the target it would link to. Use it to sanity-check a rule before or after creating it.
+  - required: `text`
+- **`propose_interview_writes`** — Draft the config values from the interview's answers and stage them for review WITHOUT writing anything. Returns the draft so you can show it to the user and ask them to confirm before apply_interview_writes. Call this only after record_interview_answer says all questions are answered.
+  - required: `interview_id`
+- **`publish_document`** — Publish a document to a tokenized public URL. Templates cannot be published. Returns the token (used in the public URL).
+  - required: `document_id`
+- **`quicktube_batch_process`** — Process up to 10 YouTube videos in one call. Choose which artifacts to include (transcripts free; summary or sections = 5 credits each per video). Use this when the user wants several videos analyzed in one shot.
+  - required: `video_urls`
+- **`quicktube_best_sections`** — Identify the most interesting moments of a YouTube video as scored sections with start/end timestamps, title, and reason. Useful for highlight reels or 'what should I watch first' (5 credits).
+  - required: `video_url`
+- **`quicktube_chat_with_video`** — Ask a question about a YouTube video's content. Pass a `messages` array of {role,content} (OpenAI-style); optionally pre-feed `transcript_text` or filter by `character`. 1 credit per assistant turn.
+  - required: `video_url`, `messages`
+- **`quicktube_detect_characters`** — Detect the people / speakers / interviewees in a YouTube video (3 credits). Returns named characters with roles when QuickTube can infer them.
+  - required: `video_url`
+- **`quicktube_download_video`** — Render a full video or a stitched highlights reel and return the resulting download URL / job. For highlights mode pass the `sections` you want clipped (start/end in seconds).
+  - required: `video_url`, `video_type`
+- **`quicktube_generate_quiz`** — Generate a multiple-choice quiz from a YouTube video's content (3 credits). Returns questions with choices and the correct answer.
+  - required: `video_url`
+- **`quicktube_generate_speech`** — Convert text to speech using OpenAI TTS via QuickTube. Returns an audio URL or base64. Voices: 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'.
+  - required: `text`
+- **`quicktube_get_channel`** _(read-only)_ — Fetch details about a YouTube channel by id (title, description, subscriber/video/view counts).
+  - required: `channel_id`
+- **`quicktube_get_download_url`** — Get a direct download URL for a YouTube video (10 credits for the full video). For 'highlights' mode use `quicktube_download_video` with the sections you want stitched together.
+  - required: `video_url`
+- **`quicktube_get_related_videos`** _(read-only)_ — Fetch videos related to a YouTube video by id. 0 credits.
+  - required: `video_id`
+- **`quicktube_get_transcript`** _(read-only)_ — Fetch the transcript for a YouTube video (with timestamps when available). Use this before deeper analysis tools — most QuickTube AI tools can also be called directly on a video_url and they'll pull the transcript themselves.
+  - required: `video_url`
+- **`quicktube_get_video_comments`** _(read-only)_ — Fetch comments for a YouTube video by id. 0 credits.
+  - required: `video_id`
+- **`quicktube_get_video_metadata`** _(read-only)_ — Fetch comprehensive metadata for a YouTube video by id (title, channel, duration, view/like counts, thumbnails, publish date). 0 credits.
+  - required: `video_id`
+- **`quicktube_popular_videos`** _(read-only)_ — Fetch trending / popular videos by region code.
+- **`quicktube_search_videos`** _(read-only)_ — Search YouTube videos by query. 0 credits.
+  - required: `query`
+- **`quicktube_summarize_video`** — Generate an AI summary of a YouTube video's content (costs 5 credits). Returns the full summary text — no follow-up call needed.
+  - required: `video_url`
+- **`read_agent_share`** _(read-only)_ — Read a shared agent-answer snapshot by id (the id from an /agent-share/<id> link a teammate sent). Returns the frozen title + markdown content so you can discuss it, turn it into tasks, or save it to the knowledge base. Read-only and workspace-scoped — snapshots are immutable copies shared on purpose; this never reads anyone's live conversation.
+  - required: `id`
+- **`read_docs_page`** _(read-only)_ — Read one Kavanah documentation page in full, as plain text — the same content published at /docs. Use after search_docs identifies the right page, or directly when you know the page (e.g. 'task-management', 'Client Portal', 'authentication', 'full-reference'). Quote or summarize from this text rather than answering product questions from memory, and point the user to the /docs site for the formatted version.
+  - required: `page`
+- **`read_engineering_note`** _(read-only)_ — Read one internal engineering note in full, as plain text. Use after search_engineering_notes identifies the right note, or directly when you know it (e.g. 'agent-undo', 'kvn', 'platform'). These notes state invariants precisely and often warn against 'simplifying' something — quote them rather than paraphrasing from memory, and say which note you got it from.
+  - required: `note`
+- **`read_project_file`** _(read-only)_ — Read a project file's CONTENT as text. Spreadsheets (.xlsx) come back as CSV per sheet, Word documents (.docx) as markdown, and text-like files (txt/md/csv/tsv/json/xml/yaml) as themselves. Images, PDFs and legacy .doc/.xls are refused with a reason — attach those to the chat instead, where the model can see them directly. Read-only. Use `list_project_files` first to get the file id.
+  - required: `project_ref`, `file_id`
+- **`read_web_page`** _(read-only)_ — Open one web page and read its full text as markdown. Use after `search_google` or `web_search` to read a source properly instead of relying on its snippet, or whenever the user gives you a URL and asks what it says. Works on ordinary public pages; it cannot sign in, so pages behind a login return whatever the logged-out visitor sees. Read-only; it never changes workspace data.
+  - required: `url`
+- **`recall_memories`** _(read-only)_ — Search the workspace's saved agent memories (decisions, commitments, people context, preferences). Call this BEFORE answering questions about past decisions or commitments, and at the start of substantive planning work. Omit `query` to list the most recent memories.
+- **`record_interview_answer`** — Record the user's answer to the current interview question and get the next one. When all questions are answered it returns a signal to call propose_interview_writes. Pass the user's reply verbatim (lightly cleaned); do not answer on their behalf.
+  - required: `interview_id`, `answer`
+- **`record_north_star_value`** — Record a new measurement of the North Star. Appends to the trend and updates the current value. Only works on a scope that has its OWN metric — a project inheriting the company metric cannot record against it, because that would edit the company's number by accident. Use when the user tells you where a manually-tracked metric now stands.
+  - required: `value`
+- **`regenerate_project_readme`** — Regenerate a project's Living README from its current tasks, decisions, and threads, and SAVE it. SLOW (one LLM call, can take tens of seconds) and token-costly. Pass project_ref to target a specific project; omitted, it uses the workspace's first project. Fails if the project has no tasks/decisions/threads to summarize.
+- **`remember`** — Save a durable memory for this workspace so future conversations and scheduled runs can recall it. Use for decisions ('we slipped the API launch to Aug 15'), commitments ('Marcus owes the security review Friday'), people context ('Priya is on PTO next week'), or standing preferences ('status updates go in #ops'). Keep each memory to ONE self-contained fact, phrased so it makes sense with no surrounding context. Do NOT store anything already recorded on tasks/projects, or trivia only relevant to the current chat.
+  - required: `content`
+- **`rename_project_file`** — Rename a file on a project. Extension is preserved if not given in the new name.
+  - required: `project_ref`, `file_id`, `new_name`
+- **`rescan_stale_documents`** — Re-audit a batch of this workspace's documents against its recent decisions and (re)raise stale flags. WRITES flags to the workspace. SLOW and token-costly: one LLM call per document, run sequentially, capped per call — a large workspace is scanned by re-calling with the returned next offset until there is no more. Use list_stale_documents afterwards to read the results.
+- **`review_decision_suggestion`** — Close one pending decision suggestion on the user's behalf. action='accept' creates the real decision record from it (optionally overriding title/context/what_we_chose before saving; the accepting USER is recorded as the reviewer — never the AI); action='dismiss' closes it without recording. ONLY call this when the user has explicitly said what to do with the suggestion — never accept or dismiss on your own judgment; the whole point of suggestions is that a human picks.
+  - required: `id`, `action`
+- **`revoke_share_link`** — Revoke a public share link by its id so its URL immediately 404s. Admin-only at the API layer. Use list_share_links to find the id. Irreversible — a new link must be minted to re-share.
+  - required: `link_id`
+- **`save_conversation_to_knowledge`** — Save THIS conversation into the knowledge base as one structured document. The server condenses the transcript (context, key facts, decisions, next steps) with a single LLM call and creates the document — so PREFER this over hand-writing create_knowledge_document calls when the user asks to 'add this conversation / what we discussed to the knowledge base'. Optional title overrides the generated one; optional focus steers what to emphasize. SLOW (one LLM call). Undoable.
+- **`scan_documents_for_decisions`** — Scan a batch of this workspace's knowledge documents for DECISIONS that were never recorded in the decision log, filing each find as a pending suggestion for human review. WRITES suggestions (never decisions — a person accepts or dismisses every one). SLOW and token-costly: one LLM call per changed document, run sequentially, capped per call; unchanged documents are skipped free. Re-call with the returned offset until no more remain, then use list_decision_suggestions to read the results.
+- **`scan_workspace_readiness`** _(read-only)_ — Read the workspace's setup gaps — the config that most limits how useful you can be, ranked by CONSEQUENCE (not a completion score). Use when the user asks how to set up / improve their workspace, when a new workspace is empty, or to decide what to offer to help with. Read-only. If it returns gaps, you can offer to run a setup interview (start_setup_interview) to fill one.
+- **`scrappy_create_markdown_export`** — Start a Scrappy markdown export: crawl a website and convert its pages to clean markdown. Returns the export id; poll with `scrappy_get_markdown_export`. Use to turn an external site into knowledge-base-ready markdown.
+  - required: `name`, `url`
+- **`scrappy_get_markdown_export`** _(read-only)_ — Fetch a single Scrappy markdown export by id with its status and page count. Poll this after `scrappy_create_markdown_export`.
+  - required: `export_id`
+- **`scrappy_list_markdown_exports`** _(read-only)_ — List all Scrappy markdown export jobs with their status and page counts.
+- **`search_agent_conversations`** _(read-only)_ — Full-text search the current user's PAST AI-agent conversations (messages + titles). Returns one hit per conversation with a query-relevant snippet. Read-only, self-scoped. Use when the user asks 'what did we decide about X in an earlier chat?' or you need context from a previous session — then open the best hit with get_agent_conversation. For durable facts prefer recall_memories first; this searches raw transcripts.
+  - required: `query`
+- **`search_docs`** _(read-only)_ — Search Kavanah's official documentation (the /docs site: getting started, core features, dev & AI, integrations, and the full API reference) plus the Help Center FAQs. Returns the best-matching pages with excerpts and matching FAQs with their full answers. Use for conceptual and capability questions — 'how does the client portal work?', 'does Kavanah have an API for tasks?', 'what do automations do?', 'how is my data secured?' — anything answered by product documentation rather than workspace data. For WHERE a feature lives in the UI use find_ui_feature; for KVN methodology coaching use the course tools; for the user's own uploaded files use the knowledge-base tools.
+  - required: `query`
+- **`search_engineering_notes`** _(read-only)_ — Search Kavanah's internal engineering notes (docs/agent-notes/) — architecture decisions, invariants, gotchas, and the reasoning behind how subsystems were built. Use for questions about how Kavanah is IMPLEMENTED ('why does undo use a group id?', 'how does the KVN gate avoid rate limits?', 'what breaks if I add a task-creating tool?'). This is internal engineering context, NOT product documentation: for how to USE a feature, call search_docs instead. Returns the best-matching notes with the section each hit falls under; follow up with read_engineering_note for the full text.
+  - required: `query`
+- **`search_google`** _(read-only)_ — Run a Google search and get the ranked result list back verbatim — titles, URLs, snippets, plus the answer box / knowledge panel when Google shows one. Use this instead of `web_search` when you need the RESULTS themselves rather than a written answer: finding a specific page, comparing what several sources say, checking who ranks for a term, or gathering URLs to then open with `read_web_page`. Read-only; it never changes workspace data.
+  - required: `query`
+- **`search_knowledge_documents`** _(read-only)_ — Full-text search over knowledge documents (title AND body). Returns id + title + icon + a snippet around the match. Use to find a specific document to open, comment on, edit, or link; to answer a QUESTION from workspace knowledge prefer ask_knowledge_base.
+  - required: `q`
+- **`set_company_profile`** — Save or update fields on the workspace's company profile. PARTIAL update: only the fields you pass change; everything else is preserved. Use when the user states a durable org fact (address, EIN, phone, website) or corrects one. For facts without a dedicated field, use key_facts (a string map; pass null as a value to delete a key).
+- **`set_document_parent`** — Move a knowledge document under a parent page (nest it), or promote it back to the top level. Pass parent_id = null to move the page to the root. The move is validated server-side: the parent must exist in this workspace, must not be a template, and the move must not create a circular hierarchy (a page can't become its own ancestor) — an invalid move returns an error and changes nothing.
+  - required: `document_id`
+- **`set_north_star`** — Set or update the North Star for the workspace or a project: the metric, how it is measured, the direction, the target and the date to hit it by. Advisory, never enforced — it does not refuse anything, it gives people and you a shared way to say whether work moves the company. Provide any subset of fields; omitted ones are unchanged. Admin-only at the API layer for the workspace scope. Setting one on a project overrides the inherited company metric for that project's work.
+- **`set_project_kvn`** — Update one or more axes of a project's KVN charter. Provide any subset of know_how/vision/negation. Admin-only at the API layer.
+  - required: `project_ref`
+- **`set_task_kvn`** — Set or update the KVN axes on a single task. Provide any subset of know_how/vision/negation; omitted axes are unchanged. Use when delegating: every task should ideally have all three so the doer has unambiguous intent.
+  - required: `task_id`
+- **`set_workspace_kvn`** — Update one or more axes of the company's KVN charter. Admin-only at the API layer; non-admins will get a permission error. Provide any subset of know_how/vision/negation; omitted axes are unchanged.
+- **`start_setup_interview`** — Begin an interview that asks the user a short series of questions to fill a piece of workspace config, then stages a draft for their review. Returns the interview id and the first question — ask it, then feed the user's reply to record_interview_answer. Only offer this; never start it unprompted mid-conversation. Topics: 'kvn_charter' (the company Know-how / Vision / Negation), 'team_context' (who's who, for assignment).
+  - required: `topic`
+- **`surface_false_friend`** — Append a false-friend to a project's KVN charter — an approach that looks correct but sits in the negation space. Use when reviewing a proposed approach, when the user explicitly names a pattern that should be refused, or when a task you almost recommended would have crossed a boundary. The agent will check every subsequent task in this project against this list.
+  - required: `project_ref`, `approach`
+- **`sweep_project_for_false_friends`** _(read-only)_ — Audit every open task in a project against its KVN charter and report which ones have drifted — tasks that resemble the Vision but serve a proxy for it, or that sit in the Negation space. This is the charter-drift review: use it when the user asks whether a project is still on-mission, during a quarterly/charter review, or when a project 'feels busy but not productive'. Bounded to the most recent open tasks. Costs one model call per task, so do not call it casually on a large project.
+  - required: `project_ref`
+- **`unpublish_document`** — Remove a document's publication. The public token is invalidated immediately.
+  - required: `document_id`
+- **`update_decision`** — Patch a decision by id. Useful for marking superseded.
+  - required: `decision_id`
+- **`update_document_block_comment`** — Edit a block comment body and/or toggle its resolved state. resolved=true marks the thread done; resolved=false reopens it.
+  - required: `comment_id`
+- **`update_knowledge_document`** — Patch a knowledge document. Only provided fields are written. Pass `blocks` to replace the entire block body; passing `body` instead patches the legacy markdown column. Setting is_template=true on a published doc also unpublishes it and clears outbound backlinks.
+  - required: `document_id`
+- **`update_proof_annotation`** — Update a proofing pin's comment and/or its resolved flag. Provide any subset; omitted fields are unchanged. Last-write-wins (no version check). Use to edit a note or mark feedback as resolved/unresolved.
+  - required: `annotation_id`
+- **`verify_kvn_complete`** _(read-only)_ — Check whether a task's K/V/N axes are all transmitted. Returns which axes are missing. Use before declaring delegation complete or before transitioning a task to In Progress.
+  - required: `task_id`
+- **`web_search`** _(read-only)_ — Search the live internet and get a synthesized, cited answer. Use this whenever the user asks about current events, external facts, public companies/people, prices, news, documentation, or anything that isn't stored in this workspace — and whenever your own knowledge may be outdated. Returns a concise answer plus the source URLs it used. Read-only; it never changes workspace data.
+  - required: `query`
+- **`whiteboard_create`** — WRITE. Create a new whiteboard. Optionally attach an initial Excalidraw scene (the full {elements, appState, files} payload) as a JSON object, a project ref, and a title (defaults to "Untitled").
+- **`whiteboard_delete`** — WRITE. Permanently delete a whiteboard by id.
+  - required: `id`
+- **`whiteboard_get`** _(read-only)_ — READ-ONLY. Fetch a single whiteboard by id. Returns its title, project ref, timestamps, and a compact summary of the scene (element/file counts) rather than dumping the full Excalidraw payload.
+  - required: `id`
+- **`whiteboard_list`** _(read-only)_ — READ-ONLY. List all whiteboards in the current workspace (most-recently-updated first). Returns each whiteboard's id, title, optional project ref, and timestamps — not the drawing scene itself.
+- **`whiteboard_rename`** — WRITE. Rename a whiteboard (changes the title only, leaves the scene untouched).
+  - required: `id`, `title`
+- **`whiteboard_update_scene`** — WRITE. Replace a whiteboard's scene with a new Excalidraw document (passed through opaquely). Optionally also update the title and thumbnail. Uses last-write-wins unless an expected_updated_at guard is supplied.
+  - required: `id`, `scene`
+
+## reports_analytics (78)
+
+- **`add_budget_entry`** — Record an actual spend entry against a project's budget.
+  - required: `project_ref`, `category`, `description`, `amount`
+- **`allocate_resource`** — Allocate a member to a project for a given period with planned hours.
+  - required: `project_ref`, `member_name`, `period_start`, `period_end`
+- **`check_goals`** — Evaluate goals against live data NOW and report each one's current value + variance verdict (on_track / at_risk / off_track). Pass a goal_id for one, or omit to check all active goals. Manual and clearbooks_metric goals report their last recorded value (use record_goal_value / the clearbooks_* tools to refresh those).
+- **`close_availability_request`** — Mark an availability request as closed (no longer accepting responses).
+  - required: `request_id`
+- **`compare_periods`** _(read-only)_ — Compare a metric between two time periods (US-54). Useful for sprint-over-sprint or week-over-week comparisons.
+  - required: `metric`, `period1_start`, `period1_end`, `period2_start`, `period2_end`
+- **`configure_compliance_archiving`** — Apply the OWNER's compliance archiving preferences (for anyone else, use request_compliance_archiving_change). Set up compliance archiving: every email Kavanah sends for this workspace is copied to the firm's archiver, and everything said inside Kavanah (chat, discussions, comments, agent messages, approvals, files, call audio) is journaled and delivered to it. WORKSPACE OWNER ONLY. Set `archive_address` to the journaling address the firm's archiver (Global Relay, Smarsh, Proofpoint…) issued — never invent or guess one; ask for it. Set `enabled: true` to turn it on (it needs an address; turning it on also backfills existing history). `retention_days` 365–3650 (default six years, 2190). `send_test: true` sends a labelled test message to the address so the compliance officer can confirm the archiver accepts it — offer it after turning archiving on. This tool cannot turn archiving OFF or remove the address: that stops a compliance control, so it is done only by the owner in Settings → Audit Logs → Archiving.
+- **`configure_state_of_business_report`** — Set up (or reconfigure) the recurring 'Agentic COO — State of the Business' email report for this workspace in ONE call: it creates a saved report + a delivery schedule and turns the report feature on. The report is a per-department executive briefing — health score (color-coded), what changed since the last report, top 3–5 deliverables, connected external systems + a derived automation %, and 3–5 suggested automations with estimated cost. Departments come from the workspace's Departments — use `list_departments` / `create_department` / `set_project_department` first so each department has projects and members mapped, or work lands in an 'Unassigned' bucket. THIS ARMS RECURRING AI SPEND: every send runs an AI synthesis on the cadence you set (e.g. 3×/day). Admin only. Provide either `times` (local HH:MM list, e.g. ["08:00","12:00","17:00"]) or an explicit UTC `cron_expression`.
+- **`create_availability_request`** — Open a new availability request (leader → team). project_ref is optional — omit for a workspace-wide ask. Dates are ISO 'YYYY-MM-DD'.
+  - required: `title`, `message`, `period_start`, `period_end`
+- **`create_goal`** — Create a measurable goal/OKR. Pick a metric_source: 'task_completion_rate' (%, optionally per project), 'open_task_count', 'overdue_task_count', 'tasks_completed_last_7d', 'manual' (you set the number), or 'clearbooks_metric' (a finance number read live via the clearbooks_* tools). Set a target_value and comparator ('gte' = at least, 'lte' = at most, 'eq' = exactly). warn_threshold is the fraction of target (e.g. 0.1 = 10%) inside which the goal is 'at risk' rather than 'off track'.
+  - required: `name`, `metric_source`, `comparator`, `target_value`
+- **`create_invoice_from_billable_time`** — Create a DRAFT ClearBooks invoice from a client's unbilled billable time and stamp those entries as invoiced. Draft only — this never sends anything; emailing the invoice stays behind clearbooks_send_invoice. Requires the client to have a stored ClearBooks customer mapping, or pass clearbooks_customer_id explicitly (find it with clearbooks_list_customers; an explicit id is remembered on the client when it has no mapping yet). Already-invoiced entries are never selected again, so a retry cannot double-bill. Preview first with preview_billable_time. Admin only.
+  - required: `client_id`
+- **`create_objective`** — Create an objective or key result. Use kind=key_result with parent_id to attach a key result to an existing objective.
+  - required: `title`
+- **`create_program`** — Create a portfolio program (a grouping of projects).
+  - required: `name`
+- **`create_report`** — Save a new report definition to the Reports section. Optional `config` carries per-type filters (project_ref, date range, sprint_ids, etc.). Returns the new report including its `id`, which can then be passed to `create_report_schedule`.
+  - required: `name`, `report_type`
+- **`create_report_schedule`** — Schedule a recurring report. Provide a 5-field UTC cron expression (e.g. `0 9 * * MON` for every Monday at 09:00 UTC) plus a recipient set. Recipients can be any combination of literal emails AND dynamic groups (workspace, project members, team members, department members, individual member user_ids). Dynamic groups re-resolve at every delivery, so adding a user to a department auto-includes them in the next report. Use `list_reports` first to obtain the `report_id`.
+  - required: `report_id`, `cron_expression`
+- **`delete_objective`** — Delete an objective or key result. Deleting an objective cascades to its key results.
+  - required: `objective_id`
+- **`delete_program`** — Delete a program. Project refs are unlinked but projects themselves are preserved.
+  - required: `program_id`
+- **`delete_report`** — Delete a saved report by id. Any schedules attached to it cascade-delete.
+  - required: `report_id`
+- **`delete_report_schedule`** — Stop and remove a recurring report schedule. The underlying saved report stays in the Reports section.
+  - required: `schedule_id`
+- **`export_report`** _(read-only)_ — Run a report definition ad-hoc and render it as a downloadable document string in csv, markdown, or html. Nothing is persisted. Output is capped in length — the summary says if it was truncated. For raw rows instead of a formatted document, use generate_report_now.
+  - required: `report_type`
+- **`generate_report_now`** _(read-only)_ — Run a report definition ad-hoc and return its rows (NOT a saved report — nothing is persisted). Use this to compute a report on demand. Supported report_type values include status, burndown, burnup, cycle-time, lead-time, velocity, completion-rate, overdue, new-vs-resolved, time-tracking, billing, cross-project, client-health, discussion-activity, storage-usage, workspace-usage, weekly-status, bottlenecks, scope-creep, deadline-forecast, standup-summary, sprint-comparison, idle-tasks, executive-summary, client-health-analysis, anomalies, my_work, progress-weekly/monthly/yearly, github-contributor, comparison. Row output is capped — the summary says how many rows were truncated.
+  - required: `report_type`
+- **`generate_weekly_checkin`** — Generate (or fetch the existing) DRAFT weekly check-in for a member and a week. Defaults to the calling user and the last 7 days. Insert-or-do-nothing: if a check-in already exists for that member+week it is returned untouched (edits are never clobbered). Creates a draft only — it does not send email.
+- **`get_anomalies`** _(read-only)_ — Detect anomalies and flag issues (US-60). Finds stale tasks (open > 30 days), severely overdue items (> 14 days past due), unassigned high-priority tasks, effort overruns (actual > 2x estimate), and SLA breaches.
+- **`get_bottlenecks`** _(read-only)_ — Identify bottlenecks by finding which status columns have the most stuck tasks (US-50). Shows task count per status, average days in status, and the oldest stuck task.
+- **`get_burndown_data`** _(read-only)_ — Get burndown chart data for a project showing remaining tasks over time (US-56). Use to generate a burndown narrative, not just chart data — explain trends, inflection points, and what happened.
+  - required: `project_ref`, `start_date`, `end_date`
+- **`get_burnup_data`** _(read-only)_ — Get burnup chart data for a project showing total scope and completed tasks over time. Useful alongside burndown for a complete narrative.
+  - required: `project_ref`, `start_date`, `end_date`
+- **`get_client_health_analysis`** _(read-only)_ — Analyze client health with recommended actions (US-59). Shows health score (0-100), status, overdue tasks, and top issues for each client.
+- **`get_completion_rates_by_member`** _(read-only)_ — Get task completion rates per team member (US-48). Shows total assigned, completed count, completion rate percentage, and average days to complete for each assignee.
+- **`get_compliance_archiving_status`** _(read-only)_ — Compliance (broker-dealer) archiving status for this workspace. ANY member may ask: they get whether it is ON, the retention period, what is and is not archived, and who can change it. Owners and admins also get the archive/journaling address, how many communications are journaled or waiting for delivery, the last delivery and any delivery error. Use whenever someone asks about their archiving setup or status, whether their communications are archived or monitored, SEC 17a-4 / FINRA 4511 recordkeeping, or how to turn archiving on. Settings: Settings → Audit Logs → Archiving (/settings/audit-logs?tab=archiving).
+- **`get_compliance_summary`** _(read-only)_ — Generate a high-level compliance report for the workspace: counts of recent audit events by category, severity, and success/failure (admin-only).
+- **`get_cross_project_report`** _(read-only)_ — Get task counts across multiple projects for comparison.
+- **`get_deadline_forecast`** _(read-only)_ — Get a data-driven deadline forecast for projects (US-52). Shows remaining tasks, velocity, estimated weeks remaining, and whether the deadline will be met with confidence level.
+- **`get_executive_summary`** _(read-only)_ — Generate an executive summary across all projects (US-58). Shows completion %, overdue count, health status, velocity, and budget variance for each project.
+- **`get_idle_tasks`** _(read-only)_ — Find tasks that have been idle (not completed) for too long (US-57). Shows task details and how many days each has been idle.
+- **`get_new_vs_resolved_trend`** _(read-only)_ — Get the trend of new tasks created vs tasks resolved per day over a period.
+- **`get_operating_metrics`** _(read-only)_ — Read the workspace's OPERATING metrics — the system-as-a-whole layer from the PM course (lesson 6.4): negation reuse rate (how often per week the charter's Negations are cited), AI Employee contribution (fraction of completed estimated-hours assigned to personas), and time-to-first-real-task (median days from a member joining to their first shipped task). Three further operating metrics — capture latency, project Vision hit rate, and project-to-outcome conversion — are returned marked 'unavailable' with the reason, because the product does not yet capture the data they need. Use for 'how is the workspace doing overall?', a quarterly operating review, or 'are the AI Employees earning their keep?'. Read-only.
+- **`get_overdue_tasks`** _(read-only)_ — Get a list of all overdue tasks with details including how many days past due.
+- **`get_portfolio_forecasts`** _(read-only)_ — Get completion forecasts for active projects based on current velocity, plus workload summaries (over-allocation), and budget rollups. Read-only summary.
+- **`get_project_status_report`** _(read-only)_ — Get a detailed project status report with status breakdown, priority breakdown, completion percentage, and overdue count.
+- **`get_report_insight`** _(read-only)_ — Run one of the deep-analytics insight getters and return its data. insight_type selects the analysis: 'cohort' (task cohorts by tag), 'forecast' (revenue/throughput forecast), 'quality' (rework/quality metrics), 'time-breakdown' (logged hours grouped by project/person/tag), 'goal-drift' (projects drifting from their goals), 'sprint-history' (recent sprint stats), 'custom-context' (workspace context for custom reports). Read-only; output is capped.
+  - required: `insight_type`
+- **`get_scope_creep`** _(read-only)_ — Detect scope creep by showing how many new tasks have been added since a given period (US-51). Shows tasks at start, tasks added, and scope creep percentage.
+- **`get_sprint_comparison`** _(read-only)_ — Compare two or more sprints/periods side by side (US-54). Shows total tasks, completed tasks, completion rate, story points, average cycle time, and scope changes for each sprint.
+- **`get_standup_summary`** _(read-only)_ — Generate a standup summary from yesterday's task activity (US-53). Shows tasks completed yesterday, tasks in progress today, and blocked/overdue items.
+- **`get_time_tracking_summary`** _(read-only)_ — Summarize time tracking data showing where the team's hours went (US-55). Can group by project, person, or task.
+- **`get_velocity_trends`** _(read-only)_ — Get velocity trends showing tasks completed per week over time (US-49). Use to answer whether the team is speeding up or slowing down.
+- **`get_weekly_checkin`** _(read-only)_ — Read one weekly check-in by id (full summary markdown + metrics + recipients). Read-only.
+  - required: `id`
+- **`get_weekly_status_report`** _(read-only)_ — Get a weekly status report for one or all projects. Shows task counts by status, tasks completed/created this week, overdue count, and high-priority items. Use for generating weekly status reports (US-46) and client-facing project updates (US-47).
+- **`list_availability_requests`** _(read-only)_ — List availability requests in this workspace (leaders → team asks for who's free during a period). Optionally filter by status (open|closed).
+- **`list_availability_submissions`** _(read-only)_ — List member availability responses. Pass request_id to filter to one request, or user_id to filter to one member. Without filters it returns the workspace's full submission set (admin-only).
+- **`list_budget_entries`** _(read-only)_ — List actual spend entries on a project's budget (or all projects if project_ref omitted).
+- **`list_budgets`** _(read-only)_ — List all project budgets with planned vs actual spending for the workspace.
+- **`list_capacity`** _(read-only)_ — List team capacity (hours per week, cost per hour) per member.
+- **`list_dashboard_widgets`** _(read-only)_ — List the widgets (charts/cards) on a saved dashboard by dashboard id (from list_report_dashboards). Returns each widget's id, type, title, and config. Read-only.
+  - required: `dashboard_id`
+- **`list_goals`** _(read-only)_ — List the workspace's goals/OKRs with each one's target, latest measured value, and status (on_track / at_risk / off_track). Use when the user asks 'how are we tracking?' or to ground a review.
+- **`list_objectives`** _(read-only)_ — List strategic objectives (OKRs) and their key results in the workspace.
+- **`list_programs`** _(read-only)_ — List all portfolio programs in the workspace. Programs group projects under a strategic umbrella.
+- **`list_report_dashboards`** _(read-only)_ — List the workspace's saved report dashboards (custom analytics boards), default first. Returns each dashboard's id, name, whether it's the default, and how many widgets it holds. Read-only.
+- **`list_report_filters`** _(read-only)_ — List the workspace's saved report filters (reusable report_type + filter presets), newest first. Read-only.
+- **`list_report_schedules`** _(read-only)_ — List recurring report schedules in the current workspace, including cron expression, recipient emails/groups, format, enabled flag, last_sent_at, and next_run_at.
+- **`list_reports`** _(read-only)_ — List saved report definitions in the current workspace. Returns id, name, report_type, is_template, and timestamps. Use to find a report_id before attaching a recurring schedule.
+- **`list_weekly_checkins`** _(read-only)_ — List per-member weekly check-in reports for the workspace, newest week first. Optionally filter by member, status, or week. Read-only.
+- **`preview_billable_time`** _(read-only)_ — Preview a client's unbilled billable time as ClearBooks-ready invoice line items (read-only — nothing is created or stamped). Selects billable, not-yet-invoiced entries with an end time on the client's projects, resolves each entry's hourly rate (entry override → project default → client default), and groups them into line items per project. Entries with no resolvable rate and still-running timers are listed as skipped with a reason. Amounts are integer cents. Use create_invoice_from_billable_time to actually bill.
+  - required: `client_id`
+- **`preview_report_recipients`** _(read-only)_ — Resolve a recipient set (literal emails + dynamic groups) to the concrete email list that would receive the report right now, without sending anything. Use to confirm a group selector covers the right people before scheduling.
+- **`record_goal_value`** — Set the current value for a 'manual' or 'clearbooks_metric' goal (e.g. after reading a finance number with the clearbooks_* tools). Records the value and recomputes the variance verdict.
+  - required: `goal_id`, `value`
+- **`request_compliance_archiving_change`** — Pass a member's or admin's compliance archiving preference to the workspace owner — for example "please turn archiving on", "keep records for 7 years", "use our new Smarsh address", or "turn it off". Only the owner can change archiving, so for anyone who is NOT the owner this is how their preference is heard: the owner gets an alert linking to the Archiving settings, and the request is recorded in the audit log. Nothing changes until the owner acts; say so. If the user IS the owner, use configure_compliance_archiving instead.
+  - required: `preference`
+- **`run_report_schedule_now`** — Trigger an off-cycle delivery of a schedule immediately (generates the report, emails the resolved recipients, and stamps last_sent_at). Useful for testing the recipient list or sending an ad-hoc copy without changing the cron. A large report can take a few minutes. If a call times out or seems to fail, do NOT call it again — check last_sent_at with list_report_schedules first: a repeat within 15 minutes of a delivery, or while one is still running, is refused so recipients are never mailed twice.
+  - required: `schedule_id`
+- **`save_dashboard_widget`** — Add a widget (a chart/card) to a saved dashboard. The dashboard must belong to this workspace. Returns the new widget's id.
+  - required: `dashboard_id`, `widget_type`
+- **`save_report_dashboard`** — Create a new saved report dashboard for the workspace. Returns the new dashboard's id — add charts to it with save_dashboard_widget.
+  - required: `name`
+- **`save_report_filter`** — Save a reusable report filter preset for the workspace (a named report_type + filter config). Returns the new filter's id.
+  - required: `name`, `report_type`
+- **`search_audit_logs`** _(read-only)_ — Search workspace audit logs (admin-only). Filter by actor, action, category, resource, date range, severity, success, and full-text keyword. Returns up to `limit` rows ordered newest-first.
+- **`set_member_capacity`** — Set or update a team member's capacity (hours/week and/or cost/hour). Upserts by member_name.
+  - required: `member_name`
+- **`set_project_budget`** — Create or update a project's planned budget (labor, external, total) and ROI projection. Upsert-style.
+  - required: `project_ref`
+- **`submit_availability`** — Submit (or update) the current user's availability. Pass request_id to respond to a specific ask, or omit it for a 'standing' entry that captures ongoing availability. Latest submission wins.
+  - required: `status`, `available_hours_per_week`
+- **`unbill_time_entries`** — Clear the invoiced stamp (invoice reference + invoiced-at) from every time entry billed under a given ClearBooks invoice reference, making that time billable again — the local inverse for a voided or deleted draft. Does NOT touch ClearBooks itself; void or delete the invoice there separately (clearbooks_void_invoice / clearbooks_delete_invoice). Admin only.
+  - required: `invoice_ref`
+- **`update_goal`** — Update a goal's target, threshold, comparator, due date, unit, description, or status ('met'/'missed'/'archived' to close it out).
+  - required: `goal_id`
+- **`update_objective`** — Update an objective's title, description, progress (0-100), status, target date, or linked project refs.
+  - required: `objective_id`
+- **`update_program`** — Update a program's name, description, color, archive state, or set its project_refs (replaces the existing list).
+  - required: `program_id`
+- **`update_report_schedule`** — Update a recurring schedule's cron, format, recipients, groups, or enabled flag. Pass only the fields you want to change. Pass `recipient_groups: {}` to clear the dynamic group set.
+  - required: `schedule_id`
+- **`update_weekly_checkin_draft`** — Edit a DRAFT weekly check-in: replace its summary markdown and/or its recipient list. Only drafts can be edited (scheduled/sent ones are locked). Does not send anything.
+  - required: `id`
+
+## tasks_projects (237)
+
+- **`accept_detected_activity`** — Accept one of the caller's own pending detected activities, logging it as a real time entry under the caller's name. Optionally override the project or task. Only the current user's own detected activities can be accepted.
+  - required: `activity_id`
+- **`add_comment`** — Add a comment to a task.
+  - required: `task_id`, `body`
+- **`add_custom_task_emoji`** — Add one emoji to the workspace's custom task-emoji palette, so it becomes a one-click option in the on-card picker for everyone. Use when the user asks for an emoji the picker does not offer, or when you are establishing a labelling convention for a team (e.g. a duck for 'needs review by the data team'). Give it a `label` saying what it means in this workspace — an unlabelled emoji is a glyph nobody can interpret six weeks later. Adding one that is already in the set succeeds and reports that it was already there, so this is safe to call without checking first. This does NOT set the emoji on any task — use update_task's `emoji` field for that, which works with any emoji whether or not it is in this palette.
+  - required: `emoji`
+- **`add_notes_or_links`** — Add notes (text) or links (URLs) to an existing task. Appends to existing notes/links.
+  - required: `task_id`
+- **`add_project_member`** — Grant someone access to a project (admin/owner only). This IS the access control for a private project: private projects are visible only to workspace admins and the people added here. Identify the person by `email` (or `user_id`) — a name alone cannot grant access. They must already be an active member of this workspace; if the email has no Kavanah account yet, the grant is recorded and takes effect when they accept their workspace invite. Use `role` for lead/member/viewer. To restrict the project itself, set visibility with update_project.
+  - required: `project_ref`
+- **`add_project_team`** — Assign a whole team to a project. Projects support team-level membership in addition to individual members. Use list_members or workspace context to find team_ids.
+  - required: `project_ref`, `team_id`
+- **`add_task_to_project`** — Add an existing project membership to a task without removing its current project memberships. Tasks can belong to many projects. Set make_primary=true to also promote this project to primary.
+  - required: `task_id`, `project_ref`
+- **`answer_manager_checkin`** — Record the caller's answer to one of their own manager check-ins, and award the participation points. Write-once — a check-in that already has an answer is not overwritten. If the user's answer implies a date has slipped, call renegotiate_commitment as well.
+  - required: `response`
+- **`archive_project`** — Archive a project (or unarchive if archived=false). IMPORTANT: confirm with user first.
+  - required: `project_ref`
+- **`archive_task`** — Archive a task in place, or restore it with archived=false. Non-destructive sibling of delete_task: the task keeps its id, comments, and history but is hidden from boards and lists until restored. Prefer this over delete_task when the user wants a task out of the way rather than gone. Find archived tasks with search_tasks include_archived=true.
+  - required: `task_id`
+- **`assess_task_agent_capability`** _(read-only)_ — Assess whether Kavanah's AI agent could autonomously COMPLETE a specific existing task with the tools + connected integrations available — returns a verdict (can_complete / can_assist / needs_human), required scopes/integrations, anything missing, risky steps, and a short plan. Use to decide whether to offer 'have Kavanah do it'.
+  - required: `task_id`
+- **`assign_member_to_department`** — Add a workspace member to a department. Use either department_id or department_name to identify the department, and either user_id or member_name to identify the person.
+- **`assign_persona_to_department`** — Add an AI persona (AI Employee) to a department. Use either persona_id or persona_name. Lets a department's queue be staffed by both humans and AI agents.
+- **`assign_project_to_folder`** — Move a project into a folder, or remove it from its folder. Pass a folder_id to assign; omit folder_id (or pass null) to remove the project from any folder (back to Uncategorized).
+  - required: `project_ref`
+- **`assign_tasks_to_sprint`** — Assign one or more tasks to a sprint. Pass sprint_id=null (or empty) to un-assign tasks.
+  - required: `task_ids`
+- **`bulk_create_tasks`** — Create multiple tasks at once. Each task needs at least a title. Use when the user provides a list or outline of tasks to create. project_ref is the default project for the batch; when the tasks belong to DIFFERENT projects (e.g. one per department), set project_ref on each task instead of putting them all in one project.
+  - required: `project_ref`, `tasks`
+- **`bulk_estimate_tasks_by_filter`** — Estimate every task that matches a filter, server-side, in one tool call. Use this for prompts like 'estimate all open tasks in Project X' or 'estimate everything assigned to Sarah in the review column'. Skips tasks that already have an AI estimate unless only_unestimated=false. Caps at 50 tasks per call. Respects the workspace's daily AI token budget — fails fast when exhausted.
+- **`bulk_set_due_dates`** — Set or clear due_date on many tasks in a single call. Use after the user has confirmed the dates, or as a thin wrapper when they explicitly ask for a uniform due date across a set of tasks. To predict per-task due dates from estimates, use predict_and_apply_due_dates instead.
+  - required: `task_ids`, `due_date`
+- **`bulk_update_tasks`** — Apply the same patch to many tasks at once. Use when the user says things like 'move all Open backend tasks to In Progress', 'set these five tasks to High priority', or 'reassign Sarah's tasks to Marcus'. Up to 500 task ids per call. Returns the count actually patched. Same status-transition / required-field gates apply per-task. Calls touching MORE than 25 tasks return a preview first — show it to the user, get their go-ahead, then re-call with confirm=true.
+  - required: `task_ids`
+- **`cancel_commitment`** — Cancel one of the caller's own open commitments — the work is no longer being done. No points are awarded and none are deducted; a cancelled commitment is neither kept nor broken. Use this rather than letting work the user has abandoned sit and rot into a miss.
+  - required: `commitment_id`
+- **`clear_column_limit`** — Remove the WIP limit and name override for one status on a project.
+  - required: `project_ref`, `status_id`
+- **`clear_task_location`** — Remove the geographic pin from a task so it no longer appears on the Map view.
+  - required: `task_id`
+- **`clickup_create_task`** — Create a task in a ClickUp List. The task is owned by the connected ClickUp account. For a task that should live on Kavanah's own board use `create_task` (the Kavanah one) instead.
+  - required: `list_id`, `name`
+- **`clickup_list_lists`** _(read-only)_ — List the task Lists in a ClickUp Space — both folderless lists and lists inside folders. Pass `space_id` (from `clickup_list_spaces`). Returns each list's id and name; use a list id with `clickup_list_tasks` or `clickup_create_task`.
+  - required: `space_id`
+- **`clickup_list_spaces`** _(read-only)_ — List the Spaces in a ClickUp workspace. Pass `workspace_id` (from `clickup_list_workspaces`). Returns each space's id and name.
+  - required: `workspace_id`
+- **`clickup_list_tasks`** _(read-only)_ — List tasks in a ClickUp List. Pass `list_id` (from `clickup_list_lists`). For Kavanah's own task board use `search_tasks` instead.
+  - required: `list_id`
+- **`clickup_list_workspaces`** _(read-only)_ — List the ClickUp workspaces (the API calls them "teams") the connected account belongs to. Returns each workspace's id and name. Call this first to get a workspace id for `clickup_list_spaces`.
+- **`clickup_update_task`** — Update an existing ClickUp task. Pass `task_id` and any fields to change. Set `status` to a status name on the task's List to move it. For Kavanah's own tasks use `update_task` instead.
+  - required: `task_id`
+- **`commit_to_work`** — Record a commitment: the caller promises to finish a named piece of work by a deadline. If task_id is given the commitment is linked to that task and settles automatically when the task is completed. If create_task is true a task is created and assigned to the caller first. The deadline is COMPUTED from their calibration and existing queue unless you pass due_at explicitly — prefer the computed one. Refuses when the caller is already at their open-commitment ceiling. The recorded deadline is frozen for scoring: renegotiating later moves the working date but never the date they are graded against.
+  - required: `title`
+- **`complete_commitment`** — Mark one of the caller's own open commitments as delivered, and award the points it earns. On-time is judged against the ORIGINAL deadline. Prefer completing the linked TASK instead when there is one — task-linked commitments settle themselves, and doing both is redundant (the second is a no-op).
+  - required: `commitment_id`
+- **`complete_project`** — Mark a project as complete (or reopen if completed=false). When completing, optionally record how the project's Vision (V) turned out — this feeds the Project Vision hit rate operating metric (course 6.4). Only ask for/record vision_outcome on completion, not reopen.
+  - required: `project_ref`
+- **`create_component`** — Create a component on a project. lead_user_id is the workspace user owning the component (optional).
+  - required: `project_ref`, `name`
+- **`create_custom_property`** — Define a new custom property on tasks/projects/clients (admin-only). type=formula computes its value from an expression; type=rollup aggregates values from related items. Both are computed at read time and never stored as values. For select/multi_select, pass config.options as [{value, label, color?}].
+  - required: `scope`, `name`, `type`
+- **`create_custom_status`** — Create a new custom status (board column) on a project. `slug` must be unique within the project and contain only lowercase letters, numbers, and dashes (e.g. 'in-review', 'blocked'). `category` controls how the board treats the column for completion/cycle-time math: 'backlog' (not started), 'active' (in flight), 'done' (counts as completed), or 'cancelled' (terminal, doesn't count as done).
+  - required: `project_ref`, `name`, `slug`
+- **`create_department`** — Create a new department in the current workspace. Departments group members into teams (Design, Engineering, etc.) and can be set as the owning queue on a task.
+  - required: `name`
+- **`create_my_note`** — Create a new note in the caller's own Notepad with an optional title and body. Returns the new note's id. Use this to add a note without disturbing existing ones. Personal data only.
+- **`create_my_reminder`** — Create a reminder for the caller themselves. Fires into the current user's own notification feed at the given time. Personal data only.
+  - required: `text`, `remind_at`
+- **`create_my_todo`** — Add a to-do item to the caller's own private list. New items sort to the top. Personal data only.
+  - required: `text`
+- **`create_project`** — Create a new project in the workspace. Returns the new project's ref (numeric id). Provide name; category/type/dates/client are optional.
+  - required: `name`
+- **`create_project_folder`** — Create a new project folder (a grouping of projects). Returns the new folder's id. Duplicate names are allowed. New folders sort to the end.
+  - required: `name`
+- **`create_recurring_task`** — Create a recurring-task generator. recurrence_rule is an iCal-style RRULE string (e.g. 'FREQ=WEEKLY;BYDAY=MO'). For a reminder that should run only UNTIL some task is done ("remind me daily until #5074 is closed"), set stop_when_task_completed to that task's id — the generator switches itself off once that task is completed or deleted. Without it the rule runs forever.
+  - required: `project_ref`, `title`, `recurrence_rule`
+- **`create_resolution`** — Create a resolution. key is lowercase letters/digits/hyphens/underscores (e.g. 'fixed', 'wont-do').
+  - required: `key`, `name`
+- **`create_saved_view`** — Create a saved view. view_type picks the lens; config (jsonb) carries filters/sorts/groups/visible columns. Shared=true makes it visible to all workspace members.
+  - required: `name`
+- **`create_sprint`** — Create a sprint within a project. Dates are YYYY-MM-DD.
+  - required: `project_ref`, `name`, `start_date`, `end_date`
+- **`create_subtasks`** — Add subtasks to an existing task. Replaces existing subtasks if any. Use when asked to break a task into subtasks.
+  - required: `task_id`, `subtasks`
+- **`create_swimlane`** — Create a swimlane on a project. Position is 0-indexed top-to-bottom; if omitted the new swimlane lands at the bottom. Color is an optional CSS color string for the lane header.
+  - required: `project_ref`, `name`
+- **`create_task`** — Create a new task in a project. Requires project_ref and title. Can optionally set description, assignee, status, priority, tag, due_date, reminder_date, subtasks, notes, and links.
+  - required: `project_ref`, `title`
+- **`create_task_dependency`** — Add a dependency: predecessor must complete before successor can complete. Default relationship='blocks', dependency_type='finish-to-start'. Cycle creation is rejected.
+  - required: `predecessor_id`, `successor_id`
+- **`create_task_type`** — Create a task type. key is lowercase letters/digits/hyphens/underscores. hierarchyLevel: 0=task, 1=story, 2=epic, etc. is_subtask flags it as a subtask type. is_default replaces the current default.
+  - required: `key`, `name`
+- **`create_version`** — Create a project version (e.g. v1.2.0). status defaults to 'unreleased'.
+  - required: `project_ref`, `name`
+- **`decompose_task`** _(read-only)_ — Break a vague, large task ('Redesign onboarding') into 5-10 concrete subtasks with per-item effort estimates. Returns a preview only — nothing is saved. Use this to PLAN before creating tasks; then commit with create_task per subtask. For a single small deliverable that's already concrete, don't decompose — just create_task directly.
+  - required: `title`
+- **`delete_component`** — Delete a component by id. Destructive — confirm first.
+  - required: `id`
+- **`delete_custom_property`** — Delete a custom property definition (admin-only). All values stored under this property are removed as well.
+  - required: `def_id`
+- **`delete_custom_status`** — Delete a custom status. If the column has tasks, pass `move_tasks_to` (the slug of another column in the same project) so the tasks land somewhere; otherwise the column must already be empty. Destructive — confirm with the user first.
+  - required: `id`
+- **`delete_department`** — Delete a department. Tasks routed to it lose their department (set to null); member rows in the department are removed. Does not delete tasks or members themselves.
+- **`delete_my_note`** — Delete one of the caller's own notes by id. Personal data only.
+  - required: `id`
+- **`delete_my_reminder`** — Delete one of the caller's own reminders by id. Personal data only.
+  - required: `id`
+- **`delete_my_todo`** — Delete one of the caller's own to-do items by id. Personal data only.
+  - required: `id`
+- **`delete_project_folder`** — Delete a project folder definition. This is non-destructive: projects that were in the folder are NOT deleted — they simply become Uncategorized. IMPORTANT: confirm with the user first.
+  - required: `folder_id`
+- **`delete_project_template`** — Delete a project template. Existing projects created from it are not affected.
+  - required: `template_id`
+- **`delete_recurring_task`** — Delete a recurring-task generator. Already-generated task instances are not affected. Confirm before calling.
+  - required: `recurring_id`
+- **`delete_resolution`** — Delete a resolution by id. Destructive — confirm first.
+  - required: `id`
+- **`delete_saved_view`** — Delete a saved view (owner or admin only).
+  - required: `view_id`
+- **`delete_sprint`** — Delete a sprint. Tasks currently assigned to it are un-assigned (sprint_id set to null) but not deleted. Confirm with the user before calling.
+  - required: `sprint_id`
+- **`delete_swimlane`** — Permanently delete a swimlane. Tasks in the lane are not deleted, only the lane assignment is removed. Confirm with the user before calling.
+  - required: `swimlane_id`
+- **`delete_task`** — Delete a task permanently. IMPORTANT: Only call this AFTER the user has confirmed they want to delete. Always ask for confirmation first before calling this tool. If the user just wants the task out of the way, prefer archive_task — it is reversible.
+  - required: `task_id`
+- **`delete_task_dependency`** — Remove a dependency edge by its id (a UUID string from list_task_dependencies output).
+  - required: `dependency_id`
+- **`delete_task_type`** — Delete a task type by id. Destructive — confirm first.
+  - required: `id`
+- **`delete_time_entry`** — Remove a time entry entirely — the entry was logged by mistake, or against the wrong person. Refuses an entry that is already invoiced (unbill it first), and a member may only delete their own. Prefer update_time_entry when the entry is real but wrong; this is for time that should never have been recorded. Undoable.
+  - required: `entry_id`
+- **`delete_version`** — Delete a version by id. Destructive — confirm first.
+  - required: `id`
+- **`detect_task_entities`** _(read-only)_ — Detect which known workspace entities (clients, projects, members, files) a task title/description mentions, and list other tasks that reference the same entities. Use to surface related work. Read-only, exact-match (no LLM).
+  - required: `title`
+- **`diagnose_stuck_task`** _(read-only)_ — Explain why a specific task isn't moving — reads the task, its open blocking dependencies, recent activity, and comments, and returns a 2-4 sentence diagnosis naming the top blocker and a concrete next step. Use when a user asks 'why is this stuck?'.
+  - required: `task_id`
+- **`duplicate_saved_view`** — Duplicate a saved view. The copy is owned by the caller, defaults to private (shared=false), and appends ' (copy)' to the name.
+  - required: `view_id`
+- **`duplicate_tasks`** — Duplicate one or more tasks. Creates copies in the same or a different project.
+  - required: `task_ids`
+- **`estimate_task_time`** — Estimate how long a task will take using the AI estimator. Takes the task's title, description, project context, assignee role, and comparable past tasks into account, then writes back a single value + unit (minutes/hours/days) and a ± uncertainty range. Pass a single task_id or up to 10 task_ids for bulk estimation.
+- **`find_duplicate_tasks`** _(read-only)_ — Find existing tasks in this workspace that are near-duplicates of a given title/description (trigram or token-overlap similarity). Call this BEFORE creating a task to avoid filing a duplicate, or to identify merge candidates. Read-only.
+  - required: `title`
+- **`get_active_sprint`** _(read-only)_ — Return the currently active sprint for a project (status='active'), or null if none.
+  - required: `project_ref`
+- **`get_assignment_decision_metrics`** _(read-only)_ — Summarise the assignment ledger: total decisions, override count and RATE (healthy 20–40%), how many overrides have a recorded reason, the breakdown by reason category, and who is most often the recommended-but-skipped pick. Read-only, pure aggregation. Empty unless assignment-decision logging is enabled.
+- **`get_budget_burn`** _(read-only)_ — Per-project budget burn-down and end-of-project spend forecast: total budget, spent-to-date, and a P10/P50/P90 forecast of final spend with a confidence grade derived from logged budget entries. Read-only.
+- **`get_critical_path`** _(read-only)_ — Compute the critical path (CPM) across the workspace's task dependency graph: per-task earliest/latest start/finish, slack, and which tasks are critical (zero slack), plus the total project duration in days. Returns nothing when there are no task dependencies, and reports a cycle when the graph can't be ordered. Read-only.
+- **`get_day_plan`** _(read-only)_ — Read the caller's own AI day plan: their current energy level, suggested tasks ranked by energy-fit, recommended deep-work blocks, and auto-placed calendar slots. Task fit is scored against the CURRENT user's energy and recent time entries. To actually start a timer on a planned task, use start_timer.
+- **`get_dependency_graph`** _(read-only)_ — Whole-graph dependency HEALTH CHECK: builds the task dependency DAG, runs cycle detection, and flags orphan edges (referencing deleted tasks) and deadline conflicts (a predecessor due after its successor). This is the CYCLE-DETECTING graph-wide view — distinct from list_task_dependencies, which just lists one task's direct predecessors/successors. Read-only.
+- **`get_energy_level`** _(read-only)_ — Read the caller's own current energy level ('deep', 'steady', or 'shallow'). This is the current user's personal setting only.
+- **`get_entity_properties`** _(read-only)_ — Resolved custom-property values for one entity. Returns literal values plus computed values (formula + rollup) evaluated at read time. Use for 'what's this task's story points?' / 'what's the rollup total?' style questions.
+  - required: `entity_type`, `entity_id`
+- **`get_estimate_calibration`** _(read-only)_ — Estimate-vs-actual accuracy over the last 90 days of completed tasks (with both an estimate and logged actual hours). Per assignee: mean actual/estimate ratio (>1 = under-estimating, <1 = over-estimating), sample count, and a recent-vs-older trend, plus a team-wide ratio. Read-only.
+- **`get_focus_mode`** _(read-only)_ — Read the caller's own Focus Mode snapshot: whether a focus session is active (and when it ends), plus the caller's batched drafts awaiting review and the workspace's async-meeting candidates. This is the current user's personal focus state — never another member's.
+- **`get_grooming_proposals`** _(read-only)_ — Generate backlog-grooming proposals (read-only — this only PROPOSES, it does not apply anything): close stale open tasks (>90 days), deprioritize long-blocked tasks (>30 days), retag untagged tasks, split chronically underestimated tasks (actual ≥1.5× estimate), and merge likely-duplicate clusters by title. Read-only.
+- **`get_manager_agreement`** _(read-only)_ — Read the caller's own Manager Mode agreement: whether Kavanah is acting as their manager, their management style, stated objectives, working capacity (days per week, focused hours per day), deadline confidence level, check-in cadence, and reward settings. Returns a disabled default if they have never set one up — call this before any other manager tool so you know whether the feature is on. Personal data only.
+- **`get_manager_briefing`** _(read-only)_ — The caller's current standing with their manager in one call: open commitments with their deadlines, anything overdue, the oldest unanswered check-in, and headline scorecard numbers (points, streak, on-time rate). Use this to open a management conversation, answer 'what should I be doing?', or ground a nudge. Personal data only.
+- **`get_manager_scorecard`** _(read-only)_ — The caller's own reward standing: points balance, lifetime earned, level, current on-time streak and its multiplier, points earned against this week's ceiling, commitment counts and on-time rate, plus how many credits (if any) their points could currently be redeemed for. Personal data only.
+- **`get_member_profile`** _(read-only)_ — Read one member's full experience profile: LinkedIn URL, experience summary, and the extracted resume text (truncated when very long). Use when deciding whether a specific person fits a task, or when the user asks about someone's background.
+  - required: `member_name`
+- **`get_my_note`** _(read-only)_ — Read the full title and body of one of the caller's own notes by id. Personal data only.
+  - required: `id`
+- **`get_my_notepad`** _(read-only)_ — Read the caller's own default notepad (their most-recently-updated note). The Notepad now holds MANY titled notes — use list_my_notes / get_my_note to work with a specific one. This is the current user's personal data — never another member's.
+- **`get_productivity_insights`** _(read-only)_ — Read the caller's own personal productivity insights: their weekly time mirror (hours by project), week-over-week outliers, the team capacity heatmap, and burnout signals private to the caller. The weekly mirror, outliers, and burnout signals are scoped to the current user — never another member's private signals.
+- **`get_project_cycle_time`** _(read-only)_ — Per-status cycle-time stats for a project: count, mean, median (p50), and p90 time tasks spent in each column over the last N days. Defaults to 90 days, max 365. Use this to identify bottleneck columns ('review' takes 4× longer than 'in progress', etc.).
+  - required: `project_ref`
+- **`get_resource_leveling`** _(read-only)_ — Show this week's per-person workload: allocated vs. capacity hours, utilization, and suggested task reassignments from over-capacity to under-utilized (<70%) teammates. Read-only — suggestions are advisory, nothing is reassigned.
+- **`get_saved_view`** _(read-only)_ — Read one saved view by id, including its filter/sort/group config.
+  - required: `view_id`
+- **`get_slip_risk`** — Score every open task in this workspace for risk of slipping its deadline (a heuristic blend of schedule pressure, inactivity, blockers, assignee load, priority) and return the highest-risk tasks with the reasons why. Use for 'what's at risk this week' / standup prep. Caches the scores into the task-intelligence sidecar.
+- **`get_sprint_velocity`** _(read-only)_ — Compute average velocity across the last N completed sprints for a project (default 5).
+  - required: `project_ref`
+- **`get_task_access`** _(read-only)_ — Read whether a task is restricted (visible only to named members + admins) and who its access members are. Read-only.
+  - required: `task_id`
+- **`get_task_transitions`** _(read-only)_ — Return the move history for one task — every column it has lived in, who moved it, when, and how long it stayed in the previous status (ms_in_prev_status). Useful for answering 'how did this task get here?' or 'why did it sit in review so long?'.
+  - required: `task_id`
+- **`get_team_skills_context`** _(read-only)_ — Read the workspace-level team context — a standing admin-maintained text block about the team's collective skills, experience, and assignment conventions. Already injected into your system prompt; call only when you need fresh values mid-conversation.
+- **`get_triage_metrics`** _(read-only)_ — Report the triage queue's health: current queue size, oldest pending item, median time-in-queue, median seconds spent per triaged candidate, and the dismissal-reason distribution over a trailing window. Use for a 'how is our triage doing?' question or a weekly review.
+- **`get_viable_scope`** _(read-only)_ — Rank open tasks as scope-cut candidates by inferred value (priority, milestones, must-keep pins, load-bearing tags like security/billing) and estimate points, plus the team's points-per-day velocity. Use to decide what can be deferred to hit a date. Read-only.
+- **`google_tasks_create_task`** — Create a new task in a Google Tasks list. `due` is an RFC3339 timestamp (Google honors only the date portion).
+  - required: `tasklist_id`, `title`
+- **`google_tasks_list_tasklists`** _(read-only)_ — List the user's Google Tasks lists (each has an id + title). Call this first to get a task-list id before listing or creating tasks.
+- **`google_tasks_list_tasks`** _(read-only)_ — List the tasks in one Google Tasks list. Returns title, status (needsAction/completed), notes, and due date. By default hides completed tasks — set show_completed to include them.
+  - required: `tasklist_id`
+- **`google_tasks_update_task`** — Update a Google Task — change its title/notes/due, or mark it complete (status=completed) or reopen it (status=needsAction). Only the fields you pass are changed.
+  - required: `tasklist_id`, `task_id`
+- **`import_tasks_from_csv`** — Import tasks from CSV text into a NEW project in this workspace. Recognizes the standard, Jira, and Asana CSV column layouts; rows become tasks and any section/status column becomes a board column. Assignees are matched to workspace members by name. Returns a summary of what was created.
+  - required: `content`
+- **`import_tasks_from_monday`** — Import a Monday.com board export (JSON or CSV) into a NEW project in this workspace. Items become tasks, groups become board columns, and people are matched to workspace members by name. Re-importing the same export is skipped (no duplicate). Returns a summary of what was created.
+  - required: `content`
+- **`import_tasks_from_trello`** — Import a Trello board export (the raw JSON you get from Trello's 'Export as JSON') into a NEW project in this workspace. Cards become tasks, lists become board columns, and members are matched to workspace members by name. Re-importing the same board is skipped (no duplicate). Returns a summary of what was created.
+  - required: `content`
+- **`instantiate_project_template`** — Create a new project from a template. Copies the template's task list, phases, statuses, and custom fields onto a new project.
+  - required: `template_id`, `project_name`
+- **`jira_create_issue`** — Create an issue in a Jira project. The issue is owned by the connected Jira account. For a task that should live on Kavanah's own board use `create_task` (the Kavanah one) instead.
+  - required: `project_key`, `summary`
+- **`jira_get_issue`** _(read-only)_ — Get a single Jira issue by its key (e.g. "ENG-123"): summary, status, assignee, due date, and type.
+  - required: `issue_key`
+- **`jira_list_issues`** _(read-only)_ — List issues on the connected Jira site, optionally filtered. Pass a `project_key` to scope to one project, or a raw `jql` query for anything more specific. For Kavanah's own task board use `search_tasks` instead.
+- **`jira_list_projects`** _(read-only)_ — List the projects on the connected Jira site. Returns each project's key and name. Call this first to get a project key for `jira_list_issues` / `jira_create_issue`.
+- **`jira_list_transitions`** _(read-only)_ — List the workflow transitions available from a Jira issue's CURRENT status (e.g. 'Start Progress → In Progress', 'Done → Done'). Which transitions exist depends on where the issue is now and the project's workflow. Use this to discover the transition id (or confirm a target status is reachable) before calling `jira_transition_issue`.
+  - required: `issue_key`
+- **`jira_transition_issue`** — Move a Jira issue to a new status by applying a workflow transition. Provide either `transition_id` (from `jira_list_transitions`) or `target_status` (the status name you want, e.g. "In Progress" — it's matched against the available transitions). Only transitions valid from the issue's current status work; if none matches, the available options are returned.
+  - required: `issue_key`
+- **`jira_update_issue`** — Update an existing Jira issue's summary, description, or due date. Pass `issue_key` and any fields to change. To change an issue's STATUS (e.g. move to "In Progress"/"Done"), use `jira_transition_issue` instead — status is a workflow transition, not a field. For Kavanah's own tasks use `update_task` instead.
+  - required: `issue_key`
+- **`link_tasks`** — Link two or more related tasks together. Creates a bidirectional link.
+  - required: `task_ids`
+- **`list_active_timers`** _(read-only)_ — List currently running (un-ended) time entries in the workspace.
+- **`list_approvals`** _(read-only)_ — List approval asks: the ones still waiting on a human (oldest first, with age and reviewer), and the ones decided recently with the reviewer's answer and comments. Call this before request_approval, and at the start of any run that is waiting on a decision, so you act on an answer instead of asking again.
+- **`list_assignment_decisions`** _(read-only)_ — List recent human task-assignment decisions from the assignment ledger — who was recommended vs. who was actually chosen, and any recorded reason. Read-only. Only returns rows if the workspace enabled assignment-decision logging (Settings → AI Agent); otherwise empty. Use with get_assignment_decision_metrics to review override patterns at a retro.
+- **`list_column_limits`** _(read-only)_ — List per-column WIP limits and current task counts for a project. Returns one row per status with its configured wip_limit, optional name_override, and the live count of open tasks in that column.
+  - required: `project_ref`
+- **`list_components`** _(read-only)_ — List components on a project. include_archived=true also returns archived components.
+  - required: `project_ref`
+- **`list_custom_properties`** _(read-only)_ — List custom property definitions (the workspace's user-defined fields) for a scope. Scope is the entity type the properties attach to: task, project, or client. Omit scope to list all.
+- **`list_custom_statuses`** _(read-only)_ — List the workspace's custom task statuses (board columns). Pass `project_ref` to scope to one project — that variant also seeds the default columns (Open / In Progress / In Review / Completed) on first read. Without `project_ref` returns every status row across all projects in the workspace.
+- **`list_custom_task_emojis`** _(read-only)_ — List the workspace's CUSTOM task-emoji palette — the emojis someone has added on top of Kavanah's built-in picker groups. Use before adding one (to avoid proposing something already there) and when the user asks what emoji conventions this workspace uses. Note this lists only the custom additions; the built-in groups are always available in the picker and are not returned here.
+- **`list_department_members`** _(read-only)_ — List the people (and AI personas) that belong to a department. Use to see who's responsible for a queue.
+- **`list_departments`** _(read-only)_ — List all departments in the current workspace, with member counts. Use to discover what teams exist before routing a task or assigning members.
+- **`list_detected_activities`** _(read-only)_ — List the caller's own captured work: pending detected activities awaiting review (from their connected sources), their connected activity sources, and their snoozed/blocked tasks. All rows are scoped to the CURRENT user — never another member's captured activity.
+- **`list_learned_task_templates`** _(read-only)_ — List the smart task templates this workspace has learned from its own completed work (typical subtask checklist, effort, priority, skill mix per tag). Use to offer a proven starting point when creating a similar task. Read-only.
+- **`list_manager_checkins`** _(read-only)_ — List the caller's own manager check-ins, newest first, with the prompt they were asked and their answer if they gave one. Use unanswered_only to find what is still outstanding. Personal data only.
+- **`list_member_profiles`** _(read-only)_ — List every workspace member's experience profile (LinkedIn URL, self-described experience, whether a resume is on file) together with their declared/learned skills. Use before assignment decisions when recommend_assignees' skill scores need human context — e.g. to break a tie or when nobody has skill chips yet.
+- **`list_members`** _(read-only)_ — List all workspace team members with their email, role, job title, and calendar booking link (where they have set one). Use to look up a person by name when assigning tasks, and to get someone's booking link when a meeting with them needs scheduling.
+- **`list_my_commitments`** _(read-only)_ — List the caller's own commitments — work they promised to finish by a date. Shows the ORIGINAL deadline alongside the current one, so you can see what has been renegotiated. Personal data only.
+- **`list_my_notes`** _(read-only)_ — List all of the caller's own saved notes (the multi-note Notepad), newest-updated first. Returns each note's id, title, and size — use get_my_note to read a full body. Personal data only.
+- **`list_my_reminders`** _(read-only)_ — List the caller's own private reminders, sorted with open ones first by time. This is the current user's personal data only.
+- **`list_my_reward_history`** _(read-only)_ — The caller's own points ledger (every award and deduction, with its reason) and their credit payout history. Use this to explain why a balance is what it is. Personal data only.
+- **`list_my_todos`** _(read-only)_ — List the caller's own private to-do items, open ones first in sort order. This is the current user's personal data only.
+- **`list_persona_departments`** _(read-only)_ — List the departments an AI persona belongs to.
+- **`list_project_folders`** _(read-only)_ — List the workspace's project folders (groupings of projects) in display order. Returns each folder's id, name, color, and sort order. Use the returned folder id with assign_project_to_folder.
+- **`list_project_keys`** _(read-only)_ — List per-project issue-key prefixes (e.g. KAV for KAV-123). Each row carries the keyPrefix and the next allocation number.
+- **`list_project_templates`** _(read-only)_ — List all project templates in the workspace.
+- **`list_projects`** _(read-only)_ — List all projects in the current workspace. Call this first when you need to know which projects exist or need a project_ref for other tools.
+- **`list_recurring_tasks`** _(read-only)_ — List recurring task generators for a project. Each generator clones a template task on its recurrence schedule.
+  - required: `project_ref`
+- **`list_resolutions`** _(read-only)_ — List workspace resolutions (terminal-state reasons applied to closed tasks).
+- **`list_saved_views`** _(read-only)_ — List saved views (table/board/calendar/timeline/gallery lenses over tasks). Includes the caller's private views and any workspace-shared views. Pass project_ref to filter to a project; omit for workspace-wide + per-project together.
+- **`list_sprints`** _(read-only)_ — List sprints for a project, newest first.
+  - required: `project_ref`
+- **`list_swimlanes`** _(read-only)_ — List swimlanes for a project. Swimlanes are horizontal rows on the kanban board (e.g. team, epic, priority lane). Pass include_archived=true to include archived swimlanes.
+  - required: `project_ref`
+- **`list_task_candidates`** _(read-only)_ — List task candidates in the triage queue (default: pending only). Use to help the user run a triage pass, or before proposing a new candidate to avoid obvious duplicates.
+- **`list_task_dependencies`** _(read-only)_ — List dependencies for a task (returns both directions: where the task is a predecessor and where it is a successor) or for an entire project.
+- **`list_task_history`** _(read-only)_ — List version snapshots for a task. Each entry has a version_no, the user who triggered it, a timestamp, and a summary of the prior values. Use to answer questions like 'who last changed the due date?' or 'what did this task look like yesterday?'.
+  - required: `task_id`
+- **`list_task_types`** _(read-only)_ — List workspace task types (Jira-style issue types). Sorted by hierarchy level (epic > story > task > subtask).
+- **`list_tasks_with_location`** _(read-only)_ — List the tasks in a project that have a geographic location pinned (for the Map view), including their coordinates and address label. Call list_projects first if you need the project_ref.
+  - required: `project_ref`
+- **`list_time_entries`** _(read-only)_ — List recorded time entries — running and finished — with the entry id, who logged it, the project and task, the duration, the billing narrative and whether it has been invoiced. This is how you find the entry to hand to update_time_entry, delete_time_entry or split_time_entry: get_time_tracking_summary only reports totals per project/person/task and carries no ids, and list_active_timers only sees timers still running. Filter by person, project or date range; newest first.
+- **`list_user_departments`** _(read-only)_ — List the departments a single workspace member belongs to.
+- **`list_versions`** _(read-only)_ — List versions on a project. status can filter to one or more lifecycle states (unreleased | released | archived), comma-separated.
+  - required: `project_ref`
+- **`list_view_fields`** _(read-only)_ — List the task fields the views runtime knows about. Returns each field's key, label, type, and (for select fields) the valid option values. Use this BEFORE constructing a view config so filter/sort/group references hit real fields.
+- **`log_actual_hours`** — Set the actual_hours value on a task (cumulative, not additive).
+  - required: `task_id`, `actual_hours`
+- **`log_time_entry`** — Log a closed time entry. Two ways: professional-services style, passing `hours` as decimal hours ("0.3") with `started_at` as the date the work happened — this is what someone means by "put 0.3 on the Acme matter"; or stopwatch style, passing explicit started_at and ended_at. `description` is the billing narrative and appears on the invoice line, so write what was actually done ("Drafted motion to dismiss"), not a category. The workspace's rounding policy is applied to the billed quantity.
+  - required: `project_ref`, `started_at`
+- **`model_planning_scenario`** _(read-only)_ — Run a what-if scheduling scenario over the current OPEN tasks and their dependencies, and report the schedule delta vs. baseline, the new critical path, any auto-rebalancing, and risks. Presets: 'baseline' (no change), 'person-out' (simulate a teammate being unavailable — pass person_id), 'scope-bump' (+12 points of scope), 'double-down' (+20% capacity). Read-only simulation; changes nothing.
+- **`monday_create_item`** — Create an item (row) in a Monday board. The item is owned by the connected Monday account. For a task that should live on Kavanah's own board use `create_task` (the Kavanah one) instead.
+  - required: `board_id`, `item_name`
+- **`monday_list_boards`** _(read-only)_ — List the boards in the connected Monday.com account. Returns each board's id and name. Call this first to get a board id for `monday_list_groups` / `monday_list_items`.
+- **`monday_list_groups`** _(read-only)_ — List the groups (sections) in a Monday board. Pass `board_id` (from `monday_list_boards`). Returns each group's id and title; use a group id when creating an item.
+  - required: `board_id`
+- **`monday_list_items`** _(read-only)_ — List items (rows) in a Monday board. Pass `board_id` (from `monday_list_boards`). For Kavanah's own task board use `search_tasks` instead.
+  - required: `board_id`
+- **`monday_update_item`** — Update an existing Monday item's column values. Pass `board_id`, `item_id`, and `column_values` (a JSON object keyed by Monday column id). For Kavanah's own tasks use `update_task` instead.
+  - required: `board_id`, `item_id`, `column_values`
+- **`move_task_to_project`** — Move a task to a different project as its sole project. Tasks can belong to many projects (multi-project model); this drops all existing memberships and replaces them with the target as primary. Use add_task_to_project to add an additional project without removing existing ones.
+  - required: `task_id`, `target_project_ref`
+- **`parse_task_from_text`** _(read-only)_ — Parse a single natural-language sentence ('ask Sarah to redesign onboarding by Friday, blocked by the auth refactor') into a structured task draft — title, assignee, project, due date, priority, dependencies, subtasks — grounded in this workspace's members/projects/tags. Returns a PREVIEW; review it, then commit with create_task. Use this when the user describes a task conversationally.
+  - required: `sentence`
+- **`plan_realistic_deadline`** _(read-only)_ — Work out an achievable deadline for a piece of work WITHOUT committing to it. Takes an estimate in hours and returns the date it would actually land on, after (a) uplifting the estimate by the caller's own historical estimate-vs-actual ratio, (b) queueing it behind everything they have already promised, and (c) spreading it across their real working days and focused hours. Also reports whether they are already at their open-commitment ceiling. Call this BEFORE proposing a date to the user — a date picked without it is a wish. Read-only.
+- **`plan_sprint`** _(read-only)_ — Recommend a sprint: packs the unstarted backlog into the team's capacity, uplifting each person's estimates by their OWN estimate-vs-actual history, and reports what fits at p50 (the median — a coin flip) AND what fits at p90 (the level worth committing to), with forecast hours vs. total capacity at both, the committed points, a per-person breakdown, and what got deferred. Says so plainly when the workspace has too little history to calibrate, in which case estimates are taken at face value and p50/p90 are identical. READ-ONLY: this only RECOMMENDS — it creates no sprint and assigns no tasks. Committing a sprint is a human action in Planning → Sprint Planner.
+- **`predict_and_apply_due_dates`** — Compute and write a due_date for each task based on its AI/legacy estimate (hours), starting from start_date. Picks task hours from estimate_value+unit, falling back to story_points/estimated_hours, falling back to assume_unestimated_hours. Two modes: 'parallel' (default — each task's due date = start + its own duration, assumes concurrent work) and 'sequential_per_assignee' (each assignee's tasks stack onto a cursor, so person-by-person workload is reflected). Pass either task_ids OR a filter (project_ref/status_id/assigned_to/tag); a filter without task_ids honors only_open=true by default.
+- **`propose_task_candidate`** — File a CANDIDATE task into the triage queue for human review — do NOT create a task directly — when you detect a commitment or action in a conversation, email, or meeting that someone should probably do but you shouldn't act on unilaterally. The reviewer accepts (creating the real task), edits, or dismisses it. Always ground it: put the exact phrase that implies the work in source_excerpt. If the work is clearly the smallest checkable unit, leave suggested_subtasks empty; if it's a big lump, break it into checkable pieces so the reviewer can accept it as-is.
+  - required: `title`
+- **`recommend_assignees`** _(read-only)_ — Recommend the best people to assign a task to, ranked by how well their skill profiles match the task's required skills. Read-only — does not change anything. Pass an existing task_id, or an ad-hoc title (+ optional description). Use before create_task with auto_assign, or whenever the user asks who should do something.
+- **`record_assignment_reason`** — Attach a reason to a logged assignment decision after the fact ('assign now, explain later') — e.g. why a leader chose someone other than the recommendation. Use when a user explains an override. Find the decision id via list_assignment_decisions.
+  - required: `decision_id`
+- **`record_project_outcome`** — Record whether a project's tagged customer-outcome actually moved, typically a quarter after close. Requires the project to have an outcome_target (set_project_outcome_target). Feeds the project-to-outcome conversion operating metric (course 6.4).
+  - required: `project_ref`, `moved`
+- **`redeem_points_for_credits`** — Convert the caller's earned Manager Mode points into REAL account credits. This moves money: credits are the currency that pays for AI usage. Requires the caller to have turned rewards on AND set a non-zero monthly credit cap — both default to off, and the tool fails closed with an explanation when either is missing. The payout is clamped by, in order: the monthly cap, their point balance, and the amount requested. Always tell the user the exact number of credits and points before and after.
+- **`refresh_learned_task_templates`** — Re-mine the workspace's completed tasks to rebuild the learned task templates, then return them. Idempotent (updates rows in place). Run this when templates feel stale; otherwise prefer list_learned_task_templates.
+- **`remove_custom_task_emoji`** — Remove one emoji from the workspace's custom task-emoji palette. This only stops offering it as a quick pick — tasks that already carry that emoji keep it, because the emoji column is free-form and this table is a palette rather than a foreign key. Reversible by adding it again. Reports whether the emoji was actually in the set.
+  - required: `emoji`
+- **`remove_member_from_department`** — Remove a workspace member from a department.
+- **`remove_persona_from_department`** — Remove an AI persona from a department.
+- **`remove_project_member`** — Revoke someone's access to a project (admin/owner only). Identify them by `email` (or `user_id`); `name` is accepted only to clean up legacy roster entries that carry no email. Removing access from a PUBLIC project does not hide it — every workspace member can see a public project regardless. Make the project private with update_project first.
+  - required: `project_ref`
+- **`remove_project_team`** — Remove a team from a project. Individual member memberships are not affected.
+  - required: `project_ref`, `team_id`
+- **`remove_task_from_project`** — Remove a single project membership from a task. The task remains in its other project memberships. Fails if it would leave the task with zero projects (use delete_task or move_task_to_project instead).
+  - required: `task_id`, `project_ref`
+- **`renegotiate_commitment`** — Move an open commitment's deadline, with a reason. The ORIGINAL deadline is preserved and remains what the commitment is scored against — delivering against a renegotiated date still earns, but less than delivering against the promise actually made. Use this when the user says something has slipped; it is strictly better than letting a deadline lapse.
+  - required: `commitment_id`, `new_due_at`
+- **`reorder_tasks`** — Reorder tasks in a project by priority or due date. Recalculates sort_order for all tasks in the project.
+  - required: `project_ref`, `order_by`
+- **`request_approval`** — Ask a human to approve, reject or request changes on a proposal you have written on a task (a campaign package, a plan, a send list). Use this INSTEAD of filing a new 'approval' / 'approval package' / 'for sign-off' task. Put the proposal on the task first (description or a comment), then call this with that task. The reviewer gets it in their daily decision digest, and it escalates if still open after 48h. Limits: one open ask per task, and at most 3 open asks per AI employee — beyond that you are refused and shown your open asks; add new material to one of them as a comment instead of asking again. Check list_approvals before asking: if the answer is already there, act on it. You can never approve your own ask, or anyone's.
+  - required: `task_id`, `summary`
+- **`restore_task_version`** — Restore a task to an earlier version recorded in list_task_history. The current state is automatically saved as a 'Before restore' snapshot first, so a restore is itself reversible by restoring that newer snapshot. Identifies the snapshot by its numeric version row id (not the version_no — pass the id field from list_task_history).
+  - required: `version_id`
+- **`run_saved_view`** — Execute a saved view and return the matching tasks. Returns a concise summary by default; pass detail='full' for every column. Use to answer questions like 'what tasks does the Sprint 4 view show?' without re-deriving the filter set.
+  - required: `view_id`
+- **`search_tasks`** _(read-only)_ — Search for tasks by keyword in title or description. Can also filter by project, status, assignee, priority, tag, or created/updated time (never infer recency from ids).
+- **`set_column_limit`** — Upsert a WIP limit and/or a column-name override for one status. Pass wip_limit=null (or omit) to keep the row but clear the numeric cap; use clear_column_limit to remove the row entirely.
+  - required: `project_ref`, `status_id`
+- **`set_custom_field`** — Set a custom field key/value on a task. Value can be any JSON-serializable type.
+  - required: `task_id`, `field`, `value`
+- **`set_energy_level`** — Set the caller's own current energy level. Drives which tasks get_day_plan surfaces. Affects only the current user's personal setting.
+  - required: `level`
+- **`set_entity_properties`** — Set one or more custom property values on a single entity, keyed by property `key` (the stable identifier). Formula/rollup keys are read-only and are silently ignored. Returns the number of values actually changed.
+  - required: `entity_type`, `entity_id`, `values`
+- **`set_manager_agreement`** — Create or update the caller's own Manager Mode agreement. ONLY the fields you pass are changed; everything else keeps its current value. Set enabled=true to have Kavanah start managing them (this is the opt-in — nothing happens until it is true). Use this when the user says something like 'be my manager', 'hold me accountable', 'check in on me daily', or asks to change their working hours or check-in time. Affects only the current user.
+- **`set_member_profile`** — Update a member's experience profile — LinkedIn URL and/or experience summary. Omitted fields are unchanged. By default the profile text is re-analyzed afterwards to derive declared skills (mapped onto the canonical skill vocabulary) so skill-based routing improves immediately; pass derive_skills=false to skip. Resume upload is UI-only (People page member modal) — this tool cannot attach a resume.
+  - required: `member_name`
+- **`set_my_notepad`** — Replace the entire body of the caller's default notepad (their most-recently-updated note, creating one if none exists). This overwrites that note's body. To edit a SPECIFIC note or add a new one, prefer create_my_note / update_my_note. Affects only the current user's personal data.
+  - required: `body`
+- **`set_project_department`** — Link (or unlink) a whole project to a department. Pass project_ref and either a department to link, or empty to unlink. Independent of per-task department routing.
+  - required: `project_ref`
+- **`set_project_key_prefix`** — Rename a project's issue-key prefix. Must be 2-10 uppercase letters/digits starting with a letter (e.g. ACME, FOO2).
+  - required: `project_ref`, `key_prefix`
+- **`set_project_outcome_target`** — Tag a project with the customer-outcome it is meant to move (e.g. 'reduce support resolution time', 'lift ARR per seat', 'raise NPS'). Set while the project is active. Feeds the project-to-outcome conversion operating metric (course 6.4) once a result is later recorded with record_project_outcome.
+  - required: `project_ref`, `outcome_target`
+- **`set_recurring`** — Configure a task to recur on a schedule. Sets up recurrence metadata on the task.
+  - required: `task_id`, `frequency`
+- **`set_reminder`** — Set or update a reminder on a task. Accepts a whole-day reminder or a specific time of day.
+  - required: `task_id`, `reminder_date`
+- **`set_task_access`** — Set exactly who can see/edit a restricted task (replaces the current member list). Each member is an email + role (viewer = read-only, editor = can edit). Restricts the task if it wasn't already; pass restricted=false to also lift the restriction. Members must be active workspace users.
+  - required: `task_id`
+- **`set_task_department`** — Route a task to a department (the team queue that owns it). Pass null/empty department to clear. Does not change the per-person assignee.
+  - required: `task_id`
+- **`set_task_estimate`** — Set estimated_hours and/or story_points on a task.
+  - required: `task_id`
+- **`set_task_location`** — Pin a task to a geographic location for the Map view. Provide either explicit coordinates (lat AND lng) or a free-text address — when only an address is given it is forward-geocoded to coordinates via OpenStreetMap. The address label is stored alongside the coordinates. Replaces any existing pin on the task.
+  - required: `task_id`
+- **`set_task_projects`** — Replace the full set of projects a task belongs to in one call. Specify primary_ref to control which project is primary (defaults to the first ref).
+  - required: `task_id`, `project_refs`
+- **`set_task_restriction`** — Restrict a single task so only workspace admins and its access members can see it — even people who can see its project — or lift the restriction. Use set_task_access to choose the members. When a non-admin restricts a task they are kept on it as an editor.
+  - required: `task_id`
+- **`set_team_skills_context`** — Replace the workspace-level team skills/experience context used for assignment decisions. Admin-facing workspace setting — keep it a concise brief (who owns what, ramp-up notes, routing conventions), max 8000 chars.
+  - required: `context`
+- **`skip_detected_activity`** — Skip (dismiss) one of the caller's own pending detected activities so it no longer appears in their review queue. Only the current user's own detected activities can be skipped.
+  - required: `activity_id`
+- **`snooze_detected_activity`** — Snooze one of the caller's own tasks that is blocked (waiting on a review, an external party, a vendor, or a dependency), recording the blocker so it surfaces in their capture queue. The task must belong to the caller's workspace and the snooze is recorded under the CURRENT user only.
+  - required: `task_id`
+- **`split_time_entry`** — Break one recorded block into several billable lines — 'that 2 hours was 0.5 reviewing exhibits, 1.0 drafting, 0.5 on the call'. Each part gets its own task, narrative and rounded quantity, and replaces the original entry. Refuses an entry that is already invoiced or still running. Confirm the breakdown with the user first: the original entry is replaced.
+  - required: `entry_id`, `parts`
+- **`start_focus_session`** — Start a Focus Mode session for the caller themselves. Any existing active session for the caller is closed first. Duration is clamped to 5–480 minutes. This only ever starts the CURRENT user's own session — you cannot start a session for anyone else.
+- **`start_timer`** — Start a running timer for a project (and optional task) for the current user (or a named actor).
+  - required: `project_ref`
+- **`stop_timer`** — Stop a running timer. Provide entry_id, or actor_name to stop that user's most recent open entry.
+- **`suggest_task_eta`** _(read-only)_ — Suggest a data-backed due date + confidence for a planned task, computed from the workspace's historical completion times (optionally filtered by tag and/or assignee). Use this instead of guessing a due date. Read-only, no LLM.
+- **`suggest_task_split`** _(read-only)_ — Check whether an existing task actually bundles two+ independent deliverables that should be tracked separately, and if so suggest standalone titles. Different from decompose_task (which expands ONE deliverable into subtasks) — this SPLITS a task into peers. Returns a preview; commit with create_task.
+  - required: `task_id`
+- **`toggle_subtask`** — Toggle (or set) the completed state of a single subtask on a task.
+  - required: `task_id`, `subtask_id`
+- **`triage_task_candidate`** — Resolve one candidate. action='accept' creates the real task from it (optionally edit title/description/project/assignee/subtasks first). action='dismiss' closes it with a reason: 'out_of_scope' (crosses a Negation — pass matched_negation with the charter line so it records a negation hit), 'no_checkable_outcome' (a topic, not a task), 'duplicate', 'premature' (needs an owner/spec first), or 'other'. Only do this when the user asks you to triage; otherwise propose_task_candidate and let a human decide.
+  - required: `candidate_id`, `action`
+- **`update_component`** — Patch a component by id. archived=true hides it from default listings without deleting.
+  - required: `id`
+- **`update_custom_property`** — Patch a custom property definition (admin-only). Only provided fields change.
+  - required: `def_id`
+- **`update_custom_status`** — Rename, recolor, or otherwise edit an existing custom status. Only the fields you pass are changed; omit fields you want to leave alone. Pass `wip_limit: null` to clear the WIP cap.
+  - required: `id`
+- **`update_department`** — Rename a department, change its description, or re-parent it. Pass only the fields you want to change.
+- **`update_my_note`** — Update one of the caller's own notes by id. Only the fields you pass are changed (title and/or body); the body fully replaces the existing body. Personal data only.
+  - required: `id`
+- **`update_my_reminder`** — Update one of the caller's own reminders by id. Only fields you pass are changed. Personal data only.
+  - required: `id`
+- **`update_my_todo`** — Update one of the caller's own to-do items by id. Only fields you pass are changed. Personal data only.
+  - required: `id`
+- **`update_project`** — Update one or more fields on an existing project. Provide only fields to change.
+  - required: `project_ref`
+- **`update_project_folder`** — Rename and/or recolor an existing project folder. Provide only the fields to change; omitted fields are left intact. Pass color: null to clear the color.
+  - required: `folder_id`
+- **`update_recurring_task`** — Update fields on a recurring-task generator. Pass active=false to pause it, or stop_when_task_completed to end it automatically once a task is done.
+  - required: `recurring_id`
+- **`update_resolution`** — Patch a resolution by id. is_default=true clears the flag on every other resolution.
+  - required: `id`
+- **`update_saved_view`** — Patch fields on a saved view. Only the owner can edit (admins can override). Pass only fields you want to change.
+  - required: `view_id`
+- **`update_sprint`** — Update a sprint's fields. Setting status='completed' with completed_points will record velocity.
+  - required: `sprint_id`
+- **`update_swimlane`** — Update a swimlane's name, position, color, or archived state. Pass archived=true to hide the lane without deleting it.
+  - required: `swimlane_id`
+- **`update_task`** — Update one or more fields on an existing task. Use this to move a card to a different column (`status`) or swimlane row (`swimlane_id`), or to change priority, assignee, due date, tag, emoji label, title, description, or reminder. Provide only the fields you want to change. It cannot change which project a task is in — use move_task_to_project for that.
+  - required: `task_id`
+- **`update_task_type`** — Patch a task type by id. is_default=true also clears the flag on every other type.
+  - required: `id`
+- **`update_time_entry`** — Correct an existing time entry — its narrative, duration, date, task, billable flag, or client. Only the fields you pass change; everything else is left alone. `hours` replaces the billed quantity (decimal "0.3" or clock "1:30") and the workspace rounding policy is re-applied; pass started_at/ended_at instead to move when the work happened. Refuses an entry that is already invoiced — unbill it first — and a member may only edit their own entries. Use this for "that should have been 0.5, not 1.5"; use split_time_entry when one block was really several pieces of work.
+  - required: `entry_id`
+- **`update_version`** — Patch a version by id. Setting status='released' stamps released_at; 'unreleased' clears it.
+  - required: `id`
+
+## unscoped (8)
+
+- **`get_my_profile`** _(read-only)_ — Read the calling user's own profile: name, email, job title, department, timezone, website, calendar booking link, bio, and their contact details (phone, address, city). Their job title, booking link, and bio are ALREADY in your system prompt — only call this when you specifically need the contact details, which are not. This is the caller's own record and never anyone else's; for a teammate's job title or booking link use list_members, and for their skills use get_member_profile.
+- **`list_my_open_tasks_across_workspaces`** _(read-only)_ — List open tasks assigned to the calling user across every workspace they belong to, sorted by overdue → due-soon → newest. Use for cross-workspace 'what's on my plate today' answers.
+- **`list_my_orgs`** _(read-only)_ — List every organization (org) the calling user belongs to, with their role and the number of workspaces in each org. Use as a navigation aid when the user references an org by name.
+- **`list_my_workspaces`** _(read-only)_ — List every workspace the calling user is an active member of, with their role, open task count, tasks assigned to them, and last activity. Use to answer 'what workspaces am I in?' or 'where do I have the most going on?'
+- **`list_recent_activity_across_workspaces`** _(read-only)_ — Recent workspace activity items from every workspace the user belongs to, ordered newest-first. Use for 'what happened while I was away' style answers.
+- **`retrieve_twin_context`** _(read-only)_ — Search the digital twin's owner-grounded corpus (their profile bio, completed tasks they were assigned, and discussion posts they authored). Use this BEFORE answering any question about what the owner has done, decided, or thinks — it grounds the response in real artifacts. Returns the top-k most relevant text passages. Only available when the active persona is a digital twin.
+  - required: `query`
+- **`twin_brief_meeting`** _(read-only)_ — Before a meeting the twin's owner cannot attend: what they would want raised, asked and protected, grounded in their own indexed work and the deal context. Use this to prepare whoever IS attending. This is the around-the-meeting route; sending the owner's twin INTO a Kavanah call is a separate thing the owner does from the call controls.
+  - required: `topic`
+- **`twin_respond_to_meeting`** _(read-only)_ — After a meeting the twin's owner missed: read the transcript and give their response — what they would have said, where they would disagree, what they want followed up, and a draft reply to the participants. Grounded in their indexed work, and explicit about anything it cannot judge on their behalf. Requires a recorded meeting with a finished transcript.
+  - required: `meeting_id`
+
+## workflows_automations (114)
+
+- **`advance_runbook`** — Record the current step of a runbook run as done (or skipped) and get the next step. Pass a short `note` on what you did. If the run is paused at a CHECKPOINT, you must first surface it to the user and get their go-ahead, then call this with confirmed=true to pass the checkpoint. Returns the next step, or a completion message when the runbook is finished.
+  - required: `run_id`
+- **`cancel_agent_schedule`** — Delete a scheduled autonomous run, with its run history. Prefer PAUSING (update_agent_schedule enabled:false): a paused schedule stops firing, keeps its history, and no longer counts toward the 25-active-schedule limit — so pausing is also how to free a slot. Delete only a schedule the user has asked, by name, to be deleted. The user can undo a deletion from the chat. Get the id from list_agent_schedules.
+  - required: `schedule_id`
+- **`cancel_outcome_check`** — Withdraw a pending post-condition — use when the plan changed and the check has become an unfair test (the task was descoped, the person left, the goal was replaced). A cancelled check is excluded from the hit rate rather than counted as a miss. Do NOT cancel a check simply because it looks like it is about to fail; that is the one thing this ledger exists to catch.
+  - required: `expectation_id`
+- **`cancel_runbook_run`** — Abandon an in-progress runbook run (e.g. the process was called off).
+  - required: `run_id`
+- **`create_agent_schedule`** — Create a recurring AUTONOMOUS agent run (a scheduled job the agent executes on its own on a clock). By default it sends nothing on days its person has no open tasks — see only_when_tasks_for. Use this when the user wants something to happen on a repeating schedule that requires the agent to think/act each time — e.g. 'every weekday at 8am email me what I should work on today', 'each Monday summarize open risks'. Set `autonomy_level: 'safe'` (default) so the run can use tools (read tasks, post notes, and email YOU via email_my_digest); 'none' is a plain text-only note with no tools. IMPORTANT: the schedule fires on a UTC clock — convert the user's local time. E.g. 8am PST = hour_utc 16 (PST/UTC-8) or 15 during daylight time (PDT/UTC-7); note the offset caveat to the user. Safe runs are still capped by the workspace autonomy ceiling; below it they degrade to text-only. For a purely STATIC recurring email use schedule_recurring_email; for a recurring analytics REPORT use create_report_schedule. A workspace may have at most 25 ACTIVE schedules; paused ones do not count. If this is refused for the limit, tell the user and ask which schedule to PAUSE (update_agent_schedule enabled:false) — never delete schedules on your own to make room.
+  - required: `name`, `prompt`
+- **`create_automation`** — Create an automation rule. trigger_type values: - 'created' / 'completed' / 'moved' / 'assigned' — task lifecycle. trigger_config can gate on { from_status, to_status, status_id, priority, project_ref, tag }. - 'due-date' — fires once when a task's due_date passes (swept hourly by the overdue-tasks cron; re-arms if the due date is pushed out). trigger_config can gate on { priority, project_ref, tag, status_id }. Use this for 'when a task is overdue → …' rules. - 'property-changed' — fires when a custom property value changes. trigger_config: { property_id?: <def id>, property_key?: <key>, from?: <value>, to?: <value> }. property_id is preferred (survives rename). EXTERNAL EVENT triggers — these fire on things that happen OUTSIDE Kavanah. They carry no task, so the only actions that work with them are 'invoke-agent' and 'start-water-cooler': - 'email-received' — a new email arrived on a connected mailbox (Gmail/Outlook/Proton/iCloud). trigger_config can also gate on { direction: 'inbound' | 'outbound' } (inbound skips mail the user sent) and { from_contact: 'deal' | 'network' | 'any' } — deal = the sender is a contact on an open deal, network = a known contact on no open deal, any = any known contact (strangers never match; omit it to match every sender), and { from_member: true } — the sender is an active member of this workspace (use it for 'let me / my team email the agent'; teammates are NOT contacts, so from_contact never matches them). A reply-to-investors rule should use BOTH direction: 'inbound' and from_contact, or it wakes on every message in the mailbox. - 'integration-item' — a new item appeared in a connected PM tool (Jira issue, ClickUp/Asana task, Monday item, Notion page). - 'github-pull-request' / 'github-push' — a PR was opened/closed/updated, or commits were pushed. - 'calendar-event' — a new calendar event was synced. - 'finance-event' — a verified ClearBooks or Stripe webhook fired (invoice paid, payment failed, …). - 'document-event' — a verified XDocs webhook fired: an agreement was signed / declined / voided / expired, or a tracked link was read, downloaded, or its NDA accepted. - 'deal-stage-changed' — a deal moved between pipeline stages. This is the 'a client became engaged' trigger. trigger_config gates on { to_stage, from_stage, to_stage_kind, to_stage_id, pipeline_id } — prefer to_stage_kind ('open'|'won'|'lost') or to_stage_id over to_stage, because a stage NAME changes the day someone renames the column and the rule then silently stops firing. It fires on a stage CHANGE only, never on deal creation: a Sheet or Asana import creates hundreds of deals in their real stages at once, and firing then would send hundreds of signature requests. - 'deal-document-signed' — the counterparty signed an XDocs envelope that was sent on a deal (the 'they signed → start their campaign' handoff). trigger_config gates on { document_name (exact template/document name), pipeline_id, provider: 'xdocs' }. It fires ONCE per envelope, and never for an envelope that was already signed when Kavanah first saw it, so a sync of old contracts cannot start campaigns. - 'meeting-booked' — a deal contact booked a meeting (an AngelSend booking link, or a calendar event they are on). Fires once per meeting per OPEN deal the contact is on (carrying that deal, so the deal actions and 'move-deal-stage' act on it), and once more with no deal when they are on none. Only personal meetings (never a webinar or an all-day block), only meetings upcoming or started within the last day (a held meeting replayed by a later sync is history), and once across Google, AngelSend's calendar and the booking. trigger_config gates on { has_deal: 'yes'|'no', stage_kind: 'open'|'won'|'lost' (the deal's CURRENT column; never matches the no-deal event), pipeline_id, source: 'angelsend_booking'|'google-calendar'|'angelsend' }. This is the 'they booked a call → move the deal to Engaged / open a prep task' trigger. All of them accept trigger_config { source: '<provider slug>' } to narrow to one provider. Each external record fires AT MOST ONCE, ever (per rule) — re-syncing the same email cannot re-trigger it. All of them accept trigger_config { source: '<provider slug>' } to narrow to one provider. Each external record fires AT MOST ONCE, ever (per rule) — re-syncing the same email cannot re-trigger it. An external event an invoke-agent rule's hourly cap refuses is PARKED and retried on later ticks for up to 24 hours, never run twice. action_type values: - 'assign' { user: <id|'current'|'creator'> } - 'change-status' { status_id } - 'set-field' { field: 'priority'|'tag'|'due_date', value, offset_days? } - 'add-tag' / 'remove-tag' { tag } - 'add-comment' { body } (supports ${task.title} / ${task.id} interpolation) - 'move-to-project' { project_ref } - 'send-notification' { body?, title?, kind?, to? } — posts an in-app notification on the task's project feed. Without `to` it reaches everyone who can see the project; with `to` ONLY the people it names see it and count it: 'assignee' (the task's assignee), 'admins' (workspace owners and admins), or a member's name or email — comma-separate several. A name with no account in this workspace is skipped, and if nobody matches the firing is skipped (never broadcast). Name a rule for who it actually reaches. body supports ${task.title} / ${task.id}; kind defaults to 'overdue'. - 'set-property' { property_id|property_key, value } — set a custom property value on the triggering task. Computed-type props are rejected. - 'invoke-agent' { instruction, run_as?, max_per_hour?, send_mode? } — hand the event to YOU (the agent) to handle with your full toolset. `instruction` is what you'll be asked to do, in plain language ('Triage this email: if it is a support request, create a task in the Support project and reply acknowledging it'). This is the ONLY action that works with external-event triggers, and the only one that can do open-ended work. The run is queued (not instant) and executes under the run-as user's autonomy level — risky actions are still policy-gated and may park for approval. In SAFE mode it CANNOT send anything. To let a rule's runs send (e.g. reply to an email), set send_mode: 'approval' (every send parks for a human — recommended) or 'auto' (sends go out unreviewed; owners/admins only; a workspace block still wins). Neither exceeds the workspace's autonomy ceiling. For 'let me email the agent', a Gmail note-to-self counts as inbound, and from_member: true limits it to the team. DEAL actions — these need a deal trigger ('deal-stage-changed' or 'deal-document-signed'), and are ADMIN-ONLY to create because each acts outside Kavanah irreversibly. They share one per-workspace hourly cap, so a bulk stage move cannot fan out: - 'provision-client-space' { slack?, slack_private?, slack_prefix?, slack_invite_emails?, invite_deal_team?, auto_staff?, drive?, drive_parent_folder_id?, drive_subfolders?, run_as? } — create the deal's Slack channel and Google Drive folder, inviting the deal team. When the workspace has turned on automatic staffing (off by default), the deal's team is first filled to the workspace's minimum size and given a lead if it has none; auto_staff:false keeps one rule out of that. Idempotent per deal: it records what it made and skips whichever half already exists, so re-firing never opens a second channel. - 'send-engagement-envelope' { templates?, template_id | template_name, prefill?, contact_role?, email_subject?, email_blurb?, run_as? } — send an XDocs template to the deal's signer (XDocs is the only e-signature provider; the run-as user must have XDocs connected, and the template must have exactly one signer slot). templates: [{ when: { category?, sector?, issuance_stage? (text or list), pipeline_id?, min_amount_cents?, max_amount_cents? (whole cents, inclusive) }, template_name | template_id, prefill? }] — checked IN ORDER, first match wins, falling back to the top-level template_name/template_id; with no match and no fallback the firing is skipped with the reason. An entry an earlier one always beats is refused at save. prefill: { '<placeholder label>': '<deal field>' } writes the deal's terms into the template's [Placeholder] text — fields: name, amount_cents, revenue_cents (written as money in the deal's currency), currency, sector, category, issuance_stage, geography, expected_close (written as a date), owner_name, custom_fields.<name>. An unknown field is refused at save; a term the deal has no value for stops the send and names the field — nothing is ever sent with a blank term. Skips if a live envelope (anything not declined/voided/expired, INCLUDING a signed one) already exists on the deal. Template names must match EXACTLY; it refuses to guess between near matches rather than send the wrong contract. - 'enroll-cadence' { cadence, contact_role?, provider?, run_as? } — enroll the deal's OWN contacts (the issuer's people already on the deal) in a cadence. Defaults to the PRIMARY contact only; pass contact_role:'all' to enroll everyone on the deal, which includes any investor a campaign linked to it. Steps send through the run-as user's mailbox, never the person who moved the card. This is NOT an investor campaign. - 'start-investor-campaign' { cadence, batch_size?, contacts_per_firm?, auto_release?, provider?, run_as? } — THE action for investor outreach: ranks the workspace's investors against the deal's investment profile, releases the first tranche (batch_size, default 100), picks up to contacts_per_firm people per firm (default 1, max 3; warmest with an email first, then the most senior title), links them to the deal and enrolls them in 'cadence' (a DEAL cadence). Skips if the deal has no investment profile yet. A re-fire tops up the open tranche and never releases the next one; auto_release:true (default false) lets the 6-hourly scan release and enroll the next tranche once every released firm has been approached or dismissed. At most 5 campaigns start per workspace per hour. - 'start-issuer-campaign' { campaign, cadence?, batch_size?, contacts_per_firm?, auto_release?, provider?, run_as? } — client PROSPECTING: starts the named issuer campaign (id or exact name, see list_issuer_campaigns) — ranks the workspace's issuers against its mandate if never ranked, releases the FIRST tranche and enrolls the best contact at each firm in the campaign's NETWORK cadence (or 'cadence'). It needs no deal, but it only runs on something a member did — a task trigger or a deal trigger; an external event (an inbound email, a webhook) is skipped. A re-fire tops up the open tranche and never releases the next; auto_release omitted keeps the campaign's own setting. Admin-only to create, under the same shared hourly cap, and at most 5 issuer campaigns start per workspace per hour. INTERNAL deal-side actions — they stay inside Kavanah, so any member may create them and they are not under the deal actions' cap: - 'move-deal-stage' { to_stage_id | to_stage (exact stage name), only_forward? (default true) } — move the event's deal (a 'meeting-booked', 'deal-stage-changed' or 'deal-document-signed' trigger) to a stage of ITS pipeline, as the rule's author. Skips a closed deal, a deal already in that stage, a backwards move under only_forward, and a stage not in the deal's pipeline. The move fires the 'deal-stage-changed' rules, so 'meeting booked → move to Engaged' chains into the engagement rules; one rule refuses to move the same deal twice within an hour, so two rules cannot ping-pong. - 'create-task' { title, project_ref, description?, assign_to?, due_in_days?, priority? } — open a task in a project on ANY trigger, as the rule's author, once per event (a re-synced booking or a retried event finds it already there). Placeholders in title/description: ${deal.name}, ${contact.name}, ${contact.company}, ${meeting.start} (in the author's timezone), ${event.summary}, and ${task.title} / ${task.id} on a task trigger; one the event has no value for renders empty. assign_to: 'deal_lead' (the deal's owner), 'rule_author', 'none', or a member's roster name or email — someone who cannot be resolved leaves the task unassigned rather than inventing an assignee. due_in_days 0–365; priority Normal|Medium|High. The project is checked when the rule fires. Use 'invoke-agent' when the response needs judgment; use the fixed actions when the response is mechanical (they are cheaper and deterministic). Pass project_ref to scope a TASK or property rule to one project, or omit for workspace-wide. Deal-stage and external-event rules are ALWAYS workspace-wide — those events belong to no project, so a project_ref there is ignored (a rule tied to a project could never fire).
+  - required: `name`, `trigger_type`, `action_type`
+- **`create_runbook`** — Create a reusable runbook/SOP. Provide ordered steps; each has a title, an instruction (what to do at that step), a category ('action' = do something, 'review' = human should review, 'notify' = tell someone, 'wait' = pause for an external event), and whether it's a checkpoint (pauses for human confirmation before proceeding). Use for repeatable multi-step processes, NOT one-off tasks.
+  - required: `name`, `steps`
+- **`delete_automation`** — Delete an automation rule by id.
+  - required: `automation_id`
+- **`dismiss_proactive_alert`** — Dismiss a proactive alert after acting on it (e.g. reassigning a task, extending a deadline). The alert disappears from the user's feed.
+  - required: `alert_id`
+- **`email_my_digest`** — Email a Kavanah digest to YOURSELF (the current user, or in a scheduled run the run owner), to a named teammate in THIS workspace (`to_member`), or — inside a scheduled run — to someone OUTSIDE the workspace (`to_email`). Use `to_member` for per-person reminders to members ('each morning, email Sophia her open HR tasks'). Use `to_email` when a schedule's instructions name an outside address ('email the forecast to mitch@example.com'): it goes out as a normal email from the schedule owner's connected mailbox. `to_email` reaches ONLY addresses written in the running schedule's own instructions, and works only in a scheduled run — in a conversation, send outside email with gmail_send_email or your connected mail tool. This is the delivery step for a briefing: gather the content with your other tools (tasks, goals, waiting-on ledger, calendar), then call this to send it. Works inside a safe-mode scheduled run, where the general email-send tools are unavailable. One recipient per call. Provide the fully-composed subject and body.
+  - required: `body`
+- **`enqueue_bulk_create_tasks`** — Enqueue a background job that creates many tasks in one project. Use this instead of bulk_create_tasks when more than ~25 tasks need to be created — the job runs out-of-band so the chat doesn't block. Returns a job id; the agent will post a follow-up message in this conversation when the job finishes.
+  - required: `project_ref`, `tasks`
+- **`escalate_to_user`** — Escalate something that needs a human. The workspace escalation policy routes it: at/above the immediate-severity threshold (outside quiet hours) recipients get an alert + push right now; otherwise it's queued as a morning-briefing alert. Use 'critical' ONLY for urgent, business-impacting issues (it can break through quiet hours); 'warning' for needs-attention-today (blocked work, 2+-nudge waiting-on entries, pending approvals); 'info' for FYI items. Don't escalate what a task comment or notification already covers. One escalation per subject (task, deal or headline) per 7 days; a repeat is not re-sent.
+  - required: `severity`, `title`, `message`
+- **`expect_outcome`** — Record a post-condition on work you just did: a fact about the world that should become TRUE by a deadline if the action actually worked. Kavanah re-checks it against the database later and marks it met or missed — you are not asked, and your own summary does not count as evidence. Use this whenever you take an action whose success is not immediately observable: you assigned a task and it should reach a status; you asked someone for something and they should deliver; you made a change that should move a goal. Do NOT use it for work that is already verifiably done at the moment you finish (you created a document and it exists) — there is nothing to wait for. One check per claim; keep the description specific enough that a human reading it later can tell whether it was a fair test.
+  - required: `description`, `check_source`, `check_config`, `due_in_hours`
+- **`get_agent_activity_report`** _(read-only)_ — Summarize the agent's own activity over the last N days (admin-only): actions executed / parked for approval / blocked by policy / failed, undone-by-human count, approval outcomes, per-category and top-tool breakdowns. Use when the user asks what the agent has been doing, or to ground a self-report.
+- **`get_ai_usage_breakdown`** _(read-only)_ — Where this workspace's AI usage goes ('why is my AI usage so high', 'cut token costs'): unattended usage by kind, per-schedule runs/tokens/model, chat usage by model, est. USD, current cost settings, ranked recommendations. Admins: workspace; members: their own. Propose changes; apply only when the user agrees.
+- **`get_runbook`** _(read-only)_ — Get one runbook's full step list by id or name. Shows each step's instruction, category, and whether it's a human checkpoint.
+  - required: `runbook`
+- **`list_agent_schedules`** _(read-only)_ — List the recurring autonomous agent runs in this workspace — name, prompt, frequency, UTC time, autonomy level, enabled flag, model (null = inherited; 'auto' = routed per run), only_when_tasks_for / task_gate (the person whose tasks gate each run, if any), next_run_at, last run status/error, and an estimated credits/month per schedule from its recent runs. Use before update/cancel to get the schedule id.
+- **`list_automation_runs`** _(read-only)_ — Recent execution history for one automation rule — when it fired, success/skipped/error, and the detail message from the action handler. Use this to answer 'did my rule fire?' or 'why didn't it do anything?'.
+  - required: `automation_id`
+- **`list_automations`** _(read-only)_ — List automation rules in the workspace, optionally filtered by project_ref.
+- **`list_my_agent_jobs`** _(read-only)_ — List the current user's recent background agent jobs (queued, running, completed, failed). Use this when the user asks about the status of bulk operations.
+- **`list_outcome_checks`** _(read-only)_ — List the post-conditions recorded for this workspace and how they settled — met, missed, still pending, or cancelled. Includes the hit rate over the settled ones. Use this to see whether your past actions actually landed before claiming a pattern of success, and to notice work that quietly went nowhere.
+- **`list_proactive_alerts`** _(read-only)_ — List proactive agent alerts for the current user (due-soon, overloaded member, stale task, blocked task, deadline conflict, etc.). Returns alert id + type + severity + title + body + metadata + related_task_id / related_project so the model can decide how to remediate. Excludes dismissed by default.
+- **`list_runbook_runs`** _(read-only)_ — List in-progress and checkpoint-paused runbook runs in this workspace.
+- **`list_runbooks`** _(read-only)_ — List the workspace's runbooks (reusable SOPs/playbooks). Use this when the user asks to run a process ('do the quarterly close', 'onboard this client') to find the matching runbook, or to show what SOPs exist.
+- **`list_waiting_on`** _(read-only)_ — List the waiting-on ledger — obligations the agent is tracking. Defaults to OPEN entries ordered by due date. Check this on every scheduled run and when the user asks 'what are we waiting on?'; overdue entries should be nudged or escalated.
+- **`mark_all_proactive_alerts_read`** — Mark every proactive alert as read for the current user.
+- **`mark_proactive_alert_read`** — Mark a proactive alert as read for the current user. Call this once the model has surfaced the alert to the user in chat.
+  - required: `alert_id`
+- **`multiverseai_chat`** — Run a chat completion through the user's MultiverseAI key against a chosen model. `messages` is the standard OpenAI-style array of {role, content}. Use this for one-shot model calls that don't need Kavanah's main agent context; for agentic workflows prefer `multiverseai_chat_with_agent`.
+  - required: `model`, `messages`
+- **`multiverseai_chat_with_agent`** — Send a message to a MultiverseAI agent and return its reply. Pass `conversation_id` to continue a previous conversation; omit it to start a fresh one (the response will include the new id).
+  - required: `agent_id`, `message`
+- **`multiverseai_completion`** — Run a single-prompt text completion through the user's MultiverseAI key (the legacy /completions endpoint — one `prompt` string in, generated text out). Prefer `multiverseai_chat` for anything conversational; use this only for models/flows that expect the prompt-completion shape.
+  - required: `model`, `prompt`
+- **`multiverseai_execute_workflow`** — Trigger a MultiverseAI workflow execution. Returns an execution id; the workflow runs async on MultiverseAI's side. Confirm with the user before invoking unknown workflows — they may have side effects.
+  - required: `workflow_id`
+- **`multiverseai_get_agent`** _(read-only)_ — Fetch a single MultiverseAI agent by id (name, description, model, instructions).
+  - required: `agent_id`
+- **`multiverseai_get_workflow`** _(read-only)_ — Fetch a single MultiverseAI workflow by id (metadata + node count). Use this to confirm what a workflow does before triggering it.
+  - required: `workflow_id`
+- **`multiverseai_health`** _(read-only)_ — Check that the MultiverseAI gateway is reachable and report its status/version. A quick diagnostic before running chat/agent/workflow calls.
+- **`multiverseai_list_agents`** _(read-only)_ — List the MultiverseAI agents the user has configured (each is a persistent agent with system prompt + model).
+- **`multiverseai_list_models`** _(read-only)_ — List models available through the user's MultiverseAI account (across providers — OpenAI, Anthropic, etc., as configured upstream).
+- **`multiverseai_list_workflows`** _(read-only)_ — List the MultiverseAI workflows the user has defined (graph-style automations with nodes + edges).
+- **`record_waiting_on_nudge`** — Stamp an open waiting-on entry after you nudged the person (message, task comment, queued email). After 2+ nudges surface it to the user once instead. Capped at 5 nudges; past that it is refused and the entry goes on a weekly stuck list, not every digest.
+  - required: `followup_id`
+- **`resolve_waiting_on`** — Close a waiting-on entry: status 'resolved' when the deliverable arrived, 'cancelled' when it's no longer needed. Add a short note saying how it closed.
+  - required: `followup_id`
+- **`scrappy_activate_source`** — Activate a DRAFT Scrappy source so it can be scraped. Returns the updated source. No-op error if it's already active.
+  - required: `source_id`
+- **`scrappy_browser_captcha`** — Check whether a captcha is blocking the page, and optionally attempt to solve it. Run `detect` first and treat it as diagnosis — it tells you a selector will never appear because the page is challenged, which is otherwise indistinguishable from a slow load. `solve` SPENDS the user's money on a third-party solving service per attempt, so only use it when they have asked you to get through a specific blocked page, and tell them it is being used. A cleared challenge is not a guarantee: these systems also score the session server-side.
+  - required: `session_id`
+- **`scrappy_browser_capture_profile`** — Save a live session's signed-in state into a saved login, so later sessions start already authenticated. Only works on a session the user owns. Confirm with the user before calling — this persists their live login for reuse.
+  - required: `session_id`, `profile_id`
+- **`scrappy_browser_check_access`** _(read-only)_ — Check that Scrappy is connected AND that the user's API key carries the browser scopes this toolkit needs. Cheap and read-only. Call it first if any other browser tool reports a permission problem — the fix is re-minting the Scrappy key with browser scopes, not retrying.
+- **`scrappy_browser_click`** — Click by CSS selector or coordinates. `click_count: 2` double-clicks, which is how many data grids enter cell-edit mode. `button: 'right'` opens a context menu. Set `pierce` when a selector cannot find something you can plainly see — querySelector does not cross shadow roots, so controls inside web components are invisible without it. `hold_ms` turns it into a press-and-hold, the only way past a 'Press & Hold to confirm you are human' widget (which starts a timer on pointerdown, so an ordinary click always fails). Clearing that gesture is not the same as clearing the challenge — those systems also score the session server-side. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`
+- **`scrappy_browser_cookies`** — Read, set, or delete the session's cookies. `action: 'delete'` with no name clears ALL of them, which signs the session out of everything — including a saved login it was started from. Cookies ARE the credential: report what you find in terms of names and domains, never by echoing values, and never copy them anywhere outside this session.
+  - required: `session_id`
+- **`scrappy_browser_create_profile`** — Create an EMPTY saved-login slot. It holds no login until one is captured from a live session. You cannot perform that capture: the user must sign in themselves on the Browser page and save it. Use this only when the user has asked you to set up a new saved login for them.
+  - required: `label`
+- **`scrappy_browser_create_session`** — Start a cloud browser session. Pass `profile_id` to reuse one of the user's saved logins, which starts the browser ALREADY SIGNED IN to that site — this is the normal way to act on a user's behalf. SPENDS the user's Scrappy credits up front and then meters per minute for as long as it lives, so release it when done. Capped at ~10 concurrent sessions.
+- **`scrappy_browser_delete_profile`** — PERMANENTLY delete a saved login and the encrypted credential it holds. This is the revocation path — use it when the user disconnects an account or suspects a saved session is compromised. Not recoverable. Always confirm first and say exactly which login will be removed.
+  - required: `profile_id`
+- **`scrappy_browser_drag_drop`** — Drag one element onto another — slider filters, sortable lists, drag-and-drop upload zones. Moves through intermediate points so drag libraries register the motion.
+  - required: `session_id`
+- **`scrappy_browser_element_info`** — Describe one element — whether it exists, is visible, its position, size, attributes and text. This is the tool for 'my click did nothing': it distinguishes a selector that matches nothing from one that matches something hidden, disabled, or covered by an overlay, which look identical from a click that reports success. PROVE A WRITE ACTUALLY CHANGED SOMETHING: the response carries `contentDigest`, `rowCount` and `descendantCount` for whatever the selector matches. Read the container (a list, a table body) BEFORE the action and again after — an unchanged digest is positive proof the action was a no-op, which 'a matching row exists' can never tell you, because the row may have been there all along. For a create specifically, prefer `rowCount`: a page with a ticking timestamp changes its digest every second while the count stays honest. FIND OUT WHY A CONTROL IS DISABLED instead of retrying it: when the element is disabled the response carries `gating` — `disabledVia` ('property' or 'aria'), `emptyFields`, `emptyRequiredFields`, `invalidFields` and `formValid`. Read `emptyFields` and fill what it names. Do NOT check `emptyRequiredFields` alone and conclude nothing is missing: a field the form insists on can be absent from it while `emptyFields` names the field actually blocking the button, which is the usual reason a submit stays greyed out with no visible error.
+  - required: `session_id`, `selector`
+- **`scrappy_browser_evaluate`** — Run a JavaScript expression in the page and return its result. The escape hatch when no other tool fits — computing a value from many elements, reading a framework's in-memory state, or driving a control that responds to nothing else. Prefer a purpose-built tool when one exists: they report failure meaningfully and this returns whatever the expression happened to evaluate to. NEVER use it to read passwords, cookies, tokens or card numbers out of a page, and never send such values anywhere — the user signed in here on the understanding that their credentials stay in the browser.
+  - required: `session_id`, `expression`
+- **`scrappy_browser_get_console`** — Read the page's console messages, for diagnosing a page that silently failed. NOTE this DRAINS the buffer: it returns what has accumulated since the last call and clears it, so read it once right after the action you are investigating rather than polling.
+  - required: `session_id`
+- **`scrappy_browser_get_dom`** — Fetch the page's DOM structure. Use when you need the real element tree to build a selector — `scrappy_browser_scrape` with format 'skeleton' is usually better and much smaller, so try that first.
+  - required: `session_id`
+- **`scrappy_browser_get_network`** — Read the requests the page has made — the way to find the JSON endpoint behind a table and fetch it directly instead of scraping rendered HTML. DRAINS the buffer like `scrappy_browser_get_console`. Capture starts when a tab is first touched, so to catch a page LOAD call this once before navigating and again after, rather than only afterwards. To BLOCK requests rather than observe them, use `scrappy_browser_intercept`.
+  - required: `session_id`
+- **`scrappy_browser_history`** — Go back, go forward, or reload. Back is not the same as navigating to the previous URL — it restores the page's own history entry, which matters after a form post or inside a single-page app. Reload keeps the current URL, which you may not know.
+  - required: `session_id`, `action`
+- **`scrappy_browser_hover`** — Hover the pointer over an element. Navigation menus that reveal a submenu on hover, and tooltips carrying the data you want, never appear for a click — the submenu is not in the DOM until the pointer is over its parent.
+  - required: `session_id`
+- **`scrappy_browser_iframe`** — Read or act on content INSIDE a same-origin iframe. Ordinary click/type/scrape cannot cross a frame boundary — a CSS selector stops at the document — so payment fields, consent walls and embedded third-party forms are invisible to every other tool here. Use `html`/`text` to read the frame, or `click`/`type` with a selector INSIDE it. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`, `frame_selector`, `action`
+- **`scrappy_browser_intercept`** — Block requests by resource type or URL pattern so pages load faster and scrapes use less bandwidth. `action: 'stop'` clears all blocking. For a general scraping run prefer `scrappy_browser_scrape_mode`, which does this and more.
+  - required: `session_id`
+- **`scrappy_browser_keep_awake`** — Hold a session open while nobody is watching it, or stop holding it. This is the tool for 'keep my session alive', 'do not let it time out' and 'persist this session' — `scrappy_browser_keepalive` only buys a single ~30-minute idle window and will NOT survive the user closing the tab. Sets a deadline up to 4 hours out that a cron refreshes; re-run it to extend from now. Every minute held awake meters against the user's Scrappy account whether or not anyone comes back, so the 4-hour cap is deliberate and there is no forever option — say so rather than promising one. Pass enabled: false to stop early. Upstream also reaps at 12 hours absolute no matter what.
+  - required: `session_id`, `enabled`
+- **`scrappy_browser_keepalive`** — Mark a session as still in use without acting on the page. Rarely needed from the agent — any action already counts as activity. Use it only when a human is doing something in the viewer (reading, completing MFA) and the session would otherwise look idle. This buys ONE idle window (~30 minutes); to hold a session open while nobody is watching it, use `scrappy_browser_keep_awake` instead.
+  - required: `session_id`
+- **`scrappy_browser_list_profiles`** _(read-only)_ — List the user's saved logins — sites they have already signed in to, which a session can start from to act as them. Stored cookies are never returned, only labels. Read-only and free. These belong to the user who captured them and cannot be used for anyone else.
+- **`scrappy_browser_list_sessions`** _(read-only)_ — List the user's live browser sessions plus any shared with the workspace, with each one's id, status and whether it was started from a saved login. Call this first — every other browser tool needs a session id. Read-only and free.
+- **`scrappy_browser_list_tabs`** — List the session's open tabs with the tab id every tab operation needs. Call this before `scrappy_browser_manage_tab` — the id is an internal target id that appears in no other response, so there is no other way to name a tab. Also the way to notice that a click opened a popup you did not expect.
+  - required: `session_id`
+- **`scrappy_browser_manage_tab`** — Close a tab, or make one the active tab with `action: 'activate'`. Activating brings the tab to the front AND makes it the tab every later action lands on (click, type, evaluate, screenshot) until it is closed — so after looking something up in a second tab, activate the first one before continuing there. Web apps open tabs constantly — OAuth consent, payment windows, target=_blank links — and without this they accumulate and keep consuming session resources.
+  - required: `session_id`
+- **`scrappy_browser_navigate`** — Navigate a session to an http/https URL. Private and internal hosts are blocked. After navigating, prefer `scrappy_browser_wait_for_network` before reading a single-page app, which often renders before its data arrives.
+  - required: `session_id`, `url`
+- **`scrappy_browser_open_tab`** — Open a new blank tab and return its id. Useful to keep a long form intact while you look something up, instead of navigating away and losing the filled fields. The new tab is blank, so your actions keep landing on the form until you navigate it; when you are done there, activate the form's tab with scrappy_browser_manage_tab before continuing.
+  - required: `session_id`
+- **`scrappy_browser_press_key`** — Press a key — 'Enter' to submit a search or form, 'Escape' to dismiss a modal, 'Tab' to move focus, 'ArrowDown'/'ArrowUp' to walk an autocomplete list. Many search boxes have no submit button at all and only respond to Enter, so this is often the only way to run a query. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`, `key`
+- **`scrappy_browser_read_page`** — Read the page as a list of interactive elements — each with its role, its visible name, its state, and a `ref` to act on. START HERE before clicking or typing on any page you have not already read. Pass a returned `ref` to click, type, hover, press_key, select_option, scroll, drag_drop or element_info instead of writing a CSS selector. This is Chrome's own accessibility computation, so the name a node comes back with is the one a person reads off the screen — aria-label, label[for], alt text and content are already folded in, none of which a selector can see. Guessing a selector from a screenshot is how a form gets filled wrong in a way that reports success: typing a person's NAME into the field that wanted their record id looks identical to a correct type. Reading the page first removes the guess. Refs are invalidated by anything that re-renders the page. If one comes back stale, call this again for fresh refs — do not fall back to inventing a selector.
+  - required: `session_id`
+- **`scrappy_browser_release_session`** — Close a browser session, freeing capacity and STOPPING the per-minute meter. Always do this when finished — an abandoned session bills until it is reaped 30 minutes later.
+  - required: `session_id`
+- **`scrappy_browser_render_pdf`** — Render the current page to a PDF, returned base64-encoded. Use for archiving a receipt, invoice, or report exactly as it appears.
+  - required: `session_id`
+- **`scrappy_browser_resolve_download`** — Resolve the real file URL behind a link or button — CSV exports, PDFs, attachments — so it can be fetched directly instead of driving a download dialog.
+  - required: `session_id`, `selector`
+- **`scrappy_browser_scrape`** — Read the current page. TRY `structured` FIRST — when a site publishes JSON-LD, microdata, OpenGraph or embedded framework state, reading its own data beats inferring it from markup. `markdown` strips boilerplate to the main content; `skeleton` collapses repeated components to one exemplar plus the CSS selector matching all of them (ideal for finding the selector to loop over); `text` and `html` are raw. All formats run server-side over the RENDERED DOM, so they see post-JavaScript state.
+  - required: `session_id`
+- **`scrappy_browser_scrape_mode`** — Render pages for extraction instead of for humans: blocks images/media/fonts/trackers, removes cookie and consent walls, unsticks fixed headers that swallow clicks, finishes animations that stop waits settling, promotes lazy-loaded data-src images, and pauses media. By default it applies to the CURRENT page only; pass persist: true to keep it across navigations for a multi-page run. Call it before a scraping run — and TURN IT OFF again (action: off) as soon as you are done reading. A cloud browser session is SHARED with the human: leave this on and every page they open afterwards renders with no images and no fonts, looking broken, with nothing on screen explaining why.
+  - required: `session_id`
+- **`scrappy_browser_screenshot`** — Capture the page as a base64 image. Use when you need to SEE layout — for reading text or data, `scrappy_browser_scrape` is far cheaper and more accurate. Rate-limited to 30/min.
+  - required: `session_id`
+- **`scrappy_browser_scroll`** — Scroll the page — to an element, by a pixel offset, or straight to 'top'/'bottom'. Needed for infinite-scroll lists and anything lazy-loaded: content below the fold often has not been fetched at all yet, so scraping without scrolling returns a short list and looks like the real answer.
+  - required: `session_id`
+- **`scrappy_browser_select_option`** — Choose an option in a native <select> dropdown. Do NOT try to click one: the list a native select opens is drawn by the operating system, not the page, so there is no element to click and the click silently does nothing. Pass `values` for a multi-select.
+  - required: `session_id`, `selector`
+- **`scrappy_browser_session_context`** — Report how this session appears to sites: proxy, exit IP, timezone and the OS it presents. Use when a site is blocking or challenging the session — a browser clock that disagrees with its own IP's region reads as automation no matter how ordinary the rest looks.
+  - required: `session_id`
+- **`scrappy_browser_set_checkbox`** — Tick or untick a checkbox or radio button. Prefer this over clicking one: a click TOGGLES, so if you are unsure of the current state — or you retry after an ambiguous failure — clicking flips it back. This sets the state you asked for and is safe to repeat.
+  - required: `session_id`, `selector`, `checked`
+- **`scrappy_browser_set_viewport`** — Resize the page viewport, optionally emulating a mobile device. Use when a site serves a different layout by width — a responsive table that collapses to cards, or a mobile site that exposes data the desktop one hides behind a menu.
+  - required: `session_id`, `width`, `height`
+- **`scrappy_browser_sleep_session`** — Snapshot the session's signed-in state and open tabs, then shut the browser down — which STOPS the per-minute meter while keeping the login. Returns a snapshot id for `scrappy_browser_wake_session`. This is the right way to pause work that resumes later: keepalive keeps paying, and releasing throws the state away.
+  - required: `session_id`
+- **`scrappy_browser_storage`** — Read, set, or delete localStorage / sessionStorage entries for the current page. Many single-page apps keep their auth token here, so the same rule as cookies applies: never echo a value that looks like a credential and never copy one out of the session. `action: 'delete'` with no key clears the whole store.
+  - required: `session_id`
+- **`scrappy_browser_suppress_dialogs`** — Replace alert/confirm/prompt/beforeunload with no-ops on the current page. Call this BEFORE any click that might open one: an open dialog blocks its tab, so a Save or Delete that fires confirm() makes every later command on that tab time out with no way to answer it. Per-document — re-apply after each navigation.
+  - required: `session_id`
+- **`scrappy_browser_type`** — Type text into an input. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`, `selector`, `text`
+- **`scrappy_browser_upload_file`** — Attach a file to a file input. Give either `content` (base64, ~7MB ceiling from the request body limit) or `source_url` (fetched by Scrappy itself, up to 20MB — use this for real documents). `source_url` is SSRF-checked like navigate.
+  - required: `session_id`, `selector`
+- **`scrappy_browser_wait_for_network`** — Block until the page stops issuing requests. Essential for single-page apps that render their shell before the data arrives — scraping too early returns an empty skeleton. Polls server-side (one request, not dozens). Returns idle:false on timeout rather than failing.
+  - required: `session_id`
+- **`scrappy_browser_wait_for_selector`** — Block until an element is visible (default), present, hidden, or detached. Essential BETWEEN the steps of a write flow — after clicking Edit wait for the form, after saving wait for the confirmation. Polls server-side, so it costs one request instead of many. Returns found:false on timeout rather than failing.
+  - required: `session_id`, `selector`
+- **`scrappy_browser_wake_session`** — Restore a slept session from its snapshot id into a NEW browser session, signed in and back on the same pages. Costs a fresh session up front, so wake once and finish the work rather than sleeping and waking between steps.
+  - required: `snapshot_id`
+- **`scrappy_create_job`** — Kick off a new Scrappy scraping job against an existing ACTIVE source. Returns the new job id; poll with `scrappy_get_job` to watch progress, or `scrappy_list_leads` once the job completes.
+  - required: `name`, `source_id`
+- **`scrappy_create_source`** — Create a new Scrappy scraping source. Requires `name`, `url`, `scrape_type`, and `selectors` (an object of CSS/XPath selectors keyed by the field to extract). The source starts as DRAFT — call `scrappy_activate_source` before running a job against it.
+  - required: `name`, `url`, `scrape_type`, `selectors`
+- **`scrappy_credit_burn_rate`** _(read-only)_ — Get Scrappy credit usage trends and burn-rate projection (daily average + projected run-out). Use when the user asks 'how fast are we spending Scrappy credits?'.
+- **`scrappy_discover_sources`** — Use Scrappy's AI to discover relevant scraping sources for a free-text search query. Returns suggestions (not saved). Consumes Scrappy credits.
+  - required: `query`
+- **`scrappy_generate_sources`** — Use Scrappy's AI to generate source suggestions from a project description (plus optional audience/industry/location). Set `auto_save` to persist them. Consumes Scrappy credits.
+  - required: `project_description`
+- **`scrappy_get_job`** _(read-only)_ — Fetch a single Scrappy job by id with current status, progress %, and leadsFound count. Use to poll a job kicked off with `scrappy_create_job`.
+  - required: `job_id`
+- **`scrappy_list_jobs`** _(read-only)_ — List Scrappy scraping jobs (the background tasks that produce leads) with status and progress %. Pair with `scrappy_list_leads` to track 'how many leads did the last job find?'.
+- **`scrappy_list_sources`** _(read-only)_ — List Scrappy data sources (the configured scrapers, one per target URL). Filter by `status` (DRAFT/ACTIVE/ARCHIVED). A source must be ACTIVE before `scrappy_create_job` can run against it.
+- **`scrappy_source_analytics`** _(read-only)_ — Get per-source performance metrics: lead yield, success rate, and average run time. Use when the user asks 'which sources are producing the most leads?'.
+- **`soundgen_clone_voice`** — Clone a voice from 1–25 audio samples. Pass a human-readable `name` and an array of publicly reachable `audio_urls`. Returns a `voice_id` once training completes (2–5 minutes). DESTRUCTIVE: a cloned voice can be used to impersonate the source speaker — confirm consent before calling.
+  - required: `name`, `audio_urls`
+- **`soundgen_generate_music`** — Start an AI music generation job from a text prompt. Returns a `generation_id` you can poll with `soundgen_get_generation`. Async — typical wall-clock is 10–30 seconds for short clips. The user pays per generation, so confirm the prompt before kicking off long durations.
+  - required: `prompt`
+- **`soundgen_get_generation`** _(read-only)_ — Check the status of one SoundGen generation. Returns `status` ('processing' | 'completed' | 'failed') and — once completed — a downloadable `result_url`. Poll this after `soundgen_generate_music` until status is terminal.
+  - required: `id`
+- **`soundgen_get_project`** _(read-only)_ — Fetch details of one public SoundGen project: tracks, BPM, key, duration, tags, settings. Use after `soundgen_list_projects` to drill in.
+  - required: `id`
+- **`soundgen_get_sound`** _(read-only)_ — Fetch one SoundGen sound by id, including its file_url, waveform_url, BPM, key, duration, tags, and engagement counts. Use after `soundgen_list_sounds` to drill into a track.
+  - required: `id`
+- **`soundgen_get_stats`** _(read-only)_ — Platform-level SoundGen stats: total sounds, total projects, top genres, API version. Use for 'how big is the library' style answers.
+- **`soundgen_list_generations`** _(read-only)_ — List the calling user's SoundGen generation history. Use to find a prior `generation_id` or surface 'my recent generations'.
+- **`soundgen_list_genres`** _(read-only)_ — List every genre slug SoundGen knows about (~6 today). Cheap and unauthenticated — use to validate a `genre` value before passing it to `soundgen_list_sounds` or `soundgen_generate_music`.
+- **`soundgen_list_projects`** _(read-only)_ — Browse public SoundGen projects — collections of tracks with metadata. Useful for 'show me example arrangements in genre X' workflows.
+- **`soundgen_list_sounds`** _(read-only)_ — Browse the SoundGen sound library. Supports genre filter, featured-only, free-text search across title/artist/description, and pagination. Use to surface tracks the user can drop into a project or reference in a brief.
+- **`soundgen_list_voices`** _(read-only)_ — List voices available for text-to-speech, including SoundGen's built-in voices and any the user has cloned. Returns voice ids the user can pass to `soundgen_synthesize_speech`.
+- **`soundgen_separate_stems`** — Split an audio file into individual stems (vocals, drums, bass, etc.). Pass a publicly reachable `audio_url`. Returns a `separation_id` for tracking; SoundGen typically takes ~30 seconds. Async — the result URLs land on the row when status reaches 'completed' (poll via the generations surface or wait for a webhook).
+  - required: `audio_url`
+- **`soundgen_synthesize_speech`** — Convert text to speech using a SoundGen voice. Returns a `synthesis_id` that resolves to an audio file URL when done (~1s). Text is capped at 5000 chars.
+  - required: `text`, `voice_id`
+- **`start_runbook`** — Begin executing a runbook. Returns a run id and the FIRST step to perform. Do the step's work with your other tools, then call advance_runbook to record it done and get the next step. Continue until the run completes.
+  - required: `runbook`
+- **`toggle_automation`** — Enable or disable an automation rule without changing its config.
+  - required: `automation_id`, `enabled`
+- **`track_waiting_on`** — Record that someone owes a deliverable or answer, so the agent chases it later. Call this whenever you delegate work, assign a task that needs a response, or ask a person for input you'll need. One entry per obligation.
+  - required: `waiting_on`, `description`
+- **`update_agent_schedule`** — Change a scheduled autonomous run. Pass only the fields you want to change (name, prompt, frequency, hour_utc, minute_utc, day_of_week, day_of_month, autonomy_level, enabled, persona_id, model, only_when_tasks_for, task_gate, tasks_due_within_days). model 'auto' cuts a simple schedule's cost. To stop a reminder emailing when there's nothing for its person, set only_when_tasks_for to that person. Set enabled:false to pause without deleting. Set persona_id to make an existing schedule run as an AI Employee (e.g. one created before that employee existed), or to an empty string to run as the default agent again. Changing any timing field reschedules the next run. No undo: re-apply the reply's previous to revert.
+  - required: `schedule_id`
+- **`update_automation`** — Update an automation rule's name, trigger, action, or enabled state. trigger_type and action_type use the same vocabulary as create_automation.
+  - required: `automation_id`
