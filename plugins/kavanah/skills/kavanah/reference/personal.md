@@ -1,11 +1,12 @@
 # Personal
 
-17 commands. Generated — run `npm run skill:gen` to refresh.
+19 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
 | `learn.courses.lessons.get` | GET | `/api/learn/courses/{course}/lessons/{lesson}` | One Learn lesson, with its narration version |
 | `learn.courses.list` | GET | `/api/learn/courses` | The Learn course catalogue |
+| `learn.my-learning.list` | GET | `/api/learn/my-learning` | The caller's own course list — status, completion and due dates |
 | `learn.progress.list` | GET | `/api/learn/progress` | The caller's Learn progress — completions, listening, reading |
 | `learn.progress.set` | PUT | `/api/learn/progress` | Mark a Learn lesson complete or not complete |
 | `learn.progress.update` | PATCH | `/api/learn/progress` | Save a Learn listening or reading checkpoint |
@@ -21,6 +22,7 @@
 | `me.todos.update` | PATCH | `/api/me/todos/{id}` | Update a to-do |
 | `profile.experience.list` | GET | `/api/profile/experience` | Get your own experience profile and declared skills |
 | `profile.experience.set` | PUT | `/api/profile/experience` | Update your own experience profile (and optionally declared skills) |
+| `referrals.list` | GET | `/api/referrals` | Get the caller's referral link and results |
 
 ---
 
@@ -43,6 +45,14 @@ Path params (positional, in order):
 The Learn course catalogue
 
 Every course in the catalogue with its modules and lesson outlines, minus lesson bodies. `published` is false for a lesson that has no body yet ("coming soon"). Same catalogue the web reader renders. Build-static, so it carries `Cache-Control: private, max-age=0, stale-while-revalidate=60`.
+
+### `learn.my-learning.list`
+
+`GET /api/learn/my-learning`
+
+The caller's own course list — status, completion and due dates
+
+Every catalogue course the caller has started or been assigned in the CURRENT workspace, ordered overdue first, then other open assignments by due date, then in-progress courses by recency, then completed. Progress is the caller's own (it follows them across workspaces); assignments belong to this workspace. `canManage` is true for workspace owners and admins (they can open team progress). `Cache-Control: private, no-store`.
 
 ### `learn.progress.list`
 
@@ -201,3 +211,11 @@ Body (application/json):
   - `resumeFileName` (string)
   - `skills` (object[]) — Replaces your declared skill set (same shape as /api/people/skills).
   - `deriveSkills` (boolean)
+
+### `referrals.list`
+
+`GET /api/referrals`
+
+Get the caller's referral link and results
+
+The caller's personal invite link (https://kavanah.ai/join/<code>, minted on first call) and the Kavanah referral program it belongs to: the credits a new user earns when they verify their email, the credits the caller earns when that user makes a first purchase, and counts of people who signed up, verified and purchased through the link. Payouts are made by cred.diy.

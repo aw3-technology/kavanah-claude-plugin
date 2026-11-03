@@ -1,6 +1,6 @@
 # Deals
 
-73 commands. Generated — run `npm run skill:gen` to refresh.
+95 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -8,6 +8,28 @@
 | `deals.audience.list` | GET | `/api/deals/audience` | This workspace's outbound opt-out list |
 | `deals.audience.schedule.list` | GET | `/api/deals/audience/schedule` | The scheduled AngelSend audience sync |
 | `deals.audience.schedule.set` | PUT | `/api/deals/audience/schedule` | Turn the scheduled AngelSend directions on or off |
+| `deals.blotter.changes.revert.create` | POST | `/api/deals/blotter/changes/{id}/revert` | Revert one logged Blotter change |
+| `deals.blotter.close.create` | POST | `/api/deals/blotter/close` | Close pipeline for one sell-side Blue Chip — drafts to every buy-side contact |
+| `deals.blotter.deals.get` | GET | `/api/deals/blotter/deals/{id}` | One deal's Blotter detail — parties, the "Why", your open drafts, and every change |
+| `deals.blotter.deals.update` | PATCH | `/api/deals/blotter/deals/{id}` | Edit a deal's Blotter inputs (logged, revertible) |
+| `deals.blotter.engage.create` | POST | `/api/deals/blotter/engage` | Draft replies for ONE deal into your Gmail Drafts (nothing is sent) |
+| `deals.blotter.grow.create` | POST | `/api/deals/blotter/grow` | One round of Grow pipeline — up to 4 revenue-generating emails onto your Tasks board |
+| `deals.blotter.intel.create` | POST | `/api/deals/blotter/intel` | Save intel for the next Grow batch |
+| `deals.blotter.intel.list` | GET | `/api/deals/blotter/intel` | The intel Grow pipeline reads (web research and internal notes) |
+| `deals.blotter.list` | GET | `/api/deals/blotter` | The Deal Blotter — measured close rates, close probabilities with reasons, Blue Chips |
+| `deals.blotter.opportunities.execute.create` | POST | `/api/deals/blotter/opportunities/{id}/execute` | Send one draft from your Gmail (irreversible) |
+| `deals.blotter.opportunities.list` | GET | `/api/deals/blotter/opportunities` | Your Opportunities board |
+| `deals.blotter.opportunities.reject.create` | POST | `/api/deals/blotter/opportunities/{id}/reject` | Reject a task with a reason the next Grow batch applies |
+| `deals.blotter.opportunities.update` | PATCH | `/api/deals/blotter/opportunities/{id}` | Edit, dismiss or restore one of your drafts |
+| `deals.blotter.plays.create` | POST | `/api/deals/blotter/plays` | Add a curated play |
+| `deals.blotter.plays.delete` | DELETE | `/api/deals/blotter/plays/{id}` | Remove a curated play |
+| `deals.blotter.plays.list` | GET | `/api/deals/blotter/plays` | Opportunities — the firm-level plays the desk curates |
+| `deals.blotter.plays.update` | PATCH | `/api/deals/blotter/plays/{id}` | Edit a curated play |
+| `deals.blotter.refresh.create` | POST | `/api/deals/blotter/refresh` | Re-read ONE deal's mail and update its Blotter inputs |
+| `deals.blotter.settings.list` | GET | `/api/deals/blotter/settings` | Deal Blotter settings, plus the caller's own signoff |
+| `deals.blotter.settings.set` | PUT | `/api/deals/blotter/settings` | Change the Deal Blotter settings (admin) |
+| `deals.blotter.signoff.set` | PUT | `/api/deals/blotter/signoff` | Set your own email signoff for Engage drafts |
+| `deals.blotter.verify-drafts.create` | POST | `/api/deals/blotter/verify-drafts` | Check that a run's Gmail drafts still exist, and flag the missing ones |
 | `deals.cadences.angelsend.create` | POST | `/api/deals/cadences/{id}/angelsend` | Sync a cadence's AngelSend campaign now |
 | `deals.cadences.angelsend.list` | GET | `/api/deals/cadences/{id}/angelsend` | The native AngelSend campaign(s) behind a cadence |
 | `deals.cadences.angelsend.set` | PUT | `/api/deals/cadences/{id}/angelsend` | Back a cadence with a native AngelSend campaign, or stop |
@@ -129,6 +151,260 @@ Body (application/json):
   - `pullProjectId` (string)
   - `contactsPushEnabled` (boolean)
   - `pushProjectId` (string) — Required to turn the push on.
+
+### `deals.blotter.changes.revert.create`
+
+`POST /api/deals/blotter/changes/{id}/revert`
+
+Revert one logged Blotter change
+
+Refused (409) when the field has changed again since, or the change was already reverted.
+
+Path params (positional, in order):
+  - `id`
+
+### `deals.blotter.close.create`
+
+`POST /api/deals/blotter/close`
+
+Close pipeline for one sell-side Blue Chip — drafts to every buy-side contact
+
+A welcoming, no-terms email to every buy-side contact on the deal's mail in the last 12 months (including those pitched who never replied), one per firm, no cap — minus the supply side, our own people, declines, anyone emailed in the last recentEmailDays or drafted in the last redraftCooldownDays, and suppressed addresses. First introductions ask the fees-inclusive all-in price; repeat recipients get "still live?". Saved to Gmail Drafts and the Tasks board. The no-replica rule applies: anyone with nothing new since what you sent them in the last 72 hours is not drafted (`replicaSkips`). Billed to the caller per batch.
+
+Body (application/json):
+  - `dealId` (string, required)
+  - `runId` (string)
+
+### `deals.blotter.deals.get`
+
+`GET /api/deals/blotter/deals/{id}`
+
+One deal's Blotter detail — parties, the "Why", your open drafts, and every change
+
+Path params (positional, in order):
+  - `id`
+
+Query:
+  - `tz` (string)
+
+### `deals.blotter.deals.update`
+
+`PATCH /api/deals/blotter/deals/{id}`
+
+Edit a deal's Blotter inputs (logged, revertible)
+
+`{ edits: [{ field, contactId?, value, evidence? }] }`. Fields: supply, side (`sell` | `buy` | null), terms, next_action, next_deadline, fee_basis, client_role, signal:<supply_certainty|paper|chain_length|process_friction|red_flags> (value `{ score: -2..2, evidence? }` or null), and per buyer `rung` or factor:<commitment|verification|price|momentum>.
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `edits` (object[], required)
+
+### `deals.blotter.engage.create`
+
+`POST /api/deals/blotter/engage`
+
+Draft replies for ONE deal into your Gmail Drafts (nothing is sent)
+
+Picks up to maxPeoplePerDeal people who wrote to you about the deal inside the lookback window, best first, skipping anyone drafted for it within the cooldown, emailed about it recently, or suppressed. One draft per person, on their existing thread, with your signoff appended; each lands on your Opportunities board with its expected value. The no-replica rule applies: your sent mail to each person from the last 72 hours is read first, repeated lines are removed, and anyone with nothing new is not drafted (`replicaSkips`). `mode` is "close" (Blue Chips) or "grow" (other live deals). One model call billed to the caller. Needs edit access on the deal.
+
+Body (application/json):
+  - `dealId` (string, required)
+  - `mode` (string) — one of: `close`, `grow`
+  - `runId` (string)
+
+### `deals.blotter.grow.create`
+
+`POST /api/deals/blotter/grow`
+
+One round of Grow pipeline — up to 4 revenue-generating emails onto your Tasks board
+
+Reads the mail, Drive and intel since the last Play and writes the emails that generate the most revenue now (Blue Chips first, only where the ball is with you, at most maxTasksPerDeal per deal), applying unreviewed rejection reasons as constraints. Call round 0..3 with the running `alreadyMade` until `done`; round 0 supersedes earlier open Grow / chat tasks. One model call per round, billed to the caller. Nothing is sent.
+
+Body (application/json):
+  - `runId` (string, required)
+  - `round` (integer)
+  - `alreadyMade` (integer)
+
+### `deals.blotter.intel.create`
+
+`POST /api/deals/blotter/intel`
+
+Save intel for the next Grow batch
+
+A `dealId` must be a deal the caller can open (400 for a malformed id, 404 for one they cannot see).
+
+Body (application/json):
+  - `body` (string, required)
+  - `kind` (string) — one of: `web`, `internal`
+  - `source` (string)
+  - `dealId` (string)
+
+### `deals.blotter.intel.list`
+
+`GET /api/deals/blotter/intel`
+
+The intel Grow pipeline reads (web research and internal notes)
+
+Intel filed on a deal the caller cannot open is left out.
+
+### `deals.blotter.list`
+
+`GET /api/deals/blotter`
+
+The Deal Blotter — measured close rates, close probabilities with reasons, Blue Chips
+
+Opt-in per workspace (Blotter settings → enabled). Off, it answers `{ enabled: false, viewer }` and computes nothing. On, it returns the close rate per buyer stage measured from the workspace's own counterparties (steadied by a prior while closes are few), every deal the caller can see with its two-part close probability ("deal holds together" × "at least one buyer signs") and the evidence behind it, Blue Chips in Engage order, tiles, the caller's EV header (EV generated, this week, day streak, board cleared), the Performance panel (focused hours per $100K collected, $ per focused hour, economy of learning), 90-day activity series, the prediction-ledger summary and recent changes. Drafts the caller has since sent from Gmail are credited on the way. Not cached.
+
+Query:
+  - `tz` (string) — IANA timezone for 'today', the week and the streak. Defaults to the caller's.
+
+### `deals.blotter.opportunities.execute.create`
+
+`POST /api/deals/blotter/opportunities/{id}/execute`
+
+Send one draft from your Gmail (irreversible)
+
+Requires `confirm: true`. Sends the approved subject/body on the draft's thread, through the same controls as any outbound mail (suppression lists, the compliance archive BCC). The draft is claimed first, so a double click cannot send twice. Credits the draft's expected value. The Gmail draft is removed on native Gmail. The no-replica rule is checked BEFORE the claim (so a refusal leaves the task open): nothing may repeat what you sent the recipient in the last 72 hours, on any thread. Lines that do are removed and the request answers 409 `replica_cleaned` with `{ cleaned, removed }` and sends nothing — call again with `body: cleaned` to send it. 409 `replica_nothing_new` means nothing substantive is left (`removed` lists the lines); 503 `sent_unreadable` means your sent mail could not be read, so nothing is sent.
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `confirm` (boolean, required)
+  - `subject` (string)
+  - `body` (string)
+
+### `deals.blotter.opportunities.list`
+
+`GET /api/deals/blotter/opportunities`
+
+Your Opportunities board
+
+Every Engage draft made for the caller, open ones first by expected value. Drafts the caller has since sent straight from Gmail are credited first.
+
+### `deals.blotter.opportunities.reject.create`
+
+`POST /api/deals/blotter/opportunities/{id}/reject`
+
+Reject a task with a reason the next Grow batch applies
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `reason` (string, required)
+
+### `deals.blotter.opportunities.update`
+
+`PATCH /api/deals/blotter/opportunities/{id}`
+
+Edit, dismiss or restore one of your drafts
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `subject` (string)
+  - `body` (string)
+  - `status` (string) — one of: `rejected`, `drafted`
+
+### `deals.blotter.plays.create`
+
+`POST /api/deals/blotter/plays`
+
+Add a curated play
+
+Body (application/json):
+  - `firm` (string, required)
+  - `title` (string, required)
+  - `notes` (string)
+  - `status` (string) — one of: `open`, `won`, `dropped`
+  - `sortOrder` (integer)
+
+### `deals.blotter.plays.delete`
+
+`DELETE /api/deals/blotter/plays/{id}`
+
+Remove a curated play
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+### `deals.blotter.plays.list`
+
+`GET /api/deals/blotter/plays`
+
+Opportunities — the firm-level plays the desk curates
+
+### `deals.blotter.plays.update`
+
+`PATCH /api/deals/blotter/plays/{id}`
+
+Edit a curated play
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `firm` (string, required)
+  - `title` (string, required)
+  - `notes` (string)
+  - `status` (string) — one of: `open`, `won`, `dropped`
+  - `sortOrder` (integer)
+
+### `deals.blotter.refresh.create`
+
+`POST /api/deals/blotter/refresh`
+
+Re-read ONE deal's mail and update its Blotter inputs
+
+A model reads the deal's recent timeline and threads and scores five deal signals, each buyer's stage and four buyer factors, plus supply, terms, next action and deadline. Every score must carry a quote that is checked against the mail; one that is not found is dropped. Each change is logged and revertible, and the new probability is recorded in the prediction ledger. One model call billed to the caller (402 when they cannot cover it). Needs edit access on the deal.
+
+Body (application/json):
+  - `dealId` (string, required)
+  - `runId` (string)
+
+### `deals.blotter.settings.list`
+
+`GET /api/deals/blotter/settings`
+
+Deal Blotter settings, plus the caller's own signoff
+
+### `deals.blotter.settings.set`
+
+`PUT /api/deals/blotter/settings`
+
+Change the Deal Blotter settings (admin)
+
+Body `{ expectedWorkspaceId?, settings: { enabled, netFeePct, netFeeLabel, horizonDate, keepAliveShare, maxPeoplePerDeal, lookbackDays, redraftCooldownDays, recentEmailDays, assumedHoursPerMonth, ladder, priorRates, blueChipRung, defaultCc, canSpamBlock, draftingRules, useGmailSignature, autoRefreshEnabled, tasksPerBatch, maxTasksPerDeal, refreshMaxShift } }`. Only the keys sent change; an unknown key is refused by name; a horizon in the past, a Blue Chip stage outside the ladder and a malformed Cc address are refused. Audited.
+
+Body (application/json):
+  - `expectedWorkspaceId` (string)
+  - `settings` (object, required)
+
+### `deals.blotter.signoff.set`
+
+`PUT /api/deals/blotter/signoff`
+
+Set your own email signoff for Engage drafts
+
+Body (application/json):
+  - `signoff` (string)
+
+### `deals.blotter.verify-drafts.create`
+
+`POST /api/deals/blotter/verify-drafts`
+
+Check that a run's Gmail drafts still exist, and flag the missing ones
+
+Body (application/json):
+  - `runId` (string, required)
 
 ### `deals.cadences.angelsend.create`
 

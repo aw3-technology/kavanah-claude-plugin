@@ -1,6 +1,6 @@
 # AI Agent
 
-106 commands. Generated — run `npm run skill:gen` to refresh.
+108 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -78,6 +78,8 @@
 | `ai-agent.slack-managers.create` | POST | `/api/ai-agent/slack-managers` | Create an AI Slack manager (admin) |
 | `ai-agent.slack-managers.delete` | DELETE | `/api/ai-agent/slack-managers/{id}` | Delete an AI Slack manager and its reply log (admin) |
 | `ai-agent.slack-managers.list` | GET | `/api/ai-agent/slack-managers` | List AI Slack managers, with their last 7 days of answers (admin) |
+| `ai-agent.slack-managers.people.delete` | DELETE | `/api/ai-agent/slack-managers/{id}/people` | Forget one person, or everyone, an AI Slack manager remembers (admin) |
+| `ai-agent.slack-managers.people.list` | GET | `/api/ai-agent/slack-managers/{id}/people` | What an AI Slack manager remembers about the people it talks to (admin) |
 | `ai-agent.slack-managers.update` | PATCH | `/api/ai-agent/slack-managers/{id}` | Update an AI Slack manager (admin) |
 | `ai-agent.tools.execute.create` | POST | `/api/ai-agent/tools/{name}/execute` | Execute one agent tool by name |
 | `ai-agent.tools.list` | GET | `/api/ai-agent/tools` | List the agent tools the caller may execute |
@@ -868,6 +870,13 @@ Body (application/json):
   - `perPersonHourlyLimit` (integer)
   - `hourlyReplyCap` (integer)
   - `enabled` (boolean)
+  - `rememberPeople` (boolean) — Keep the manager's own short notes about each person between conversations. Switching it off forgets everyone.
+  - `checkinEnabled` (boolean) — Post a scheduled check-in. Nothing posts while the manager itself is off.
+  - `checkinChannelId` (string) — Required once check-ins are on.
+  - `checkinDays` (integer[]) — Local weekdays, 0 = Sunday. Default Monday–Friday.
+  - `checkinTime` (string) — Local time, 24-hour.
+  - `checkinTimezone` (string) — IANA zone the schedule is read in.
+  - `checkinBrief` (string) — What the post should do. Facts still come only from the playbook.
 
 ### `ai-agent.slack-managers.delete`
 
@@ -887,6 +896,31 @@ Path params (positional, in order):
 List AI Slack managers, with their last 7 days of answers (admin)
 
 An AI Slack manager is an AI employee that answers people in a connected Slack workspace — @mentions of the Kavanah bot in chosen channels, and optionally DMs. It has no tools and sees no workspace data; it knows its persona and its playbook only. Each manager carries `stats` for the last 7 days (answered, escalated, rate-limited, refused, failed, credits, distinct people).
+
+### `ai-agent.slack-managers.people.delete`
+
+`DELETE /api/ai-agent/slack-managers/{id}/people`
+
+Forget one person, or everyone, an AI Slack manager remembers (admin)
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+Query:
+  - `slack_user_id` (string) — Forget only this Slack user (U…). Omitted = everyone.
+
+### `ai-agent.slack-managers.people.list`
+
+`GET /api/ai-agent/slack-managers/{id}/people`
+
+What an AI Slack manager remembers about the people it talks to (admin)
+
+One row per person answered while `rememberPeople` was on — Slack user id, first name, the manager's own short notes, conversation count — newest conversation first, at most 200.
+
+Path params (positional, in order):
+  - `id`
 
 ### `ai-agent.slack-managers.update`
 
@@ -910,6 +944,13 @@ Body (application/json):
   - `perPersonHourlyLimit` (integer)
   - `hourlyReplyCap` (integer)
   - `enabled` (boolean)
+  - `rememberPeople` (boolean) — Keep the manager's own short notes about each person between conversations. Switching it off forgets everyone.
+  - `checkinEnabled` (boolean) — Post a scheduled check-in. Nothing posts while the manager itself is off.
+  - `checkinChannelId` (string) — Required once check-ins are on.
+  - `checkinDays` (integer[]) — Local weekdays, 0 = Sunday. Default Monday–Friday.
+  - `checkinTime` (string) — Local time, 24-hour.
+  - `checkinTimezone` (string) — IANA zone the schedule is read in.
+  - `checkinBrief` (string) — What the post should do. Facts still come only from the playbook.
 
 ### `ai-agent.tools.execute.create`
 

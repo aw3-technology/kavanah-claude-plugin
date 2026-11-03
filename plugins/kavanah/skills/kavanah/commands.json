@@ -56,6 +56,12 @@
       ]
     },
     {
+      "pattern": "^/api/deals/blotter/opportunities/[^/]+/execute$",
+      "methods": [
+        "POST"
+      ]
+    },
+    {
       "pattern": "^/api/deals/cadences/[^/]+/angelsend$",
       "methods": [
         "PUT",
@@ -137,6 +143,10 @@
       "reason": "MCP transport (JSON-RPC), not a REST call"
     },
     {
+      "pattern": "^/api/oauth/",
+      "reason": "MCP OAuth server plumbing (Claude connectors), not a REST call"
+    },
+    {
       "pattern": "/webhook(/|$)",
       "reason": "inbound third-party webhook receiver"
     },
@@ -145,11 +155,11 @@
       "reason": "inbound third-party webhook receiver"
     },
     {
-      "pattern": "/(oauth|app)/(mobile-)?callback$",
+      "pattern": "/(oauth|app|connect)/(mobile-)?callback$",
       "reason": "browser OAuth redirect"
     },
     {
-      "pattern": "^/api/system/(client-error|web-vitals)$",
+      "pattern": "^/api/system/(client-error|web-vitals|pageview)$",
       "reason": "browser telemetry beacon"
     },
     {
@@ -3656,6 +3666,48 @@
           "name": "enabled",
           "type": "boolean",
           "required": false
+        },
+        {
+          "name": "rememberPeople",
+          "type": "boolean",
+          "required": false,
+          "description": "Keep the manager's own short notes about each person between conversations. Switching it off forgets everyone."
+        },
+        {
+          "name": "checkinEnabled",
+          "type": "boolean",
+          "required": false,
+          "description": "Post a scheduled check-in. Nothing posts while the manager itself is off."
+        },
+        {
+          "name": "checkinChannelId",
+          "type": "string",
+          "required": false,
+          "description": "Required once check-ins are on."
+        },
+        {
+          "name": "checkinDays",
+          "type": "integer[]",
+          "required": false,
+          "description": "Local weekdays, 0 = Sunday. Default Monday–Friday."
+        },
+        {
+          "name": "checkinTime",
+          "type": "string",
+          "required": false,
+          "description": "Local time, 24-hour."
+        },
+        {
+          "name": "checkinTimezone",
+          "type": "string",
+          "required": false,
+          "description": "IANA zone the schedule is read in."
+        },
+        {
+          "name": "checkinBrief",
+          "type": "string",
+          "required": false,
+          "description": "What the post should do. Facts still come only from the playbook."
         }
       ],
       "responses": [
@@ -3743,6 +3795,84 @@
       ]
     },
     {
+      "name": "ai-agent.slack-managers.people.delete",
+      "method": "DELETE",
+      "path": "/api/ai-agent/slack-managers/{id}/people",
+      "group": "AI Agent",
+      "summary": "Forget one person, or everyone, an AI Slack manager remembers (admin)",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [
+        {
+          "name": "slack_user_id",
+          "type": "string",
+          "required": false,
+          "description": "Forget only this Slack user (U…). Omitted = everyone."
+        }
+      ],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "{ forgotten }"
+        },
+        {
+          "code": "400",
+          "description": "Invalid slack_user_id"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        },
+        {
+          "code": "403",
+          "description": "Admin only"
+        },
+        {
+          "code": "404",
+          "description": "Not found in this workspace"
+        }
+      ]
+    },
+    {
+      "name": "ai-agent.slack-managers.people.list",
+      "method": "GET",
+      "path": "/api/ai-agent/slack-managers/{id}/people",
+      "group": "AI Agent",
+      "summary": "What an AI Slack manager remembers about the people it talks to (admin)",
+      "description": "One row per person answered while `rememberPeople` was on — Slack user id, first name, the manager's own short notes, conversation count — newest conversation first, at most 200.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "{ rememberPeople, total, people }"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        },
+        {
+          "code": "403",
+          "description": "Admin only"
+        },
+        {
+          "code": "404",
+          "description": "Not found in this workspace"
+        }
+      ]
+    },
+    {
       "name": "ai-agent.slack-managers.update",
       "method": "PATCH",
       "path": "/api/ai-agent/slack-managers/{id}",
@@ -3814,6 +3944,48 @@
           "name": "enabled",
           "type": "boolean",
           "required": false
+        },
+        {
+          "name": "rememberPeople",
+          "type": "boolean",
+          "required": false,
+          "description": "Keep the manager's own short notes about each person between conversations. Switching it off forgets everyone."
+        },
+        {
+          "name": "checkinEnabled",
+          "type": "boolean",
+          "required": false,
+          "description": "Post a scheduled check-in. Nothing posts while the manager itself is off."
+        },
+        {
+          "name": "checkinChannelId",
+          "type": "string",
+          "required": false,
+          "description": "Required once check-ins are on."
+        },
+        {
+          "name": "checkinDays",
+          "type": "integer[]",
+          "required": false,
+          "description": "Local weekdays, 0 = Sunday. Default Monday–Friday."
+        },
+        {
+          "name": "checkinTime",
+          "type": "string",
+          "required": false,
+          "description": "Local time, 24-hour."
+        },
+        {
+          "name": "checkinTimezone",
+          "type": "string",
+          "required": false,
+          "description": "IANA zone the schedule is read in."
+        },
+        {
+          "name": "checkinBrief",
+          "type": "string",
+          "required": false,
+          "description": "What the post should do. Facts still come only from the playbook."
         }
       ],
       "responses": [
@@ -6588,6 +6760,7 @@
       "path": "/api/clients/{id}/portal-access",
       "group": "Clients",
       "summary": "Revoke portal access for a client employee",
+      "description": "Turns the member's portal access and messaging off and ends their portal sessions. The member row is kept (it is derived from the client record), so a later grant asks for re-invite confirmation.",
       "source": "handwritten",
       "destructive": true,
       "pathParams": [
@@ -6653,18 +6826,25 @@
         {
           "name": "portalEnabled",
           "type": "boolean",
-          "required": false
+          "required": false,
+          "description": "Turning access on for someone who has never signed in also emails their invite."
         },
         {
           "name": "canMessage",
           "type": "boolean",
           "required": false
+        },
+        {
+          "name": "sendInvite",
+          "type": "boolean",
+          "required": false,
+          "description": "Email the invite (a 7-day set-password link) again."
         }
       ],
       "responses": [
         {
           "code": "200",
-          "description": "Portal member updated"
+          "description": "Portal member updated; inviteSent / inviteError report the invite email, and inviteSkipped (\"access_off\" | \"has_login\") says why a requested invite was not sent"
         }
       ]
     },
@@ -8012,6 +8192,819 @@
         {
           "code": "403",
           "description": "Not an admin"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.changes.revert.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/changes/{id}/revert",
+      "group": "Deals",
+      "summary": "Revert one logged Blotter change",
+      "description": "Refused (409) when the field has changed again since, or the change was already reverted.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Reverted"
+        },
+        {
+          "code": "404",
+          "description": "Change not found"
+        },
+        {
+          "code": "409",
+          "description": "Already reverted"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.close.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/close",
+      "group": "Deals",
+      "summary": "Close pipeline for one sell-side Blue Chip — drafts to every buy-side contact",
+      "description": "A welcoming, no-terms email to every buy-side contact on the deal's mail in the last 12 months (including those pitched who never replied), one per firm, no cap — minus the supply side, our own people, declines, anyone emailed in the last recentEmailDays or drafted in the last redraftCooldownDays, and suppressed addresses. First introductions ask the fees-inclusive all-in price; repeat recipients get \"still live?\". Saved to Gmail Drafts and the Tasks board. The no-replica rule applies: anyone with nothing new since what you sent them in the last 72 hours is not drafted (`replicaSkips`). Billed to the caller per batch.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "dealId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "runId",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Drafted"
+        },
+        {
+          "code": "402",
+          "description": "Not enough credits"
+        },
+        {
+          "code": "409",
+          "description": "Not a sell-side Blue Chip with supply on file"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.deals.get",
+      "method": "GET",
+      "path": "/api/deals/blotter/deals/{id}",
+      "group": "Deals",
+      "summary": "One deal's Blotter detail — parties, the \"Why\", your open drafts, and every change",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [
+        {
+          "name": "tz",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Detail"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.deals.update",
+      "method": "PATCH",
+      "path": "/api/deals/blotter/deals/{id}",
+      "group": "Deals",
+      "summary": "Edit a deal's Blotter inputs (logged, revertible)",
+      "description": "`{ edits: [{ field, contactId?, value, evidence? }] }`. Fields: supply, side (`sell` | `buy` | null), terms, next_action, next_deadline, fee_basis, client_role, signal:<supply_certainty|paper|chain_length|process_friction|red_flags> (value `{ score: -2..2, evidence? }` or null), and per buyer `rung` or factor:<commitment|verification|price|momentum>.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "edits",
+          "type": "object[]",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Applied"
+        },
+        {
+          "code": "400",
+          "description": "Unknown field or invalid value"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.engage.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/engage",
+      "group": "Deals",
+      "summary": "Draft replies for ONE deal into your Gmail Drafts (nothing is sent)",
+      "description": "Picks up to maxPeoplePerDeal people who wrote to you about the deal inside the lookback window, best first, skipping anyone drafted for it within the cooldown, emailed about it recently, or suppressed. One draft per person, on their existing thread, with your signoff appended; each lands on your Opportunities board with its expected value. The no-replica rule applies: your sent mail to each person from the last 72 hours is read first, repeated lines are removed, and anyone with nothing new is not drafted (`replicaSkips`). `mode` is \"close\" (Blue Chips) or \"grow\" (other live deals). One model call billed to the caller. Needs edit access on the deal.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "dealId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "close",
+            "grow"
+          ]
+        },
+        {
+          "name": "runId",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Drafted"
+        },
+        {
+          "code": "402",
+          "description": "Not enough credits"
+        },
+        {
+          "code": "403",
+          "description": "The Blotter is off"
+        },
+        {
+          "code": "409",
+          "description": "The deal is closed or dead"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.grow.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/grow",
+      "group": "Deals",
+      "summary": "One round of Grow pipeline — up to 4 revenue-generating emails onto your Tasks board",
+      "description": "Reads the mail, Drive and intel since the last Play and writes the emails that generate the most revenue now (Blue Chips first, only where the ball is with you, at most maxTasksPerDeal per deal), applying unreviewed rejection reasons as constraints. Call round 0..3 with the running `alreadyMade` until `done`; round 0 supersedes earlier open Grow / chat tasks. One model call per round, billed to the caller. Nothing is sent.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "runId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "round",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "alreadyMade",
+          "type": "integer",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The round's result"
+        },
+        {
+          "code": "402",
+          "description": "Not enough credits"
+        },
+        {
+          "code": "403",
+          "description": "The Blotter is off"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.intel.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/intel",
+      "group": "Deals",
+      "summary": "Save intel for the next Grow batch",
+      "description": "A `dealId` must be a deal the caller can open (400 for a malformed id, 404 for one they cannot see).",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "web",
+            "internal"
+          ]
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "dealId",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "201",
+          "description": "Saved"
+        },
+        {
+          "code": "400",
+          "description": "Missing body"
+        },
+        {
+          "code": "404",
+          "description": "The deal does not exist or the caller cannot see it"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.intel.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/intel",
+      "group": "Deals",
+      "summary": "The intel Grow pipeline reads (web research and internal notes)",
+      "description": "Intel filed on a deal the caller cannot open is left out.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Intel"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.list",
+      "method": "GET",
+      "path": "/api/deals/blotter",
+      "group": "Deals",
+      "summary": "The Deal Blotter — measured close rates, close probabilities with reasons, Blue Chips",
+      "description": "Opt-in per workspace (Blotter settings → enabled). Off, it answers `{ enabled: false, viewer }` and computes nothing. On, it returns the close rate per buyer stage measured from the workspace's own counterparties (steadied by a prior while closes are few), every deal the caller can see with its two-part close probability (\"deal holds together\" × \"at least one buyer signs\") and the evidence behind it, Blue Chips in Engage order, tiles, the caller's EV header (EV generated, this week, day streak, board cleared), the Performance panel (focused hours per $100K collected, $ per focused hour, economy of learning), 90-day activity series, the prediction-ledger summary and recent changes. Drafts the caller has since sent from Gmail are credited on the way. Not cached.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [
+        {
+          "name": "tz",
+          "type": "string",
+          "required": false,
+          "description": "IANA timezone for 'today', the week and the streak. Defaults to the caller's."
+        }
+      ],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The Blotter view (BlotterView, src/lib/deal-blotter/view-types.ts), or { enabled: false } when the workspace has not turned it on."
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.opportunities.execute.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/opportunities/{id}/execute",
+      "group": "Deals",
+      "summary": "Send one draft from your Gmail (irreversible)",
+      "description": "Requires `confirm: true`. Sends the approved subject/body on the draft's thread, through the same controls as any outbound mail (suppression lists, the compliance archive BCC). The draft is claimed first, so a double click cannot send twice. Credits the draft's expected value. The Gmail draft is removed on native Gmail. The no-replica rule is checked BEFORE the claim (so a refusal leaves the task open): nothing may repeat what you sent the recipient in the last 72 hours, on any thread. Lines that do are removed and the request answers 409 `replica_cleaned` with `{ cleaned, removed }` and sends nothing — call again with `body: cleaned` to send it. 409 `replica_nothing_new` means nothing substantive is left (`removed` lists the lines); 503 `sent_unreadable` means your sent mail could not be read, so nothing is sent.",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "confirm",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Sent"
+        },
+        {
+          "code": "400",
+          "description": "confirm was not true"
+        },
+        {
+          "code": "409",
+          "description": "Already sent, being sent, or dismissed — or refused by the no-replica rule (`code` replica_cleaned / replica_nothing_new)"
+        },
+        {
+          "code": "502",
+          "description": "The send failed; the draft is marked failed with the reason"
+        },
+        {
+          "code": "503",
+          "description": "`sent_unreadable` — your sent mail could not be read, so the no-replica rule cannot be checked and nothing is sent"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.opportunities.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/opportunities",
+      "group": "Deals",
+      "summary": "Your Opportunities board",
+      "description": "Every Engage draft made for the caller, open ones first by expected value. Drafts the caller has since sent straight from Gmail are credited first.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Board"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.opportunities.reject.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/opportunities/{id}/reject",
+      "group": "Deals",
+      "summary": "Reject a task with a reason the next Grow batch applies",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Rejected"
+        },
+        {
+          "code": "400",
+          "description": "No reason given"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.opportunities.update",
+      "method": "PATCH",
+      "path": "/api/deals/blotter/opportunities/{id}",
+      "group": "Deals",
+      "summary": "Edit, dismiss or restore one of your drafts",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "subject",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "rejected",
+            "drafted"
+          ]
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Updated"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        },
+        {
+          "code": "409",
+          "description": "Already sent"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.plays.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/plays",
+      "group": "Deals",
+      "summary": "Add a curated play",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "firm",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "open",
+            "won",
+            "dropped"
+          ]
+        },
+        {
+          "name": "sortOrder",
+          "type": "integer",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "201",
+          "description": "Created"
+        },
+        {
+          "code": "400",
+          "description": "firm and title are required"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.plays.delete",
+      "method": "DELETE",
+      "path": "/api/deals/blotter/plays/{id}",
+      "group": "Deals",
+      "summary": "Remove a curated play",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Removed"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.plays.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/plays",
+      "group": "Deals",
+      "summary": "Opportunities — the firm-level plays the desk curates",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Plays"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.plays.update",
+      "method": "PATCH",
+      "path": "/api/deals/blotter/plays/{id}",
+      "group": "Deals",
+      "summary": "Edit a curated play",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "firm",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "open",
+            "won",
+            "dropped"
+          ]
+        },
+        {
+          "name": "sortOrder",
+          "type": "integer",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.refresh.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/refresh",
+      "group": "Deals",
+      "summary": "Re-read ONE deal's mail and update its Blotter inputs",
+      "description": "A model reads the deal's recent timeline and threads and scores five deal signals, each buyer's stage and four buyer factors, plus supply, terms, next action and deadline. Every score must carry a quote that is checked against the mail; one that is not found is dropped. Each change is logged and revertible, and the new probability is recorded in the prediction ledger. One model call billed to the caller (402 when they cannot cover it). Needs edit access on the deal.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "dealId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "runId",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Refreshed"
+        },
+        {
+          "code": "402",
+          "description": "Not enough credits"
+        },
+        {
+          "code": "403",
+          "description": "The Blotter is off"
+        },
+        {
+          "code": "404",
+          "description": "Deal not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.settings.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/settings",
+      "group": "Deals",
+      "summary": "Deal Blotter settings, plus the caller's own signoff",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Settings"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.settings.set",
+      "method": "PUT",
+      "path": "/api/deals/blotter/settings",
+      "group": "Deals",
+      "summary": "Change the Deal Blotter settings (admin)",
+      "description": "Body `{ expectedWorkspaceId?, settings: { enabled, netFeePct, netFeeLabel, horizonDate, keepAliveShare, maxPeoplePerDeal, lookbackDays, redraftCooldownDays, recentEmailDays, assumedHoursPerMonth, ladder, priorRates, blueChipRung, defaultCc, canSpamBlock, draftingRules, useGmailSignature, autoRefreshEnabled, tasksPerBatch, maxTasksPerDeal, refreshMaxShift } }`. Only the keys sent change; an unknown key is refused by name; a horizon in the past, a Blue Chip stage outside the ladder and a malformed Cc address are refused. Audited.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "expectedWorkspaceId",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "settings",
+          "type": "object",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved settings"
+        },
+        {
+          "code": "400",
+          "description": "Invalid setting"
+        },
+        {
+          "code": "403",
+          "description": "Not an admin"
+        },
+        {
+          "code": "409",
+          "description": "The settings were loaded for a different workspace"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.signoff.set",
+      "method": "PUT",
+      "path": "/api/deals/blotter/signoff",
+      "group": "Deals",
+      "summary": "Set your own email signoff for Engage drafts",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "signoff",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved"
+        },
+        {
+          "code": "400",
+          "description": "Invalid signoff"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.verify-drafts.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/verify-drafts",
+      "group": "Deals",
+      "summary": "Check that a run's Gmail drafts still exist, and flag the missing ones",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "runId",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Tally"
         }
       ]
     },
@@ -11691,6 +12684,57 @@
       ]
     },
     {
+      "name": "inbox.messages.read.create",
+      "method": "POST",
+      "path": "/api/inbox/messages/read",
+      "group": "Inbox",
+      "summary": "Mark inbox messages read or unread in Kavanah",
+      "description": "Records a per-message read mark in Kavanah for any connected mailbox (Gmail via AngelSend or native, ProtonMail, Outlook, iCloud). Inbox listings report marked mail read and the sidebar count and app badge leave it out; unread deletes the mark. Gmail itself is changed too only when the native grant has gmail.modify (providerUpdated).",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "provider",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "gmail",
+            "protonmail",
+            "microsoft365",
+            "icloud"
+          ]
+        },
+        {
+          "name": "ids",
+          "type": "string[]",
+          "required": true
+        },
+        {
+          "name": "read",
+          "type": "boolean",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Success"
+        },
+        {
+          "code": "400",
+          "description": "Invalid provider"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        }
+      ]
+    },
+    {
       "name": "inbox.preferences.list",
       "method": "GET",
       "path": "/api/inbox/preferences",
@@ -12011,6 +13055,30 @@
         {
           "code": "412",
           "description": "AngelSend not connected"
+        }
+      ]
+    },
+    {
+      "name": "integrations.angelsend.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/angelsend/connect/start",
+      "group": "Integrations",
+      "summary": "Start one-click AngelSend connect",
+      "description": "Browser navigation. Registers a sign-in with AngelSend and redirects to AngelSend's consent page (PKCE); errors redirect to Settings → Integrations.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to AngelSend consent"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
         }
       ]
     },
@@ -12649,6 +13717,26 @@
         {
           "code": "412",
           "description": "Asana not connected"
+        }
+      ]
+    },
+    {
+      "name": "integrations.clearbooks.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/clearbooks/connect/start",
+      "group": "Integrations",
+      "summary": "Start the one-click ClearBooks connect",
+      "description": "The \"Connect with ClearBooks\" button. Mints a signed, 15-minute state naming the signed-in user and redirects to ClearBooks' approval page, which mints an API key and form-posts it to the callback below — no key to copy or paste. Every outcome is a redirect.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to the ClearBooks approval page (or to login / Settings on failure)"
         }
       ]
     },
@@ -14412,6 +15500,37 @@
       ]
     },
     {
+      "name": "integrations.kanvo.media.list",
+      "method": "GET",
+      "path": "/api/integrations/kanvo/media",
+      "group": "Integrations",
+      "summary": "A generated picture for Kanvo to fetch (called by Kanvo, not by clients)",
+      "description": "The Kanvo bridge links here from an answer's `attachments`; Kanvo fetches the image with no session and posts it into the chat as a photo. The `t` token is the whole of the authorization: an HMAC over the workspace, the object path and a fifteen-minute expiry, naming only the `ai-agent-generated` bucket. Every invalid token (malformed, forged, expired, outside its workspace) and every missing object is the same 404. Served `no-store` and `nosniff`.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [
+        {
+          "name": "t",
+          "type": "string",
+          "required": true,
+          "description": "Signed media token from the Kanvo bridge"
+        }
+      ],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The image bytes (jpeg or png)"
+        },
+        {
+          "code": "404",
+          "description": "Bad, expired or foreign token, or no such object"
+        }
+      ]
+    },
+    {
       "name": "integrations.list",
       "method": "GET",
       "path": "/api/integrations",
@@ -14700,6 +15819,26 @@
       ]
     },
     {
+      "name": "integrations.multiverseai.oauth.start.list",
+      "method": "GET",
+      "path": "/api/integrations/multiverseai/oauth/start",
+      "group": "Integrations",
+      "summary": "Start one-click MultiverseAI connect",
+      "description": "Redirects the browser to MultiverseAI's consent page (no API key to paste).",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to MultiverseAI's consent page"
+        }
+      ]
+    },
+    {
       "name": "integrations.multiverseai.workflows.execute.create",
       "method": "POST",
       "path": "/api/integrations/multiverseai/workflows/{id}/execute",
@@ -14774,6 +15913,67 @@
         {
           "code": "401",
           "description": "Unauthorized"
+        }
+      ]
+    },
+    {
+      "name": "integrations.namespa.connect.complete.create",
+      "method": "POST",
+      "path": "/api/integrations/namespa/connect/complete",
+      "group": "Integrations",
+      "summary": "Finish the one-click NameSpa connect",
+      "description": "Verifies `state` against the cookie set by `connect/start` (same user, same browser, within 10 minutes), then verifies and saves the key exactly as `PUT /api/integrations/namespa` does.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "apiKey",
+          "type": "string",
+          "required": true,
+          "description": "The `nsp_` key NameSpa returned"
+        },
+        {
+          "name": "state",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "`{ ok, connection }` — `connection.status` is `error` with a reason when the key failed verification"
+        },
+        {
+          "code": "400",
+          "description": "Missing key"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        }
+      ]
+    },
+    {
+      "name": "integrations.namespa.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/namespa/connect/start",
+      "group": "Integrations",
+      "summary": "Begin the one-click NameSpa connect (browser-only)",
+      "description": "Sets a state cookie bound to the signed-in user, then redirects to NameSpa's `/connect/kavanah` approval page. NameSpa mints an `nsp_` key and returns it in the URL fragment of `/settings?tab=integrations`, which posts it to `/api/integrations/namespa/connect/complete`.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to NameSpa's approval page (or to login when signed out)"
         }
       ]
     },
@@ -15023,6 +16223,30 @@
       "responses": []
     },
     {
+      "name": "integrations.quicktube.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/quicktube/connect/start",
+      "group": "Integrations",
+      "summary": "Start one-click QuickTube connect",
+      "description": "Browser navigation. Redirects to QuickTube's consent page (quicktube.ai/connect, PKCE); errors redirect to Settings → Integrations.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to QuickTube consent"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        }
+      ]
+    },
+    {
       "name": "integrations.scrappy.clients.push.create",
       "method": "POST",
       "path": "/api/integrations/scrappy/clients/{id}/push",
@@ -15045,6 +16269,30 @@
         {
           "code": "400",
           "description": "Invalid request"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        }
+      ]
+    },
+    {
+      "name": "integrations.scrappy.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/scrappy/connect/start",
+      "group": "Integrations",
+      "summary": "Start one-click Scrappy connect",
+      "description": "Browser navigation. Redirects to Scrappy's consent screen (`/connect/authorize`) so the person never copies an API key. Every outcome is a redirect; failures land on Settings → Integrations.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to Scrappy or back to Settings"
         },
         {
           "code": "401",
@@ -15699,6 +16947,72 @@
         {
           "code": "504",
           "description": "The Mac did not answer in time"
+        }
+      ]
+    },
+    {
+      "name": "integrations.valore.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/valore/connect/start",
+      "group": "Integrations",
+      "summary": "Begin \"Connect with Valore\" (browser-only)",
+      "description": "Sets a state cookie (bound to the signed-in user) and a PKCE verifier cookie, then redirects to Valore's consent page (`/connect/kavanah`), where the user picks a calendar and read or read & write access. Valore is an API-key provider; this flow ends with Valore minting a `vlr_` key for Kavanah, so nothing is pasted.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to Valore's consent page"
+        }
+      ]
+    },
+    {
+      "name": "integrations.xdocs.connect.mobile-start.list",
+      "method": "GET",
+      "path": "/api/integrations/xdocs/connect/mobile-start",
+      "group": "Integrations",
+      "summary": "Connect-with-XDocs from the desktop/mobile app (system browser)",
+      "description": "Opened in the system browser with a handoff token from `POST /api/integrations/oauth/handoff`. Sets a per-flow cookie and redirects to the XDocs consent screen.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [
+        {
+          "name": "h",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to XDocs"
+        }
+      ]
+    },
+    {
+      "name": "integrations.xdocs.connect.start.list",
+      "method": "GET",
+      "path": "/api/integrations/xdocs/connect/start",
+      "group": "Integrations",
+      "summary": "Begin Connect-with-XDocs (browser-only)",
+      "description": "Sets a state cookie and a PKCE verifier cookie, then redirects to XDocs's `/connect/authorize` consent screen. On approval XDocs mints a scoped `xdk_` key for Kavanah; no key is pasted.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "302",
+          "description": "Redirect to the XDocs consent screen"
         }
       ]
     },
@@ -17406,6 +18720,166 @@
       "responses": []
     },
     {
+      "name": "learn.assignments.create",
+      "method": "POST",
+      "path": "/api/learn/assignments",
+      "group": "Learn",
+      "summary": "Assign a course to members (owners and admins)",
+      "description": "Assigns one course to up to 200 active members of this workspace. Re-assigning someone who already has the course changes only the due date or note this request supplies (null keeps theirs; clear a due date with PATCH) and does not notify them again; newly assigned people get an email (category course-assigned, tasks channel) and a push. `dueAt` is a calendar day: send YYYY-MM-DD (an ISO date-time with an explicit offset is also accepted and its written day is used). It is stored as that day's 23:59:59.999Z and is overdue once the day has ended at UTC-12.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "course",
+          "type": "string",
+          "required": true,
+          "description": "Course slug"
+        },
+        {
+          "name": "userIds",
+          "type": "string<uuid>[]",
+          "required": true
+        },
+        {
+          "name": "dueAt",
+          "type": "string|null",
+          "required": false,
+          "description": "Calendar day, YYYY-MM-DD"
+        },
+        {
+          "name": "note",
+          "type": "string|null",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Existing assignments updated only"
+        },
+        {
+          "code": "201",
+          "description": "At least one person newly assigned"
+        },
+        {
+          "code": "400",
+          "description": "Invalid input"
+        },
+        {
+          "code": "403",
+          "description": "Not a workspace owner or admin"
+        },
+        {
+          "code": "404",
+          "description": "Unknown course"
+        }
+      ]
+    },
+    {
+      "name": "learn.assignments.delete",
+      "method": "DELETE",
+      "path": "/api/learn/assignments/{id}",
+      "group": "Learn",
+      "summary": "Withdraw an assignment (owners and admins)",
+      "description": "The learner's progress is kept; only the team view of that course goes away.",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Removed"
+        },
+        {
+          "code": "403",
+          "description": "Not a workspace owner or admin"
+        },
+        {
+          "code": "404",
+          "description": "Assignment not found in this workspace"
+        }
+      ]
+    },
+    {
+      "name": "learn.assignments.list",
+      "method": "GET",
+      "path": "/api/learn/assignments",
+      "group": "Learn",
+      "summary": "Team course assignments and progress (owners and admins)",
+      "description": "Every course assigned in this workspace to an active member, with that member's standing in it. Progress is returned ONLY for assigned (person, course) pairs — a course someone takes on their own is never visible here. 403 for anyone who is not a workspace owner or admin.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Team learning"
+        },
+        {
+          "code": "403",
+          "description": "Not a workspace owner or admin"
+        }
+      ]
+    },
+    {
+      "name": "learn.assignments.update",
+      "method": "PATCH",
+      "path": "/api/learn/assignments/{id}",
+      "group": "Learn",
+      "summary": "Change an assignment's due date or note (owners and admins)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "dueAt",
+          "type": "string|null",
+          "required": false,
+          "description": "Calendar day, YYYY-MM-DD; null clears it"
+        },
+        {
+          "name": "note",
+          "type": "string|null",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Updated"
+        },
+        {
+          "code": "400",
+          "description": "Invalid input"
+        },
+        {
+          "code": "403",
+          "description": "Not a workspace owner or admin"
+        },
+        {
+          "code": "404",
+          "description": "Assignment not found in this workspace"
+        }
+      ]
+    },
+    {
       "name": "learn.courses.lessons.get",
       "method": "GET",
       "path": "/api/learn/courses/{course}/lessons/{lesson}",
@@ -17449,6 +18923,26 @@
         {
           "code": "200",
           "description": "Courses"
+        }
+      ]
+    },
+    {
+      "name": "learn.my-learning.list",
+      "method": "GET",
+      "path": "/api/learn/my-learning",
+      "group": "Personal",
+      "summary": "The caller's own course list — status, completion and due dates",
+      "description": "Every catalogue course the caller has started or been assigned in the CURRENT workspace, ordered overdue first, then other open assignments by due date, then in-progress courses by recency, then completed. Progress is the caller's own (it follows them across workspaces); assignments belong to this workspace. `canManage` is true for workspace owners and admins (they can open team progress). `Cache-Control: private, no-store`.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The caller's courses"
         }
       ]
     },
@@ -29395,6 +30889,34 @@
       ]
     },
     {
+      "name": "referrals.list",
+      "method": "GET",
+      "path": "/api/referrals",
+      "group": "Personal",
+      "summary": "Get the caller's referral link and results",
+      "description": "The caller's personal invite link (https://kavanah.ai/join/<code>, minted on first call) and the Kavanah referral program it belongs to: the credits a new user earns when they verify their email, the credits the caller earns when that user makes a first purchase, and counts of people who signed up, verified and purchased through the link. Payouts are made by cred.diy.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The referral summary"
+        },
+        {
+          "code": "401",
+          "description": "Not signed in"
+        },
+        {
+          "code": "503",
+          "description": "cred.diy could not mint the link right now"
+        }
+      ]
+    },
+    {
       "name": "reports.create",
       "method": "POST",
       "path": "/api/reports",
@@ -30748,11 +32270,21 @@
       "path": "/api/settings/billing/auto-topup",
       "group": "Settings",
       "summary": "Get auto top-up",
-      "description": "Owner-only. The auto top-up setting (buy a credit pack on the saved card when the personal balance drops below a threshold, never past a monthly dollar limit), the saved card, this UTC month's auto top-up spend, recent attempts and the allowed ranges.",
+      "description": "Owner-only. The auto top-up setting (buy a credit pack on the saved card when the personal balance drops below a threshold, never past a monthly dollar limit), the saved card, this UTC month's auto top-up spend, recent attempts and the allowed ranges. With `?target=pool`, the same for the current workspace's shared credit pool (its card is the one saved at a pool top-up checkout).",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
-      "query": [],
+      "query": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "personal",
+            "pool"
+          ]
+        }
+      ],
       "bodyRequired": false,
       "body": [],
       "responses": [
@@ -30776,11 +32308,21 @@
       "path": "/api/settings/billing/auto-topup",
       "group": "Settings",
       "summary": "Update auto top-up",
-      "description": "Owner-only. Saves the setting. Turning it on requires a card saved at a top-up checkout (POST /api/settings/billing/topup with saveCard true); otherwise 409.",
+      "description": "Owner-only. Saves the setting. Turning it on requires a card saved at a top-up checkout (POST /api/settings/billing/topup with saveCard true — with target pool for the workspace pool); otherwise 409. `?target=pool` saves the workspace pool's setting.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
-      "query": [],
+      "query": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "personal",
+            "pool"
+          ]
+        }
+      ],
       "bodyRequired": true,
       "bodyContentType": "application/json",
       "body": [
@@ -30801,7 +32343,9 @@
           "enum": [
             "topup_1000",
             "topup_5000",
-            "topup_10000"
+            "topup_10000",
+            "topup_50000",
+            "topup_100000"
           ]
         },
         {
@@ -30999,11 +32543,21 @@
       "path": "/api/settings/billing/payment-method",
       "group": "Settings",
       "summary": "Remove saved card",
-      "description": "Forgets the card cred.diy saved for auto top-up and turns auto top-up off (the setting first, so a racing trigger cannot charge it).",
+      "description": "Forgets the card cred.diy saved for auto top-up and turns auto top-up off (the setting first, so a racing trigger cannot charge it). `?target=pool` (owner-only) removes the workspace pool's card and turns the pool's auto top-up off.",
       "source": "handwritten",
       "destructive": true,
       "pathParams": [],
-      "query": [],
+      "query": [
+        {
+          "name": "target",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "personal",
+            "pool"
+          ]
+        }
+      ],
       "bodyRequired": false,
       "body": [],
       "responses": [
@@ -31250,6 +32804,60 @@
       "path": "/api/settings/billing/trial",
       "group": "Settings",
       "summary": "List trial",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Success"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        }
+      ]
+    },
+    {
+      "name": "settings.connected-apps.delete",
+      "method": "DELETE",
+      "path": "/api/settings/connected-apps/{id}",
+      "group": "Settings",
+      "summary": "Disconnect one of my connected apps",
+      "description": "Revokes the connection and deletes its access tokens; the app stops working on its next call.",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Disconnected"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "settings.connected-apps.list",
+      "method": "GET",
+      "path": "/api/settings/connected-apps",
+      "group": "Settings",
+      "summary": "List my connected apps (MCP OAuth connections)",
+      "description": "The signed-in person's live OAuth connections (Claude connectors and other MCP clients) in the active workspace. Any member.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],

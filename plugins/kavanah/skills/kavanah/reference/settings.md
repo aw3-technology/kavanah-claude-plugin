@@ -1,6 +1,6 @@
 # Settings
 
-50 commands. Generated — run `npm run skill:gen` to refresh.
+52 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -32,6 +32,8 @@
 | `settings.billing.tiers.list` | GET | `/api/settings/billing/tiers` | List tiers |
 | `settings.billing.topup.create` | POST | `/api/settings/billing/topup` | (undocumented route — params unknown, pass them explicitly) |
 | `settings.billing.trial.list` | GET | `/api/settings/billing/trial` | List trial |
+| `settings.connected-apps.delete` | DELETE | `/api/settings/connected-apps/{id}` | Disconnect one of my connected apps |
+| `settings.connected-apps.list` | GET | `/api/settings/connected-apps` | List my connected apps (MCP OAuth connections) |
 | `settings.extension-shield.detections.create` | POST | `/api/settings/extension-shield/detections` | Record a browser-extension detection for the caller |
 | `settings.extension-shield.list` | GET | `/api/settings/extension-shield` | Is Extension Shield on for this workspace |
 | `settings.god-mode-setup.create` | POST | `/api/settings/god-mode-setup` | Send a member an in-app setup reminder |
@@ -181,7 +183,10 @@ _Not in either OpenAPI spec — flags are passed through unvalidated._
 
 Get auto top-up
 
-Owner-only. The auto top-up setting (buy a credit pack on the saved card when the personal balance drops below a threshold, never past a monthly dollar limit), the saved card, this UTC month's auto top-up spend, recent attempts and the allowed ranges.
+Owner-only. The auto top-up setting (buy a credit pack on the saved card when the personal balance drops below a threshold, never past a monthly dollar limit), the saved card, this UTC month's auto top-up spend, recent attempts and the allowed ranges. With `?target=pool`, the same for the current workspace's shared credit pool (its card is the one saved at a pool top-up checkout).
+
+Query:
+  - `target` (string) — one of: `personal`, `pool`
 
 ### `settings.billing.auto-topup.set`
 
@@ -189,12 +194,15 @@ Owner-only. The auto top-up setting (buy a credit pack on the saved card when th
 
 Update auto top-up
 
-Owner-only. Saves the setting. Turning it on requires a card saved at a top-up checkout (POST /api/settings/billing/topup with saveCard true); otherwise 409.
+Owner-only. Saves the setting. Turning it on requires a card saved at a top-up checkout (POST /api/settings/billing/topup with saveCard true — with target pool for the workspace pool); otherwise 409. `?target=pool` saves the workspace pool's setting.
+
+Query:
+  - `target` (string) — one of: `personal`, `pool`
 
 Body (application/json):
   - `enabled` (boolean, required)
   - `thresholdCredits` (integer, required)
-  - `packId` (string, required) — one of: `topup_1000`, `topup_5000`, `topup_10000`
+  - `packId` (string, required) — one of: `topup_1000`, `topup_5000`, `topup_10000`, `topup_50000`, `topup_100000`
   - `monthlyLimitUsd` (number, required)
 
 ### `settings.billing.balance.list`
@@ -250,9 +258,12 @@ Body: application/json (free-form — pass with `--data`)
 
 Remove saved card
 
-Forgets the card cred.diy saved for auto top-up and turns auto top-up off (the setting first, so a racing trigger cannot charge it).
+Forgets the card cred.diy saved for auto top-up and turns auto top-up off (the setting first, so a racing trigger cannot charge it). `?target=pool` (owner-only) removes the workspace pool's card and turns the pool's auto top-up off.
 
 **Destructive** — needs `--yes` against a non-local base URL.
+
+Query:
+  - `target` (string) — one of: `personal`, `pool`
 
 ### `settings.billing.payment-method.list`
 
@@ -320,6 +331,27 @@ _Not in either OpenAPI spec — flags are passed through unvalidated._
 `GET /api/settings/billing/trial`
 
 List trial
+
+### `settings.connected-apps.delete`
+
+`DELETE /api/settings/connected-apps/{id}`
+
+Disconnect one of my connected apps
+
+Revokes the connection and deletes its access tokens; the app stops working on its next call.
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+### `settings.connected-apps.list`
+
+`GET /api/settings/connected-apps`
+
+List my connected apps (MCP OAuth connections)
+
+The signed-in person's live OAuth connections (Claude connectors and other MCP clients) in the active workspace. Any member.
 
 ### `settings.extension-shield.detections.create`
 

@@ -1,6 +1,6 @@
 # Integrations
 
-152 commands. Generated — run `npm run skill:gen` to refresh.
+163 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -31,6 +31,7 @@
 | `integrations.angelsend.actions.list` | GET | `/api/integrations/angelsend/actions` | Search the AngelSend action catalogue |
 | `integrations.angelsend.calendar.create` | POST | `/api/integrations/angelsend/calendar` | Create an event on the connected AngelSend calendar |
 | `integrations.angelsend.calendar.list` | GET | `/api/integrations/angelsend/calendar` | List events from the connected AngelSend calendar |
+| `integrations.angelsend.connect.start.list` | GET | `/api/integrations/angelsend/connect/start` | Start one-click AngelSend connect |
 | `integrations.angelsend.contacts.list` | GET | `/api/integrations/angelsend/contacts` | List leads / contacts from AngelSend |
 | `integrations.angelsend.credits.list` | GET | `/api/integrations/angelsend/credits` | Get the AngelSend credit balance for the connected account |
 | `integrations.angelsend.email.create` | POST | `/api/integrations/angelsend/email` | Send email via AngelSend |
@@ -54,6 +55,7 @@
 | `integrations.asana.webhooks.register.delete` | DELETE | `/api/integrations/asana/webhooks/register` | Delete register |
 | `integrations.asana.webhooks.register.list` | GET | `/api/integrations/asana/webhooks/register` | List register |
 | `integrations.asana.workspaces.list` | GET | `/api/integrations/asana/workspaces` | List Asana workspaces the connected account belongs to |
+| `integrations.clearbooks.connect.start.list` | GET | `/api/integrations/clearbooks/connect/start` | Start the one-click ClearBooks connect |
 | `integrations.cloudcode.ai.chat.create` | POST | `/api/integrations/cloudcode/ai/chat` | Create chat |
 | `integrations.cloudcode.github.repos.list` | GET | `/api/integrations/cloudcode/github/repos` | List repos |
 | `integrations.cloudcode.projects.create` | POST | `/api/integrations/cloudcode/projects` | Create project |
@@ -109,6 +111,7 @@
 | `integrations.icloud.messages.create` | POST | `/api/integrations/icloud/messages` | Send an email via iCloud SMTP |
 | `integrations.icloud.messages.list` | GET | `/api/integrations/icloud/messages` | List synced iCloud Mail envelopes |
 | `integrations.kanvo.agent.create` | POST | `/api/integrations/kanvo/agent` | Kanvo connected-agent endpoint (called by Kanvo, not by clients) |
+| `integrations.kanvo.media.list` | GET | `/api/integrations/kanvo/media` | A generated picture for Kanvo to fetch (called by Kanvo, not by clients) |
 | `integrations.list` | GET | `/api/integrations` | List available integration providers and the user's connections |
 | `integrations.microsoft365.events.create` | POST | `/api/integrations/microsoft365/events` | (undocumented route — params unknown, pass them explicitly) |
 | `integrations.microsoft365.events.list` | GET | `/api/integrations/microsoft365/events` | (undocumented route — params unknown, pass them explicitly) |
@@ -121,9 +124,12 @@
 | `integrations.multiverseai.agents.list` | GET | `/api/integrations/multiverseai/agents` | List agents |
 | `integrations.multiverseai.chat.create` | POST | `/api/integrations/multiverseai/chat` | Create chat |
 | `integrations.multiverseai.models.list` | GET | `/api/integrations/multiverseai/models` | List models |
+| `integrations.multiverseai.oauth.start.list` | GET | `/api/integrations/multiverseai/oauth/start` | Start one-click MultiverseAI connect |
 | `integrations.multiverseai.workflows.execute.create` | POST | `/api/integrations/multiverseai/workflows/{id}/execute` | Create execute |
 | `integrations.multiverseai.workflows.get` | GET | `/api/integrations/multiverseai/workflows/{id}` | Fetch workflow |
 | `integrations.multiverseai.workflows.list` | GET | `/api/integrations/multiverseai/workflows` | List workflows |
+| `integrations.namespa.connect.complete.create` | POST | `/api/integrations/namespa/connect/complete` | Finish the one-click NameSpa connect |
+| `integrations.namespa.connect.start.list` | GET | `/api/integrations/namespa/connect/start` | Begin the one-click NameSpa connect (browser-only) |
 | `integrations.notion.connect-token.create` | POST | `/api/integrations/notion/connect-token` | Connect Notion with an internal integration token |
 | `integrations.notion.connect-token.set` | PUT | `/api/integrations/notion/connect-token` | Connect Notion with an internal integration token |
 | `integrations.notion.import.create` | POST | `/api/integrations/notion/import` | Import a Notion database into a project as tasks |
@@ -133,7 +139,9 @@
 | `integrations.oauth.start.list` | GET | `/api/integrations/{provider}/oauth/start` | Begin an OAuth2 authorization-code flow |
 | `integrations.protonmail.messages.create` | POST | `/api/integrations/protonmail/messages` | (undocumented route — params unknown, pass them explicitly) |
 | `integrations.protonmail.messages.list` | GET | `/api/integrations/protonmail/messages` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.quicktube.connect.start.list` | GET | `/api/integrations/quicktube/connect/start` | Start one-click QuickTube connect |
 | `integrations.scrappy.clients.push.create` | POST | `/api/integrations/scrappy/clients/{id}/push` | Create push |
+| `integrations.scrappy.connect.start.list` | GET | `/api/integrations/scrappy/connect/start` | Start one-click Scrappy connect |
 | `integrations.set` | PUT | `/api/integrations/{provider}` | Store an API-key credential for an api_key provider |
 | `integrations.slack.auth-test.list` | GET | `/api/integrations/slack/auth-test` | Run Slack's auth.test method (returns bot/user/team identity) |
 | `integrations.slack.channels.list` | GET | `/api/integrations/slack/channels` | List channels visible to the connected Slack bot |
@@ -153,6 +161,9 @@
 | `integrations.trmnly.devices.list` | GET | `/api/integrations/trmnly/devices` | List the caller's TRMNLY Macs |
 | `integrations.trmnly.devices.overview.list` | GET | `/api/integrations/trmnly/devices/{id}/overview` | What Kavanah can do on one TRMNLY Mac |
 | `integrations.trmnly.devices.send-task.create` | POST | `/api/integrations/trmnly/devices/{id}/send-task` | Send a Kavanah task to a TRMNLY board on a Mac |
+| `integrations.valore.connect.start.list` | GET | `/api/integrations/valore/connect/start` | Begin "Connect with Valore" (browser-only) |
+| `integrations.xdocs.connect.mobile-start.list` | GET | `/api/integrations/xdocs/connect/mobile-start` | Connect-with-XDocs from the desktop/mobile app (system browser) |
+| `integrations.xdocs.connect.start.list` | GET | `/api/integrations/xdocs/connect/start` | Begin Connect-with-XDocs (browser-only) |
 | `recurring-emails.list` | GET | `/api/recurring-emails` | List your recurring emails with their last result |
 | `recurring-emails.send-now.create` | POST | `/api/recurring-emails/{id}/send-now` | Send one occurrence of a recurring email now |
 | `recurring-emails.update` | PATCH | `/api/recurring-emails/{id}` | Save a recurring email's recipients or pause state |
@@ -460,6 +471,14 @@ Query:
   - `from` (string<date-time>) — ISO timestamp window start (optional).
   - `to` (string<date-time>) — ISO timestamp window end (optional).
 
+### `integrations.angelsend.connect.start.list`
+
+`GET /api/integrations/angelsend/connect/start`
+
+Start one-click AngelSend connect
+
+Browser navigation. Registers a sign-in with AngelSend and redirects to AngelSend's consent page (PKCE); errors redirect to Settings → Integrations.
+
 ### `integrations.angelsend.contacts.list`
 
 `GET /api/integrations/angelsend/contacts`
@@ -654,6 +673,14 @@ List register
 `GET /api/integrations/asana/workspaces`
 
 List Asana workspaces the connected account belongs to
+
+### `integrations.clearbooks.connect.start.list`
+
+`GET /api/integrations/clearbooks/connect/start`
+
+Start the one-click ClearBooks connect
+
+The "Connect with ClearBooks" button. Mints a signed, 15-minute state naming the signed-in user and redirects to ClearBooks' approval page, which mints an API key and form-posts it to the callback below — no key to copy or paste. Every outcome is a redirect.
 
 ### `integrations.cloudcode.ai.chat.create`
 
@@ -1193,6 +1220,17 @@ Kanvo's "connected agents" feature POSTs each message in a Kanvo thread here and
 
 Body: application/json (free-form — pass with `--data`)
 
+### `integrations.kanvo.media.list`
+
+`GET /api/integrations/kanvo/media`
+
+A generated picture for Kanvo to fetch (called by Kanvo, not by clients)
+
+The Kanvo bridge links here from an answer's `attachments`; Kanvo fetches the image with no session and posts it into the chat as a photo. The `t` token is the whole of the authorization: an HMAC over the workspace, the object path and a fifteen-minute expiry, naming only the `ai-agent-generated` bucket. Every invalid token (malformed, forged, expired, outside its workspace) and every missing object is the same 404. Served `no-store` and `nosniff`.
+
+Query:
+  - `t` (string, required) — Signed media token from the Kanvo bridge
+
 ### `integrations.list`
 
 `GET /api/integrations`
@@ -1296,6 +1334,14 @@ Body: application/json (free-form — pass with `--data`)
 
 List models
 
+### `integrations.multiverseai.oauth.start.list`
+
+`GET /api/integrations/multiverseai/oauth/start`
+
+Start one-click MultiverseAI connect
+
+Redirects the browser to MultiverseAI's consent page (no API key to paste).
+
 ### `integrations.multiverseai.workflows.execute.create`
 
 `POST /api/integrations/multiverseai/workflows/{id}/execute`
@@ -1321,6 +1367,26 @@ Path params (positional, in order):
 `GET /api/integrations/multiverseai/workflows`
 
 List workflows
+
+### `integrations.namespa.connect.complete.create`
+
+`POST /api/integrations/namespa/connect/complete`
+
+Finish the one-click NameSpa connect
+
+Verifies `state` against the cookie set by `connect/start` (same user, same browser, within 10 minutes), then verifies and saves the key exactly as `PUT /api/integrations/namespa` does.
+
+Body (application/json):
+  - `apiKey` (string, required) — The `nsp_` key NameSpa returned
+  - `state` (string, required)
+
+### `integrations.namespa.connect.start.list`
+
+`GET /api/integrations/namespa/connect/start`
+
+Begin the one-click NameSpa connect (browser-only)
+
+Sets a state cookie bound to the signed-in user, then redirects to NameSpa's `/connect/kavanah` approval page. NameSpa mints an `nsp_` key and returns it in the URL fragment of `/settings?tab=integrations`, which posts it to `/api/integrations/namespa/connect/complete`.
 
 ### `integrations.notion.connect-token.create`
 
@@ -1409,6 +1475,14 @@ _Not in either OpenAPI spec — flags are passed through unvalidated._
 
 _Not in either OpenAPI spec — flags are passed through unvalidated._
 
+### `integrations.quicktube.connect.start.list`
+
+`GET /api/integrations/quicktube/connect/start`
+
+Start one-click QuickTube connect
+
+Browser navigation. Redirects to QuickTube's consent page (quicktube.ai/connect, PKCE); errors redirect to Settings → Integrations.
+
 ### `integrations.scrappy.clients.push.create`
 
 `POST /api/integrations/scrappy/clients/{id}/push`
@@ -1419,6 +1493,14 @@ Path params (positional, in order):
   - `id`
 
 Body: application/json (free-form — pass with `--data`)
+
+### `integrations.scrappy.connect.start.list`
+
+`GET /api/integrations/scrappy/connect/start`
+
+Start one-click Scrappy connect
+
+Browser navigation. Redirects to Scrappy's consent screen (`/connect/authorize`) so the person never copies an API key. Every outcome is a redirect; failures land on Settings → Integrations.
 
 ### `integrations.set`
 
@@ -1621,6 +1703,33 @@ Body (application/json):
   - `projectName` (string)
   - `board` (string)
   - `start` (string) — one of: `none`, `claude`
+
+### `integrations.valore.connect.start.list`
+
+`GET /api/integrations/valore/connect/start`
+
+Begin "Connect with Valore" (browser-only)
+
+Sets a state cookie (bound to the signed-in user) and a PKCE verifier cookie, then redirects to Valore's consent page (`/connect/kavanah`), where the user picks a calendar and read or read & write access. Valore is an API-key provider; this flow ends with Valore minting a `vlr_` key for Kavanah, so nothing is pasted.
+
+### `integrations.xdocs.connect.mobile-start.list`
+
+`GET /api/integrations/xdocs/connect/mobile-start`
+
+Connect-with-XDocs from the desktop/mobile app (system browser)
+
+Opened in the system browser with a handoff token from `POST /api/integrations/oauth/handoff`. Sets a per-flow cookie and redirects to the XDocs consent screen.
+
+Query:
+  - `h` (string, required)
+
+### `integrations.xdocs.connect.start.list`
+
+`GET /api/integrations/xdocs/connect/start`
+
+Begin Connect-with-XDocs (browser-only)
+
+Sets a state cookie and a PKCE verifier cookie, then redirects to XDocs's `/connect/authorize` consent screen. On approval XDocs mints a scoped `xdk_` key for Kavanah; no key is pasted.
 
 ### `recurring-emails.list`
 

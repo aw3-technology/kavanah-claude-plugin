@@ -140,6 +140,8 @@ Body (application/json):
 
 Revoke portal access for a client employee
 
+Turns the member's portal access and messaging off and ends their portal sessions. The member row is kept (it is derived from the client record), so a later grant asks for re-invite confirmation.
+
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
@@ -168,8 +170,9 @@ Path params (positional, in order):
   - `memberId`
 
 Body (application/json):
-  - `portalEnabled` (boolean)
+  - `portalEnabled` (boolean) — Turning access on for someone who has never signed in also emails their invite.
   - `canMessage` (boolean)
+  - `sendInvite` (boolean) — Email the invite (a 7-day set-password link) again.
 
 ### `clients.sheet-link.create`
 

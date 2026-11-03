@@ -28,6 +28,25 @@
       ]
     },
     {
+      "name": "add_blotter_tasks",
+      "description": "Put emails you wrote in chat (a chat Play) onto the user's Tasks board, so they can be reviewed and Executed there like any Grow task. Supersedes the board's earlier open Grow / chat tasks unless keep_existing. Each email: to, subject, body (no sign-off name — it is added), and optionally deal_id, gmail_thread_id to reply on, ev_class, minutes, rationale. EV is computed by the Blotter, not by you. Your reply automatically gets the live Tasks card, where they can review, edit and send what you added.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "emails",
+          "type": "array",
+          "required": true
+        },
+        {
+          "name": "keep_existing",
+          "type": "boolean",
+          "required": false,
+          "description": "Keep the board's other open Grow / chat tasks instead of superseding them."
+        }
+      ]
+    },
+    {
       "name": "add_budget_entry",
       "description": "Record an actual spend entry against a project's budget.",
       "readOnly": false,
@@ -292,7 +311,7 @@
     },
     {
       "name": "add_portal_member",
-      "description": "Invite a person to the client's portal with view/edit/admin access.",
+      "description": "Give a person access to the client's portal and email their invite (a 7-day link to set a portal password). Adds them to the client's members if they are not the primary contact or an existing member. The result says whether the email actually went out — relay that. Portal access is read-only for the client; access_level is recorded but does not change what they see.",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -1148,6 +1167,38 @@
       "params": []
     },
     {
+      "name": "ask_ai_employee",
+      "description": "Ask another AI employee (a colleague on the roster) a question and get their answer back — the CFO's read on the numbers, the CRO's view of the pipeline, a second opinion from another role. They answer in their own voice, charter, guardrails and model, in words only: they have no tools in this exchange, so put everything they need in `question` and `context` (the figures, the task, the decision) — they cannot look it up. Use it when the user asks you to check with, consult, loop in or get the view of another AI employee, or when your role needs another role's judgement. Relay the answer to the user attributed to them (e.g. \"Agentic CFO (AI): …\") — never present it as your own. You can only ask employees the user may use, and never yourself. Costs one model call on the colleague's model.",
+      "readOnly": true,
+      "scope": "admin",
+      "params": [
+        {
+          "name": "persona_name",
+          "type": "string",
+          "required": false,
+          "description": "The colleague's name as on the roster, e.g. 'Agentic CFO'."
+        },
+        {
+          "name": "persona_id",
+          "type": "string",
+          "required": false,
+          "description": "The colleague's id, if you have it (from list_ai_personas)."
+        },
+        {
+          "name": "question",
+          "type": "string",
+          "required": true,
+          "description": "The question, written to them directly and self-contained."
+        },
+        {
+          "name": "context",
+          "type": "string",
+          "required": false,
+          "description": "Facts they need to answer: numbers, task or deal details, what has been decided. Optional but usually needed — they have no tools."
+        }
+      ]
+    },
+    {
       "name": "ask_knowledge_base",
       "description": "Answer a QUESTION from this workspace's own knowledge — tasks, discussion threads, docs, decisions, retros, onboarding, glossary, and saved agent memories — instead of guessing. Retrieves the most relevant sources across all those surfaces, then has an LLM synthesize a grounded answer that CITES the exact sources it used. PREFER this over search_knowledge_documents whenever the user asks a question ('why did we choose X?', 'what's blocking Y?', 'who owns Z?') rather than for a specific document to open — search_knowledge_documents only finds a doc by title, this actually answers. If nothing in the workspace matches, it says so instead of inventing an answer. Slow (one LLM call, several seconds); keep the question focused.",
       "readOnly": true,
@@ -1330,6 +1381,29 @@
       ]
     },
     {
+      "name": "blotter_send_task",
+      "description": "SEND one Tasks-board email from the user's own Gmail, as them, on its thread (irreversible). Optional subject/body replace the task's text. A cold first email always goes with the workspace's CAN-SPAM block (re-added if an edit removed it); with none configured it is refused. Nothing may repeat what the user sent that person in the last 72 hours (any thread): repeated lines are removed and the cleaned email comes back UNSENT for the user to approve; an email with nothing new is refused, and so is any send when their sent mail cannot be read. Credits the task's EV. Only when the user has explicitly asked to send that task.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "blotter_task_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "body",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "budget_vs_actual",
       "description": "Compare budgeted spend to ACTUAL ClearBooks transactions over a period and report the variance (total and, optionally, per budget line). Provide the period (start_date/end_date) and budget lines — each a category label + budgeted amount. Actuals are pulled live from ClearBooks expense transactions and matched to lines by category name (a line labeled 'Total' or with no match captures the remainder). Use for monthly/quarterly budget reviews; pair with create_goal (metric 'clearbooks_metric') to track a number over time, and escalate_to_user if a line blows past budget.",
       "readOnly": true,
@@ -1465,35 +1539,71 @@
     },
     {
       "name": "bulk_set_due_dates",
-      "description": "Set or clear due_date on many tasks in a single call. Use after the user has confirmed the dates, or as a thin wrapper when they explicitly ask for a uniform due date across a set of tasks. To predict per-task due dates from estimates, use predict_and_apply_due_dates instead.",
+      "description": "Set or clear due_date on many tasks: task_ids, OR a filter (project_ref / all_projects) — for 'remove all due dates' use the filter, never page tasks first. >25 matches previews; after the user's go-ahead re-call with confirm=true. A filter call changes up to 500; re-call to continue. Estimate-based dates: predict_and_apply_due_dates.",
       "readOnly": false,
       "scope": "tasks_projects",
       "params": [
         {
           "name": "task_ids",
           "type": "array",
-          "required": true,
-          "description": "Task IDs to update (max 200)"
+          "required": false,
+          "description": "Max 200"
+        },
+        {
+          "name": "project_ref",
+          "type": "string",
+          "required": false,
+          "description": "Filter: one project"
+        },
+        {
+          "name": "all_projects",
+          "type": "boolean",
+          "required": false,
+          "description": "Filter: every visible project"
+        },
+        {
+          "name": "exclude_project_refs",
+          "type": "array",
+          "required": false,
+          "description": "Filter: skip these projects"
+        },
+        {
+          "name": "only_open",
+          "type": "boolean",
+          "required": false,
+          "description": "Filter: skip completed tasks (default false)"
+        },
+        {
+          "name": "confirm",
+          "type": "boolean",
+          "required": false,
+          "description": "After the user approves the preview"
         },
         {
           "name": "due_date",
           "type": "string|null",
           "required": true,
-          "description": "YYYY-MM-DD to set the same due date on every task, or null to clear all of them"
+          "description": "YYYY-MM-DD, or null to clear"
         }
       ]
     },
     {
       "name": "bulk_update_tasks",
-      "description": "Apply the same patch to many tasks at once. Use when the user says things like 'move all Open backend tasks to In Progress', 'set these five tasks to High priority', or 'reassign Sarah's tasks to Marcus'. Up to 500 task ids per call. Returns the count actually patched. Same status-transition / required-field gates apply per-task. Calls touching MORE than 25 tasks return a preview first — show it to the user, get their go-ahead, then re-call with confirm=true.",
+      "description": "Apply the same patch to many tasks at once. Use when the user says things like 'move all Open backend tasks to In Progress', 'set these five tasks to High priority', or 'reassign Sarah's tasks to Marcus'. Pass task_ids or a `filter` (no need to search first). Up to 500 per call; re-call to continue when it says more match. Calls touching MORE than 25 tasks return a preview first — show it to the user, get their go-ahead, then re-call with confirm=true.",
       "readOnly": false,
       "scope": "tasks_projects",
       "params": [
         {
           "name": "task_ids",
           "type": "array",
-          "required": true,
-          "description": "Task IDs to patch (1..500)"
+          "required": false,
+          "description": "Task IDs to patch (1..500). Omit when using filter."
+        },
+        {
+          "name": "filter",
+          "type": "object",
+          "required": false,
+          "description": "Instead of task_ids: search_tasks' filter keys (project_ref, assigned_to, unassigned, status, tag, due_after, overdue…) on CURRENT values"
         },
         {
           "name": "status_id",
@@ -1521,7 +1631,7 @@
           "name": "emoji",
           "type": "string|null",
           "required": false,
-          "description": "Set the SAME emoji label on every task in this call. To label a whole board by kind of work, group the tasks yourself and make one call per emoji — that is far cheaper than one update_task per task and is the intended way to do it at scale. Null or empty clears."
+          "description": "The SAME emoji on every task. To label a board by kind of work, group the tasks and make one call per emoji (far cheaper than update_task each). Null/empty clears."
         },
         {
           "name": "due_date",
@@ -1539,7 +1649,7 @@
           "name": "confirm",
           "type": "boolean",
           "required": false,
-          "description": "Required true to execute when task_ids has more than 25 entries — only after the user has approved the preview."
+          "description": "Required true to execute when the call touches more than 25 tasks — only after the user has approved the preview."
         }
       ]
     },
@@ -5485,6 +5595,75 @@
       ]
     },
     {
+      "name": "configure_deal_blotter",
+      "description": "Set up the Deal Blotter (admin only): turn it on, net fee % kept (87.5 after a 12.5% broker-dealer share), close horizon, Cc on every email, the CAN-SPAM block for cold emails, the desk's drafting rules, using each sender's live Gmail signature, automatic Blue Chip refresh (spends credits), tasks per Grow batch, tasks per deal, largest refresh move. Only what you pass changes.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "enabled",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "net_fee_pct",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "net_fee_label",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "horizon_date",
+          "type": "string|null",
+          "required": false,
+          "description": "YYYY-MM-DD; null = Dec 31 this year."
+        },
+        {
+          "name": "default_cc",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "can_spam_block",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "drafting_rules",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "use_gmail_signature",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "auto_refresh",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "tasks_per_batch",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "max_tasks_per_deal",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "refresh_max_shift_points",
+          "type": "number",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "configure_deal_forecast",
       "description": "Set up the revenue forecast for the workspace (admin only): the assumed fee % for deals with no recorded fee, fee bands the forecast must report separately (and never combine), a disclaimer printed on every forecast, AUTOMATIC DAILY RECALCULATION onto the deal records (off by default), and the WEEKLY FORECAST EMAIL — day, local time, timezone and which workspace members receive it. Recipients must be active members of the workspace. Only the settings you pass change; read the current ones with get_deal_forecast_settings first. To add or remove one recipient use email_recipients_add / email_recipients_remove — email_recipients REPLACES the whole list. Confirm the schedule and recipients with the user before turning the email on. Returns the full configuration as saved.",
       "readOnly": false,
@@ -5745,7 +5924,7 @@
     },
     {
       "name": "create_agent_schedule",
-      "description": "Create a recurring AUTONOMOUS agent run (a scheduled job the agent executes on its own on a clock). By default it sends nothing on days its person has no open tasks — see only_when_tasks_for. Use this when the user wants something to happen on a repeating schedule that requires the agent to think/act each time — e.g. 'every weekday at 8am email me what I should work on today', 'each Monday summarize open risks'. Set `autonomy_level: 'safe'` (default) so the run can use tools (read tasks, post notes, and email YOU via email_my_digest); 'none' is a plain text-only note with no tools. IMPORTANT: the schedule fires on a UTC clock — convert the user's local time. E.g. 8am PST = hour_utc 16 (PST/UTC-8) or 15 during daylight time (PDT/UTC-7); note the offset caveat to the user. Safe runs are still capped by the workspace autonomy ceiling; below it they degrade to text-only. For a purely STATIC recurring email use schedule_recurring_email; for a recurring analytics REPORT use create_report_schedule. A workspace may have at most 25 ACTIVE schedules; paused ones do not count. If this is refused for the limit, tell the user and ask which schedule to PAUSE (update_agent_schedule enabled:false) — never delete schedules on your own to make room.",
+      "description": "Create a recurring AUTONOMOUS agent run (a scheduled job the agent executes on its own on a clock). By default it sends nothing on days its person has no open tasks — see only_when_tasks_for. Use it when each run must think/act afresh (e.g. 'every weekday at 8am email me my priorities'). Set `autonomy_level: 'safe'` (default) so the run can use tools (read tasks, post notes, and email YOU via email_my_digest); 'none' is a plain text-only note with no tools. Pass `timezone` (the user's IANA zone) and give hour_utc/minute_utc as THEIR local time: the run then follows daylight saving. Without timezone the clock is UTC. 'Every weekday' = daily + weekdays_only, one schedule. Safe runs are capped by the workspace autonomy ceiling. For a purely STATIC recurring email use schedule_recurring_email; for a recurring analytics REPORT use create_report_schedule. A workspace may have at most 25 ACTIVE schedules; paused ones do not count. If this is refused for the limit, tell the user and ask which schedule to PAUSE (update_agent_schedule enabled:false) — never delete schedules on your own to make room.",
       "readOnly": false,
       "scope": "workflows_automations",
       "params": [
@@ -5759,7 +5938,7 @@
           "name": "prompt",
           "type": "string",
           "required": true,
-          "description": "The instruction the agent executes each run, written as if speaking to the agent. Be specific about what to produce and to deliver it. E.g. 'Compile everything I should work on today — my overdue tasks, tasks due today, and anything in progress — then email it to me with email_my_digest.'"
+          "description": "The instruction the agent executes each run, written as if speaking to the agent. Be specific about what to produce and to deliver it. E.g. 'Compile my overdue and in-progress tasks, then email them to me with email_my_digest.'"
         },
         {
           "name": "frequency",
@@ -5790,6 +5969,18 @@
           "type": "number",
           "required": false,
           "description": "1–28 for monthly frequency (clamped to 28 to exist in every month). Defaults to 1."
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "required": false,
+          "description": "IANA zone (e.g. America/Chicago); hour/minute/day are then local time there."
+        },
+        {
+          "name": "weekdays_only",
+          "type": "boolean",
+          "required": false,
+          "description": "daily: skip Sat/Sun."
         },
         {
           "name": "autonomy_level",
@@ -5969,7 +6160,7 @@
     },
     {
       "name": "create_automation",
-      "description": "Create an automation rule. trigger_type values: - 'created' / 'completed' / 'moved' / 'assigned' — task lifecycle. trigger_config can gate on { from_status, to_status, status_id, priority, project_ref, tag }. - 'due-date' — fires once when a task's due_date passes (swept hourly by the overdue-tasks cron; re-arms if the due date is pushed out). trigger_config can gate on { priority, project_ref, tag, status_id }. Use this for 'when a task is overdue → …' rules. - 'property-changed' — fires when a custom property value changes. trigger_config: { property_id?: <def id>, property_key?: <key>, from?: <value>, to?: <value> }. property_id is preferred (survives rename). EXTERNAL EVENT triggers — these fire on things that happen OUTSIDE Kavanah. They carry no task, so the only actions that work with them are 'invoke-agent' and 'start-water-cooler': - 'email-received' — a new email arrived on a connected mailbox (Gmail/Outlook/Proton/iCloud). trigger_config can also gate on { direction: 'inbound' | 'outbound' } (inbound skips mail the user sent) and { from_contact: 'deal' | 'network' | 'any' } — deal = the sender is a contact on an open deal, network = a known contact on no open deal, any = any known contact (strangers never match; omit it to match every sender), and { from_member: true } — the sender is an active member of this workspace (use it for 'let me / my team email the agent'; teammates are NOT contacts, so from_contact never matches them). A reply-to-investors rule should use BOTH direction: 'inbound' and from_contact, or it wakes on every message in the mailbox. - 'integration-item' — a new item appeared in a connected PM tool (Jira issue, ClickUp/Asana task, Monday item, Notion page). - 'github-pull-request' / 'github-push' — a PR was opened/closed/updated, or commits were pushed. - 'calendar-event' — a new calendar event was synced. - 'finance-event' — a verified ClearBooks or Stripe webhook fired (invoice paid, payment failed, …). - 'document-event' — a verified XDocs webhook fired: an agreement was signed / declined / voided / expired, or a tracked link was read, downloaded, or its NDA accepted. - 'deal-stage-changed' — a deal moved between pipeline stages. This is the 'a client became engaged' trigger. trigger_config gates on { to_stage, from_stage, to_stage_kind, to_stage_id, pipeline_id } — prefer to_stage_kind ('open'|'won'|'lost') or to_stage_id over to_stage, because a stage NAME changes the day someone renames the column and the rule then silently stops firing. It fires on a stage CHANGE only, never on deal creation: a Sheet or Asana import creates hundreds of deals in their real stages at once, and firing then would send hundreds of signature requests. - 'deal-document-signed' — the counterparty signed an XDocs envelope that was sent on a deal (the 'they signed → start their campaign' handoff). trigger_config gates on { document_name (exact template/document name), pipeline_id, provider: 'xdocs' }. It fires ONCE per envelope, and never for an envelope that was already signed when Kavanah first saw it, so a sync of old contracts cannot start campaigns. - 'meeting-booked' — a deal contact booked a meeting (an AngelSend booking link, or a calendar event they are on). Fires once per meeting per OPEN deal the contact is on (carrying that deal, so the deal actions and 'move-deal-stage' act on it), and once more with no deal when they are on none. Only personal meetings (never a webinar or an all-day block), only meetings upcoming or started within the last day (a held meeting replayed by a later sync is history), and once across Google, AngelSend's calendar and the booking. trigger_config gates on { has_deal: 'yes'|'no', stage_kind: 'open'|'won'|'lost' (the deal's CURRENT column; never matches the no-deal event), pipeline_id, source: 'angelsend_booking'|'google-calendar'|'angelsend' }. This is the 'they booked a call → move the deal to Engaged / open a prep task' trigger. All of them accept trigger_config { source: '<provider slug>' } to narrow to one provider. Each external record fires AT MOST ONCE, ever (per rule) — re-syncing the same email cannot re-trigger it. All of them accept trigger_config { source: '<provider slug>' } to narrow to one provider. Each external record fires AT MOST ONCE, ever (per rule) — re-syncing the same email cannot re-trigger it. An external event an invoke-agent rule's hourly cap refuses is PARKED and retried on later ticks for up to 24 hours, never run twice. action_type values: - 'assign' { user: <id|'current'|'creator'> } - 'change-status' { status_id } - 'set-field' { field: 'priority'|'tag'|'due_date', value, offset_days? } - 'add-tag' / 'remove-tag' { tag } - 'add-comment' { body } (supports ${task.title} / ${task.id} interpolation) - 'move-to-project' { project_ref } - 'send-notification' { body?, title?, kind?, to? } — posts an in-app notification on the task's project feed. Without `to` it reaches everyone who can see the project; with `to` ONLY the people it names see it and count it: 'assignee' (the task's assignee), 'admins' (workspace owners and admins), or a member's name or email — comma-separate several. A name with no account in this workspace is skipped, and if nobody matches the firing is skipped (never broadcast). Name a rule for who it actually reaches. body supports ${task.title} / ${task.id}; kind defaults to 'overdue'. - 'set-property' { property_id|property_key, value } — set a custom property value on the triggering task. Computed-type props are rejected. - 'invoke-agent' { instruction, run_as?, max_per_hour?, send_mode? } — hand the event to YOU (the agent) to handle with your full toolset. `instruction` is what you'll be asked to do, in plain language ('Triage this email: if it is a support request, create a task in the Support project and reply acknowledging it'). This is the ONLY action that works with external-event triggers, and the only one that can do open-ended work. The run is queued (not instant) and executes under the run-as user's autonomy level — risky actions are still policy-gated and may park for approval. In SAFE mode it CANNOT send anything. To let a rule's runs send (e.g. reply to an email), set send_mode: 'approval' (every send parks for a human — recommended) or 'auto' (sends go out unreviewed; owners/admins only; a workspace block still wins). Neither exceeds the workspace's autonomy ceiling. For 'let me email the agent', a Gmail note-to-self counts as inbound, and from_member: true limits it to the team. DEAL actions — these need a deal trigger ('deal-stage-changed' or 'deal-document-signed'), and are ADMIN-ONLY to create because each acts outside Kavanah irreversibly. They share one per-workspace hourly cap, so a bulk stage move cannot fan out: - 'provision-client-space' { slack?, slack_private?, slack_prefix?, slack_invite_emails?, invite_deal_team?, auto_staff?, drive?, drive_parent_folder_id?, drive_subfolders?, run_as? } — create the deal's Slack channel and Google Drive folder, inviting the deal team. When the workspace has turned on automatic staffing (off by default), the deal's team is first filled to the workspace's minimum size and given a lead if it has none; auto_staff:false keeps one rule out of that. Idempotent per deal: it records what it made and skips whichever half already exists, so re-firing never opens a second channel. - 'send-engagement-envelope' { templates?, template_id | template_name, prefill?, contact_role?, email_subject?, email_blurb?, run_as? } — send an XDocs template to the deal's signer (XDocs is the only e-signature provider; the run-as user must have XDocs connected, and the template must have exactly one signer slot). templates: [{ when: { category?, sector?, issuance_stage? (text or list), pipeline_id?, min_amount_cents?, max_amount_cents? (whole cents, inclusive) }, template_name | template_id, prefill? }] — checked IN ORDER, first match wins, falling back to the top-level template_name/template_id; with no match and no fallback the firing is skipped with the reason. An entry an earlier one always beats is refused at save. prefill: { '<placeholder label>': '<deal field>' } writes the deal's terms into the template's [Placeholder] text — fields: name, amount_cents, revenue_cents (written as money in the deal's currency), currency, sector, category, issuance_stage, geography, expected_close (written as a date), owner_name, custom_fields.<name>. An unknown field is refused at save; a term the deal has no value for stops the send and names the field — nothing is ever sent with a blank term. Skips if a live envelope (anything not declined/voided/expired, INCLUDING a signed one) already exists on the deal. Template names must match EXACTLY; it refuses to guess between near matches rather than send the wrong contract. - 'enroll-cadence' { cadence, contact_role?, provider?, run_as? } — enroll the deal's OWN contacts (the issuer's people already on the deal) in a cadence. Defaults to the PRIMARY contact only; pass contact_role:'all' to enroll everyone on the deal, which includes any investor a campaign linked to it. Steps send through the run-as user's mailbox, never the person who moved the card. This is NOT an investor campaign. - 'start-investor-campaign' { cadence, batch_size?, contacts_per_firm?, auto_release?, provider?, run_as? } — THE action for investor outreach: ranks the workspace's investors against the deal's investment profile, releases the first tranche (batch_size, default 100), picks up to contacts_per_firm people per firm (default 1, max 3; warmest with an email first, then the most senior title), links them to the deal and enrolls them in 'cadence' (a DEAL cadence). Skips if the deal has no investment profile yet. A re-fire tops up the open tranche and never releases the next one; auto_release:true (default false) lets the 6-hourly scan release and enroll the next tranche once every released firm has been approached or dismissed. At most 5 campaigns start per workspace per hour. - 'start-issuer-campaign' { campaign, cadence?, batch_size?, contacts_per_firm?, auto_release?, provider?, run_as? } — client PROSPECTING: starts the named issuer campaign (id or exact name, see list_issuer_campaigns) — ranks the workspace's issuers against its mandate if never ranked, releases the FIRST tranche and enrolls the best contact at each firm in the campaign's NETWORK cadence (or 'cadence'). It needs no deal, but it only runs on something a member did — a task trigger or a deal trigger; an external event (an inbound email, a webhook) is skipped. A re-fire tops up the open tranche and never releases the next; auto_release omitted keeps the campaign's own setting. Admin-only to create, under the same shared hourly cap, and at most 5 issuer campaigns start per workspace per hour. INTERNAL deal-side actions — they stay inside Kavanah, so any member may create them and they are not under the deal actions' cap: - 'move-deal-stage' { to_stage_id | to_stage (exact stage name), only_forward? (default true) } — move the event's deal (a 'meeting-booked', 'deal-stage-changed' or 'deal-document-signed' trigger) to a stage of ITS pipeline, as the rule's author. Skips a closed deal, a deal already in that stage, a backwards move under only_forward, and a stage not in the deal's pipeline. The move fires the 'deal-stage-changed' rules, so 'meeting booked → move to Engaged' chains into the engagement rules; one rule refuses to move the same deal twice within an hour, so two rules cannot ping-pong. - 'create-task' { title, project_ref, description?, assign_to?, due_in_days?, priority? } — open a task in a project on ANY trigger, as the rule's author, once per event (a re-synced booking or a retried event finds it already there). Placeholders in title/description: ${deal.name}, ${contact.name}, ${contact.company}, ${meeting.start} (in the author's timezone), ${event.summary}, and ${task.title} / ${task.id} on a task trigger; one the event has no value for renders empty. assign_to: 'deal_lead' (the deal's owner), 'rule_author', 'none', or a member's roster name or email — someone who cannot be resolved leaves the task unassigned rather than inventing an assignee. due_in_days 0–365; priority Normal|Medium|High. The project is checked when the rule fires. Use 'invoke-agent' when the response needs judgment; use the fixed actions when the response is mechanical (they are cheaper and deterministic). Pass project_ref to scope a TASK or property rule to one project, or omit for workspace-wide. Deal-stage and external-event rules are ALWAYS workspace-wide — those events belong to no project, so a project_ref there is ignored (a rule tied to a project could never fire).",
+      "description": "Create an automation rule. trigger_type values: - 'created' / 'completed' / 'moved' / 'assigned' — task lifecycle. trigger_config can gate on { from_status, to_status, status_id, priority, project_ref, tag }. - 'due-date' — fires once when a task's due_date passes (swept hourly by the overdue-tasks cron; re-arms if the due date is pushed out). trigger_config can gate on { priority, project_ref, tag, status_id }. Use this for 'when a task is overdue → …' rules. - 'property-changed' — fires when a custom property value changes. trigger_config: { property_id?: <def id>, property_key?: <key>, from?: <value>, to?: <value> }. property_id is preferred (survives rename). EXTERNAL EVENT triggers — these fire on things that happen OUTSIDE Kavanah. They carry no task, so the only actions that work with them are 'invoke-agent' and 'start-water-cooler': - 'email-received' — a new email arrived on a connected mailbox (Gmail/Outlook/Proton/iCloud). trigger_config can also gate on { direction: 'inbound' | 'outbound' } (inbound skips mail the user sent) and { from_contact: 'deal' | 'network' | 'any' } — deal = the sender is a contact on an open deal, network = a known contact on no open deal, any = any known contact (strangers never match; omit it to match every sender), and { from_member: true } — the sender is an active member of this workspace (use it for 'let me / my team email the agent'; teammates are NOT contacts, so from_contact never matches them). A reply-to-investors rule should use BOTH direction: 'inbound' and from_contact, or it wakes on every message in the mailbox. - 'integration-item' — a new item appeared in a connected PM tool (Jira issue, ClickUp/Asana task, Monday item, Notion page). - 'github-pull-request' / 'github-push' — a PR was opened/closed/updated, or commits were pushed. - 'calendar-event' — a new calendar event was synced. - 'finance-event' — a verified ClearBooks or Stripe webhook fired (invoice paid, payment failed, …). - 'document-event' — a verified XDocs webhook fired: an agreement was signed / declined / voided / expired, or a tracked link was read, downloaded, or its NDA accepted. - 'valore-event' — a verified Valore webhook fired: guest.registered, guest.updated, guest.checked_in, order.paid, order.refunded, event.created / updated / published / canceled / deleted, subscriber.created / unsubscribed, feedback.submitted. Narrow with trigger_config { valore_event: 'guest.registered' }. - 'deal-stage-changed' — a deal moved between pipeline stages. This is the 'a client became engaged' trigger. trigger_config gates on { to_stage, from_stage, to_stage_kind, to_stage_id, pipeline_id } — prefer to_stage_kind ('open'|'won'|'lost') or to_stage_id over to_stage, because a stage NAME changes the day someone renames the column and the rule then silently stops firing. It fires on a stage CHANGE only, never on deal creation: a Sheet or Asana import creates hundreds of deals in their real stages at once, and firing then would send hundreds of signature requests. - 'deal-document-signed' — the counterparty signed an XDocs envelope that was sent on a deal (the 'they signed → start their campaign' handoff). trigger_config gates on { document_name (exact template/document name), pipeline_id, provider: 'xdocs' }. It fires ONCE per envelope, and never for an envelope that was already signed when Kavanah first saw it, so a sync of old contracts cannot start campaigns. - 'meeting-booked' — a deal contact booked a meeting (an AngelSend booking link, or a calendar event they are on). Fires once per meeting per OPEN deal the contact is on (carrying that deal, so the deal actions and 'move-deal-stage' act on it), and once more with no deal when they are on none. Only personal meetings (never a webinar or an all-day block), only meetings upcoming or started within the last day (a held meeting replayed by a later sync is history), and once across Google, AngelSend's calendar and the booking. trigger_config gates on { has_deal: 'yes'|'no', stage_kind: 'open'|'won'|'lost' (the deal's CURRENT column; never matches the no-deal event), pipeline_id, source: 'angelsend_booking'|'google-calendar'|'angelsend' }. This is the 'they booked a call → move the deal to Engaged / open a prep task' trigger. All of them accept trigger_config { source: '<provider slug>' } to narrow to one provider. Each external record fires AT MOST ONCE, ever (per rule) — re-syncing the same email cannot re-trigger it. All of them accept trigger_config { source: '<provider slug>' } to narrow to one provider. Each external record fires AT MOST ONCE, ever (per rule) — re-syncing the same email cannot re-trigger it. An external event an invoke-agent rule's hourly cap refuses is PARKED and retried on later ticks for up to 24 hours, never run twice. action_type values: - 'assign' { user: <id|'current'|'creator'> } - 'change-status' { status_id } - 'set-field' { field: 'priority'|'tag'|'due_date', value, offset_days? } - 'add-tag' / 'remove-tag' { tag } - 'add-comment' { body } (supports ${task.title} / ${task.id} interpolation) - 'move-to-project' { project_ref } - 'send-notification' { body?, title?, kind?, to? } — posts an in-app notification on the task's project feed. Without `to` it reaches everyone who can see the project; with `to` ONLY the people it names see it and count it: 'assignee' (the task's assignee), 'admins' (workspace owners and admins), or a member's name or email — comma-separate several. A name with no account in this workspace is skipped, and if nobody matches the firing is skipped (never broadcast). Name a rule for who it actually reaches. body supports ${task.title} / ${task.id}; kind defaults to 'overdue'. - 'set-property' { property_id|property_key, value } — set a custom property value on the triggering task. Computed-type props are rejected. - 'invoke-agent' { instruction, run_as?, max_per_hour?, send_mode? } — hand the event to YOU (the agent) to handle with your full toolset. `instruction` is what you'll be asked to do, in plain language ('Triage this email: if it is a support request, create a task in the Support project and reply acknowledging it'). This is the ONLY action that works with external-event triggers, and the only one that can do open-ended work. The run is queued (not instant) and executes under the run-as user's autonomy level — risky actions are still policy-gated and may park for approval. In SAFE mode it CANNOT send anything. To let a rule's runs send (e.g. reply to an email), set send_mode: 'approval' (every send parks for a human — recommended) or 'auto' (sends go out unreviewed; owners/admins only; a workspace block still wins). Neither exceeds the workspace's autonomy ceiling. For 'let me email the agent', a Gmail note-to-self counts as inbound, and from_member: true limits it to the team. DEAL actions — these need a deal trigger ('deal-stage-changed' or 'deal-document-signed'), and are ADMIN-ONLY to create because each acts outside Kavanah irreversibly. They share one per-workspace hourly cap, so a bulk stage move cannot fan out: - 'provision-client-space' { slack?, slack_private?, slack_prefix?, slack_invite_emails?, invite_deal_team?, auto_staff?, drive?, drive_parent_folder_id?, drive_subfolders?, run_as? } — create the deal's Slack channel and Google Drive folder, inviting the deal team. When the workspace has turned on automatic staffing (off by default), the deal's team is first filled to the workspace's minimum size and given a lead if it has none; auto_staff:false keeps one rule out of that. Idempotent per deal: it records what it made and skips whichever half already exists, so re-firing never opens a second channel. - 'send-engagement-envelope' { templates?, template_id | template_name, prefill?, contact_role?, email_subject?, email_blurb?, run_as? } — send an XDocs template to the deal's signer (XDocs is the only e-signature provider; the run-as user must have XDocs connected, and the template must have exactly one signer slot). templates: [{ when: { category?, sector?, issuance_stage? (text or list), pipeline_id?, min_amount_cents?, max_amount_cents? (whole cents, inclusive) }, template_name | template_id, prefill? }] — checked IN ORDER, first match wins, falling back to the top-level template_name/template_id; with no match and no fallback the firing is skipped with the reason. An entry an earlier one always beats is refused at save. prefill: { '<placeholder label>': '<deal field>' } writes the deal's terms into the template's [Placeholder] text — fields: name, amount_cents, revenue_cents (written as money in the deal's currency), currency, sector, category, issuance_stage, geography, expected_close (written as a date), owner_name, custom_fields.<name>. An unknown field is refused at save; a term the deal has no value for stops the send and names the field — nothing is ever sent with a blank term. Skips if a live envelope (anything not declined/voided/expired, INCLUDING a signed one) already exists on the deal. Template names must match EXACTLY; it refuses to guess between near matches rather than send the wrong contract. - 'enroll-cadence' { cadence, contact_role?, provider?, run_as? } — enroll the deal's OWN contacts (the issuer's people already on the deal) in a cadence. Defaults to the PRIMARY contact only; pass contact_role:'all' to enroll everyone on the deal, which includes any investor a campaign linked to it. Steps send through the run-as user's mailbox, never the person who moved the card. This is NOT an investor campaign. - 'start-investor-campaign' { cadence, batch_size?, contacts_per_firm?, auto_release?, provider?, run_as? } — THE action for investor outreach: ranks the workspace's investors against the deal's investment profile, releases the first tranche (batch_size, default 100), picks up to contacts_per_firm people per firm (default 1, max 3; warmest with an email first, then the most senior title), links them to the deal and enrolls them in 'cadence' (a DEAL cadence). Skips if the deal has no investment profile yet. A re-fire tops up the open tranche and never releases the next one; auto_release:true (default false) lets the 6-hourly scan release and enroll the next tranche once every released firm has been approached or dismissed. At most 5 campaigns start per workspace per hour. - 'start-issuer-campaign' { campaign, cadence?, batch_size?, contacts_per_firm?, auto_release?, provider?, run_as? } — client PROSPECTING: starts the named issuer campaign (id or exact name, see list_issuer_campaigns) — ranks the workspace's issuers against its mandate if never ranked, releases the FIRST tranche and enrolls the best contact at each firm in the campaign's NETWORK cadence (or 'cadence'). It needs no deal, but it only runs on something a member did — a task trigger or a deal trigger; an external event (an inbound email, a webhook) is skipped. A re-fire tops up the open tranche and never releases the next; auto_release omitted keeps the campaign's own setting. Admin-only to create, under the same shared hourly cap, and at most 5 issuer campaigns start per workspace per hour. INTERNAL deal-side actions — they stay inside Kavanah, so any member may create them and they are not under the deal actions' cap: - 'move-deal-stage' { to_stage_id | to_stage (exact stage name), only_forward? (default true) } — move the event's deal (a 'meeting-booked', 'deal-stage-changed' or 'deal-document-signed' trigger) to a stage of ITS pipeline, as the rule's author. Skips a closed deal, a deal already in that stage, a backwards move under only_forward, and a stage not in the deal's pipeline. The move fires the 'deal-stage-changed' rules, so 'meeting booked → move to Engaged' chains into the engagement rules; one rule refuses to move the same deal twice within an hour, so two rules cannot ping-pong. - 'create-task' { title, project_ref, description?, assign_to?, due_in_days?, priority? } — open a task in a project on ANY trigger, as the rule's author, once per event (a re-synced booking or a retried event finds it already there). Placeholders in title/description: ${deal.name}, ${contact.name}, ${contact.company}, ${meeting.start} (in the author's timezone), ${event.summary}, and ${task.title} / ${task.id} on a task trigger; one the event has no value for renders empty. assign_to: 'deal_lead' (the deal's owner), 'rule_author', 'none', or a member's roster name or email — someone who cannot be resolved leaves the task unassigned rather than inventing an assignee. due_in_days 0–365; priority Normal|Medium|High. The project is checked when the rule fires. Use 'invoke-agent' when the response needs judgment; use the fixed actions when the response is mechanical (they are cheaper and deterministic). Pass project_ref to scope a TASK or property rule to one project, or omit for workspace-wide. Deal-stage and external-event rules are ALWAYS workspace-wide — those events belong to no project, so a project_ref there is ignored (a rule tied to a project could never fire).",
       "readOnly": false,
       "scope": "workflows_automations",
       "params": [
@@ -5986,7 +6177,7 @@
         },
         {
           "name": "trigger_type",
-          "type": "created|moved|completed|assigned|status-change|field-change|due-date|property-changed|email-received|integration-item|github-pull-request|github-push|calendar-event|finance-event|document-event|deal-stage-changed|deal-document-signed|meeting-booked|bd-match-found",
+          "type": "created|moved|completed|assigned|status-change|field-change|due-date|property-changed|email-received|integration-item|github-pull-request|github-push|calendar-event|finance-event|document-event|valore-event|deal-stage-changed|deal-document-signed|meeting-booked|bd-match-found",
           "required": true
         },
         {
@@ -7457,7 +7648,7 @@
           "name": "config",
           "type": "object",
           "required": false,
-          "description": "Optional per-report configuration. For most types: project_ref, date range, etc. For my_work / daily_digest: `user_id` (defaults to you if omitted) and `horizon_days` (how many days ahead counts as 'due soon', default 7). Defaults to {}."
+          "description": "Optional per-report configuration. For most types: project_ref, date range, etc. For my_work / daily_digest: `user_id` (defaults to YOU if omitted — a digest for a colleague must pass THEIR user_id, or it lists your tasks under their name) and `horizon_days` (how many days ahead counts as 'due soon', default 7). Defaults to {}."
         },
         {
           "name": "is_template",
@@ -7508,6 +7699,12 @@
           "type": "boolean",
           "required": false,
           "description": "Defaults to true."
+        },
+        {
+          "name": "confirm_other_person",
+          "type": "boolean",
+          "required": false,
+          "description": "Only for my_work / daily_digest: set true when the single recipient should deliberately receive SOMEONE ELSE's digest (e.g. a manager). Without it, scheduling a digest to a member it is not about is refused — create one report per person with config.user_id set to that person instead."
         }
       ]
     },
@@ -7914,7 +8111,7 @@
     },
     {
       "name": "create_task",
-      "description": "Create a new task in a project. Requires project_ref and title. Can optionally set description, assignee, status, priority, tag, due_date, reminder_date, subtasks, notes, and links.",
+      "description": "Create a new task in a project. Requires project_ref and title. Can optionally set description, assignee, status, priority, tag, due_date, reminder_date, subtasks, notes, links, and a time estimate.",
       "readOnly": false,
       "scope": "tasks_projects",
       "params": [
@@ -7971,6 +8168,12 @@
           "type": "string",
           "required": false,
           "description": "Due date in YYYY-MM-DD format"
+        },
+        {
+          "name": "estimate",
+          "type": "object",
+          "required": false,
+          "description": "Time estimate shown on the task. Set it only when the user asks for estimates. Estimate the time for someone working WITH AI (Kavanah's agent, coding/writing/research assistants), not the unassisted figure: drafting, research, summaries, routine code and data work shrink a lot; review, meetings, approvals, waiting on others and physical work barely shrink."
         },
         {
           "name": "reminder_date",
@@ -9245,7 +9448,7 @@
           "name": "query",
           "type": "string",
           "required": false,
-          "description": "Optional Drive query string (same syntax as the Drive API `q` parameter)."
+          "description": "Optional. Drive query syntax (the Drive API `q` parameter), or plain words to search file names and contents."
         },
         {
           "name": "page_size",
@@ -9394,7 +9597,7 @@
     },
     {
       "name": "email_my_digest",
-      "description": "Email a Kavanah digest to YOURSELF (the current user, or in a scheduled run the run owner), to a named teammate in THIS workspace (`to_member`), or — inside a scheduled run — to someone OUTSIDE the workspace (`to_email`). Use `to_member` for per-person reminders to members ('each morning, email Sophia her open HR tasks'). Use `to_email` when a schedule's instructions name an outside address ('email the forecast to mitch@example.com'): it goes out as a normal email from the schedule owner's connected mailbox. `to_email` reaches ONLY addresses written in the running schedule's own instructions, and works only in a scheduled run — in a conversation, send outside email with gmail_send_email or your connected mail tool. This is the delivery step for a briefing: gather the content with your other tools (tasks, goals, waiting-on ledger, calendar), then call this to send it. Works inside a safe-mode scheduled run, where the general email-send tools are unavailable. One recipient per call. Provide the fully-composed subject and body.",
+      "description": "Email a Kavanah digest to YOURSELF (the current user, or in a scheduled run the run owner), to a named teammate in THIS workspace (`to_member`), or — inside a scheduled run — to someone OUTSIDE the workspace (`to_email`). Use `to_member` for per-person reminders to members. Use `to_email` when a schedule's instructions name an outside address ('email the forecast to mitch@example.com'): it goes out as a normal email from the schedule owner's connected mailbox. `to_email` reaches ONLY addresses written in the running schedule's own instructions, and works only in a scheduled run — in a conversation, send outside email with gmail_send_email or your connected mail tool. Gather the content first, then call this to send it. Works in safe-mode scheduled runs, where the general send tools are not. One recipient per call (cc copies teammates). Provide the fully-composed subject and body.",
       "readOnly": false,
       "scope": "workflows_automations",
       "params": [
@@ -9408,7 +9611,7 @@
           "name": "body",
           "type": "string",
           "required": true,
-          "description": "The message body. Plain text (or lightweight markdown) by default; set is_html:true if you're passing HTML."
+          "description": "The message body. Plain text or markdown; is_html:true for HTML. {{block:<id>}} lines expand server-side."
         },
         {
           "name": "to_member",
@@ -9423,10 +9626,42 @@
           "description": "Optional, scheduled runs only. One outside email address to send the digest to, as a normal email from the schedule owner's connected mailbox. It must be an address the schedule's own instructions name — any other address is refused and nothing is sent. Do not combine with to_member."
         },
         {
+          "name": "cc",
+          "type": "array",
+          "required": false,
+          "description": "Optional. Up to 5 teammate names (as to_member) copied on this email; an unknown name sends nothing."
+        },
+        {
           "name": "is_html",
           "type": "boolean",
           "required": false,
           "description": "Set true if `body` is HTML rather than plain text. Defaults to false."
+        }
+      ]
+    },
+    {
+      "name": "enforce_bucket_limits",
+      "description": "Enforce bucket WIP limits on ONE project board, where tasks are bucketed by their tag (NOW / DAY / WEEK / MONTH / QUARTER) and scored by a description line like '🔥 Urgency: 80/100 | 💪 Effort: 60/100 | 🪣 Bucket: DAY'. Ranks EVERY open task on the board (not just new ones) by urgency score — ties go to in-progress work, then to the older task — keeps the best `limits[bucket]` in each capped bucket and demotes the rest one bucket down, cascading. Never promotes. Rewrites the description's '🪣 Bucket:' line to match the tag on every task it touches. Defaults: limits {NOW: 1, DAY: 5}. Call with dry_run=true to see the plan without writing. Undoable.",
+      "readOnly": false,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "project_ref",
+          "type": "string",
+          "required": true,
+          "description": "The board to enforce. Call once per board."
+        },
+        {
+          "name": "limits",
+          "type": "object",
+          "required": false,
+          "description": "Max open tasks per bucket tag, e.g. {\"NOW\": 1, \"DAY\": 5}. Buckets not named are uncapped."
+        },
+        {
+          "name": "dry_run",
+          "type": "boolean",
+          "required": false,
+          "description": "Report the planned moves without writing anything."
         }
       ]
     },
@@ -9641,7 +9876,7 @@
     },
     {
       "name": "estimate_task_time",
-      "description": "Estimate how long a task will take using the AI estimator. Takes the task's title, description, project context, assignee role, and comparable past tasks into account, then writes back a single value + unit (minutes/hours/days) and a ± uncertainty range. Pass a single task_id or up to 10 task_ids for bulk estimation.",
+      "description": "Estimate how long a task will take using the AI estimator, for an assignee working with AI tools (not the unassisted figure). Takes the task's title, description, project context, assignee role, and comparable past tasks into account, then writes back a single value + unit (minutes/hours/days) and a ± uncertainty range. Pass a single task_id or up to 10 task_ids for bulk estimation.",
       "readOnly": false,
       "scope": "tasks_projects",
       "params": [
@@ -9777,7 +10012,7 @@
         },
         {
           "name": "course",
-          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
+          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
           "required": false,
           "description": "Optional course slug to restrict the search to. Omit to search everything."
         },
@@ -9908,7 +10143,7 @@
     },
     {
       "name": "generate_forecast_charts",
-      "description": "Render 8 executive revenue-forecast charts as email-ready PNG images and return their URLs plus paste-ready HTML. Use this for any forecast/pipeline report that goes out by EMAIL — chart widgets do not render in email. Charts: 1 30-day best/base/worst scenarios, 2 pipeline by stage, 3 probability by close date (50% threshold), 4 contribution waterfall (top 12 deals), 5 probability decay by deal age, 6 top revenue risks, 7 deal health matrix (LOCK NOW / CONFIRM / RED FLAG / NOISE), 8 weekly runway by stage. Each carries a computed one-line insight. Omit `deals` to read open deals straight from the Deal Room (one call, exact numbers — prefer this over copying numbers out of get_deal). In Deal Room mode the returned HTML also opens with a DEAL FACTS table built from the timeline — stage, fee, close date, last inbound / outbound, and every activity row in the last facts_since_hours (default 12), or \"no change recorded\" — so the email's per-deal lines are records, not prose. Then send the returned HTML with email_my_digest (is_html: true). Free; no credits.",
+      "description": "Render 8 executive revenue-forecast charts as email-ready PNG images and return their URLs plus a {{block:<id>}} token that stands for the email-ready HTML. Use this for any forecast/pipeline report that goes out by EMAIL — chart widgets do not render in email. Charts: 1 30-day best/base/worst scenarios, 2 pipeline by stage, 3 probability by close date (50% threshold), 4 contribution waterfall (top 12 deals), 5 probability decay by deal age, 6 top revenue risks, 7 deal health matrix (LOCK NOW / CONFIRM / RED FLAG / NOISE), 8 weekly runway by stage. Each carries a computed one-line insight. Omit `deals` to read open deals straight from the Deal Room (one call, exact numbers — prefer this over copying numbers out of get_deal). In Deal Room mode the block also opens with a DEAL FACTS table built from the timeline — stage, fee, close date, last inbound / outbound, and every activity row in the last facts_since_hours (default 12), or \"no change recorded\" — so the email's per-deal lines are records, not prose. Then put the token in an email_my_digest body (it expands server-side, for every recipient, within this run) — never paste or retype the HTML. Free; no credits.",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -10274,6 +10509,19 @@
       ]
     },
     {
+      "name": "get_blotter_deal",
+      "description": "One deal's Blotter detail: the Why behind its close probability (each signal's evidence, every buyer's score, biggest lever, most likely failure), every party on it, the open tasks on it, and every logged change with the email it came from (change ids for revert_blotter_change).",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "get_blueprint",
       "description": "Show a Blueprint: items by group with cost, blockers, compliance notes, what is applied, and the diff vs what is applied. Omit blueprint_id for the latest.",
       "readOnly": true,
@@ -10522,7 +10770,7 @@
         },
         {
           "name": "course",
-          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
+          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
           "required": false,
           "description": "Optional course slug. Omit to search the whole catalogue."
         }
@@ -10580,6 +10828,20 @@
           "name": "deal_id",
           "type": "string",
           "required": true
+        }
+      ]
+    },
+    {
+      "name": "get_deal_blotter",
+      "description": "The Deal Blotter: Blue Chips (close probability, net fee, buyers on email, verbal flag, next action), this quarter's expected revenue, the Tasks board (open emails, their EV and focused minutes), EV generated / streak, measured close rates by stage, last Play and refresh. Start here for anything about the Blotter, Blue Chips, Close or Grow pipeline, or the board. Your reply automatically gets a live Blue Chips card under it (each deal's probability, net fee, expected net and the quote behind it, linking to the Blotter): say what matters rather than re-listing every deal.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "include_all_deals",
+          "type": "boolean",
+          "required": false,
+          "description": "Also list every deal, not just the Blue Chips."
         }
       ]
     },
@@ -10977,6 +11239,13 @@
       "params": []
     },
     {
+      "name": "get_my_referral_link",
+      "description": "The calling user's own Refer-a-friend link (kavanah.ai/join/<code>) and how it is doing: the credits each side earns, how many people signed up through it, verified (their credits paid) and purchased (the caller's credits paid), and credits earned. Use for 'what's my referral link?' or 'how many people have I referred?'. The page is avatar → Refer a friend (/refer). Your reply automatically gets a card with the link, a Copy button and the counts under it, so give the link once rather than restating every number.",
+      "readOnly": true,
+      "scope": null,
+      "params": []
+    },
+    {
       "name": "get_network_sheet_status",
       "description": "The Google Sheet(s) linked to the network (firms + contacts): which tab, the column mapping, when it last imported and mirrored, and the last import's summary — rows read, firms/contacts created and updated, fields filled, fields KEPT because someone edited them in Kavanah, and the cells that could not be read (an unparseable AUM, an unknown partner status). Use it before answering 'is the sheet synced' or 'why didn't X come through'.",
       "readOnly": true,
@@ -11333,6 +11602,20 @@
           "type": "string",
           "required": false,
           "description": "Optional project reference to filter by."
+        }
+      ]
+    },
+    {
+      "name": "get_task",
+      "description": "Read ONE task by id, including its full description and recent comments (search_tasks returns neither).",
+      "readOnly": true,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "task_id",
+          "type": "number",
+          "required": true,
+          "description": "The task ID"
         }
       ]
     },
@@ -11907,13 +12190,13 @@
           "name": "time_min",
           "type": "string",
           "required": false,
-          "description": "Start of the window, ISO 8601 (e.g. 2026-05-20T00:00:00Z). Optional."
+          "description": "Window start, user's timezone: 2026-05-20 or 2026-05-20T09:00. Optional."
         },
         {
           "name": "time_max",
           "type": "string",
           "required": false,
-          "description": "End of the window, ISO 8601. Optional."
+          "description": "Window end, same format. Optional."
         },
         {
           "name": "max_results",
@@ -13429,7 +13712,7 @@
     },
     {
       "name": "list_agent_schedules",
-      "description": "List the recurring autonomous agent runs in this workspace — name, prompt, frequency, UTC time, autonomy level, enabled flag, model (null = inherited; 'auto' = routed per run), only_when_tasks_for / task_gate (the person whose tasks gate each run, if any), next_run_at, last run status/error, and an estimated credits/month per schedule from its recent runs. Use before update/cancel to get the schedule id.",
+      "description": "List the recurring autonomous agent runs in this workspace — name, prompt, frequency, time (UTC unless timezone is set), autonomy level, enabled flag, model (null = inherited; 'auto' = routed per run), only_when_tasks_for / task_gate (the person whose tasks gate each run, if any), next_run_at, last run status/error, and an estimated credits/month per schedule from its recent runs. Use before update/cancel to get the schedule id.",
       "readOnly": true,
       "scope": "workflows_automations",
       "params": [
@@ -13598,6 +13881,20 @@
           "name": "limit",
           "type": "number",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "list_blotter_tasks",
+      "description": "The caller's Tasks board: each email's blotter_task_id, recipient, deal, subject, body, EV class, EV and basis, focused minutes, flags, status and source (Engage, Close pipeline, Grow pipeline, chat Play). Your reply automatically gets a live card of the open tasks under it, where the user can open, edit, reject and send each one (Send asks them to confirm): point at the top few by EV instead of pasting every email.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "status",
+          "type": "open|sent|all",
+          "required": false,
+          "description": "Default open."
         }
       ]
     },
@@ -13828,13 +14125,13 @@
     },
     {
       "name": "list_course_lessons",
-      "description": "List the course curriculum. Kavanah ships 7 free courses, 231 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.",
+      "description": "List the course curriculum. Kavanah ships 10 free courses, 291 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `sales-with-kavanah` (20 lessons, 5 modules) — How B2B buyers actually decide, and how to sell to them without spamming anyone. · `marketing-with-kavanah` (20 lessons, 5 modules) — How marketing actually works, and how to run it as disciplined, measurable work. · `fundraising-with-kavanah` (20 lessons, 5 modules) — Raise capital the way a desk does: a ranked list, a tracked pipeline, and the rules in view. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | sales-with-kavanah: foundations, the-buyer, prospecting, running-the-deal, operating | marketing-with-kavanah: marketing-strategy, brand-product-price, channels-and-content, campaigns-and-experiments, measurement-and-operations | fundraising-with-kavanah: fr-foundations, fr-instruments, fr-preparing, fr-process, fr-after | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.",
       "readOnly": true,
       "scope": "knowledge_files",
       "params": [
         {
           "name": "course",
-          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
+          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
           "required": false,
           "description": "Optional course slug to scope the listing to. Omit to list every course."
         },
@@ -15599,6 +15896,44 @@
           "type": "string",
           "required": false,
           "description": "Attribute directly to a client (from list_clients). Otherwise the project's client applies."
+        }
+      ]
+    },
+    {
+      "name": "manage_blotter_play",
+      "description": "The Opportunities list — firm-level strategic plays the desk curates. action add (firm, title, notes), update (play_id + fields), remove (play_id), list.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "action",
+          "type": "list|add|update|remove",
+          "required": true
+        },
+        {
+          "name": "play_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "firm",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "title",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "notes",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "open|won|dropped",
+          "required": false
         }
       ]
     },
@@ -18414,6 +18749,24 @@
       ]
     },
     {
+      "name": "reject_blotter_task",
+      "description": "Take a task off the board with the user's reason. The next Grow batch reads every reason as a rule, so pass their words (\"the ball is with Umergence\").",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "blotter_task_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "release_next_investor_batch",
       "description": "Move the next tranche of ranked investors into the working set for a deal — the 'now do the next hundred' step. REFUSES while firms from the current set are still open, and that refusal is the point: a second tranche arriving while the first is half-worked turns a priority order into a dump. Mark firms approached or dismissed to clear the set, or pass force to override deliberately. Releasing sends nothing; it marks who is in play.",
       "readOnly": false,
@@ -18590,7 +18943,7 @@
     },
     {
       "name": "remove_portal_member",
-      "description": "Remove a portal member by id. Confirm with user first.",
+      "description": "Turn off a portal member's client-portal access by id and sign them out of any open portal session (they stay on the client record). Confirm with user first.",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -18930,6 +19283,19 @@
       ]
     },
     {
+      "name": "restore_blotter_task",
+      "description": "Put a rejected task back on the Tasks board (what Restore does in the app). The reason it was rejected for is withdrawn, so the next Grow batch stops obeying it. A task a newer batch replaced, or one already sent, cannot be restored.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "blotter_task_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "restore_task_version",
       "description": "Restore a task to an earlier version recorded in list_task_history. The current state is automatically saved as a 'Before restore' snapshot first, so a restore is itself reversible by restoring that newer snapshot. Identifies the snapshot by its numeric version row id (not the version_no — pass the id field from list_task_history).",
       "readOnly": false,
@@ -18974,6 +19340,19 @@
           "type": "number",
           "required": false,
           "description": "How many passages to return. Default 5, max 15."
+        }
+      ]
+    },
+    {
+      "name": "revert_blotter_change",
+      "description": "Undo one logged Blotter change (from get_blotter_deal). Refused when the field has changed again since.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "change_id",
+          "type": "string",
+          "required": true
         }
       ]
     },
@@ -19090,6 +19469,25 @@
       ]
     },
     {
+      "name": "run_blotter_play",
+      "description": "Run a Blotter Play (billed to the caller; nothing is sent). grow: write the next batch of revenue-generating emails onto the Tasks board from the mail, Drive and intel since the last Play. close: put one sell-side Blue Chip's supply in front of every buy-side contact (one per firm), as Gmail drafts. engage: draft replies for one Blue Chip's most likely buyers, as Gmail drafts. refresh: re-read one deal's mail (Blue Chip status, buyers, supply, fee, stage, probability), every change logged and revertible. Confirm with the user before running. When automatic refresh is on and the Blue Chips were last refreshed over 20 hours ago, grow and close refresh them first (also billed), as the page does. Afterwards your reply automatically gets the live Tasks card, so summarize what the Play produced.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "play",
+          "type": "grow|close|engage|refresh",
+          "required": true
+        },
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": false,
+          "description": "Required for close, engage and refresh."
+        }
+      ]
+    },
+    {
       "name": "run_exec_meeting",
       "description": "Convene an exec meeting NOW, off-schedule — the execs report, discuss, and the chair files action items as tasks. Works whether or not the boardroom is armed, and does NOT arm it or disturb its cadence. THIS SPENDS: a meeting is 15-40 AI calls. Only call it when the user has clearly asked to run/hold/convene a meeting now — never as a way to answer a question you could answer with the read tools, and never on your own initiative. The meeting is queued and starts within about 5 minutes; it does not run while you wait, so tell the user to check back rather than claiming it is done. Admin only.",
       "readOnly": false,
@@ -19144,6 +19542,34 @@
           "type": "number",
           "required": false,
           "description": "Cap returned rows (default 50, max 200)."
+        }
+      ]
+    },
+    {
+      "name": "save_blotter_intel",
+      "description": "Save intel the next Grow batch reads: web research you did (kind web, with the source URL) or an internal note (kind internal). Optional deal_id.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "body",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "web|internal",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": false
         }
       ]
     },
@@ -19439,7 +19865,7 @@
     },
     {
       "name": "schedule_recurring_email",
-      "description": "Set up a RECURRING email that is re-sent automatically on a schedule (e.g. 'email the team a reminder every Monday at 9am', 'send this status note on the 1st of each month'). Unlike schedule_email (which fires once at a single timestamp), this fires again on every cron match until you disable or cancel it. The email goes out through the user's connected provider. LIVE-DATA PLACEHOLDERS: the subject and body may contain {{date}} (send date), {{tasks_due_today}}, {{tasks_overdue}}, {{tasks_due_within:N}} (next N days), and {{open_task_count}} — each is rendered against the workspace's live task data AT SEND TIME, so a deadline-reminder email lists the actual tasks instead of a static note. PER-PERSON placeholders {{my_tasks_due_today}}, {{my_tasks_overdue}}, {{my_tasks_due_within:N}} and {{my_open_tasks}} list only the tasks assigned to each recipient; a body using any of them is sent as a SEPARATE copy to each recipient (nobody sees anyone else's tasks), and a copy with nothing in it is skipped. Use them whenever a reminder goes to several people. {{tasks_completed_since_last_send}} lists tasks finished since the previous send, with who finished them — for a management completions summary. WEEKLY GOALS: {{my_weekly_goals}} (per person: their top 3 open tasks for the week, picked automatically by priority then due date and frozen for the week) and {{my_weekly_goals_status}} (per person: how each of THOSE goals stands — done / in progress / blocked / not started) make a Monday goals email and a Friday review; {{team_weekly_goals}} lists everyone's goals this week with status, for management. Prefer these placeholders for any task-reminder or status email. Use list_recurring_emails / update_recurring_email / cancel_recurring_email to manage it. For recurring REPORTS (auto-generated analytics attached as PDF/CSV), use create_report_schedule instead.",
+      "description": "Set up a RECURRING email that is re-sent automatically on a schedule (e.g. 'email the team a reminder every Monday at 9am', 'send this status note on the 1st of each month'). Unlike schedule_email (which fires once at a single timestamp), this fires again on every cron match until you disable or cancel it. The email goes out through the user's connected provider. LIVE-DATA PLACEHOLDERS: the subject and body may contain {{date}} (send date), {{tasks_due_today}}, {{tasks_overdue}}, {{tasks_due_within:N}} (next N days), and {{open_task_count}} — each is rendered against the workspace's live task data AT SEND TIME, so a deadline-reminder email lists the actual tasks instead of a static note. PER-PERSON placeholders {{my_tasks_due_today}}, {{my_tasks_overdue}}, {{my_tasks_due_within:N}} and {{my_open_tasks}} list only the tasks assigned to each recipient; a body using any of them is sent as a SEPARATE copy to each recipient (nobody sees anyone else's tasks), and a copy with nothing in it is skipped. Use them whenever a reminder goes to several people. {{tasks_completed_since_last_send}} lists tasks finished since the previous send, with who finished them — for a management completions summary. WEEKLY GOALS: {{my_weekly_goals}} (per person: their top 3 open tasks for the week, picked automatically by priority then due date and frozen for the week) and {{my_weekly_goals_status}} (per person: how each of THOSE goals stands — done / in progress / blocked / not started) make a Monday goals email and a Friday review; {{team_weekly_goals}} lists everyone's goals this week with status, for management. BUSINESS SUMMARY: {{deal_pipeline}} renders the live Deal Room stage by stage (deal count, size, fees, largest deals); {{deal_pipeline:fee_bands:N}} splits fees at $N into bands never added together. And {{tasks_in_progress}} lists In Progress tasks grouped by project name — never paste a snapshot of deals, board columns or project numbers into a recurring body, because it is stale from the second send. Prefer these placeholders for any task-reminder or status email. Use list_recurring_emails / update_recurring_email / cancel_recurring_email to manage it. For recurring REPORTS (auto-generated analytics attached as PDF/CSV), use create_report_schedule instead.",
       "readOnly": false,
       "scope": "email_calendar",
       "params": [
@@ -21625,45 +22051,43 @@
     },
     {
       "name": "search_tasks",
-      "description": "Search for tasks by keyword in title or description. Can also filter by project, status, assignee, priority, tag, or created/updated time (never infer recency from ids).",
+      "description": "Find tasks by keyword (title/description) and/or filter by project, status, assignee, priority, tag, due date, or created/updated/completed time (never infer recency from ids).",
       "readOnly": true,
       "scope": "tasks_projects",
       "params": [
         {
           "name": "keyword",
           "type": "string",
-          "required": false,
-          "description": "Matched against title or description"
+          "required": false
         },
         {
           "name": "project_ref",
           "type": "string",
-          "required": false,
-          "description": "Filter by project reference"
+          "required": false
         },
         {
           "name": "status",
           "type": "string",
           "required": false,
-          "description": "EXACT status slug. Defaults are open/progress/review/completed, but workspaces rename or add columns ('doing', 'backlog'); 'in progress' will NOT match 'doing'. Unsure? Call list_custom_statuses; an empty result lists the real slugs."
+          "description": "EXACT status slug; columns vary by workspace ('doing' is not 'in progress'). An empty result lists the real slugs."
         },
         {
           "name": "assigned_to",
           "type": "string",
           "required": false,
-          "description": "Filter by assignee name (substring match on the task's assignee)"
+          "description": "Assignee name (partial ok)"
         },
         {
           "name": "priority",
           "type": "string",
           "required": false,
-          "description": "Filter by priority: Normal, Medium, High"
+          "description": "Normal, Medium, High"
         },
         {
           "name": "tag",
           "type": "string",
           "required": false,
-          "description": "Substring match on the tag/label column only; a category written as a title prefix like '*HR*' is not found here, use keyword."
+          "description": "Substring of the tag column only; for a title prefix like '*HR*' use keyword."
         },
         {
           "name": "created_after",
@@ -21684,22 +22108,58 @@
           "description": "Updated at/after; same format"
         },
         {
+          "name": "unassigned",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "due_after",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD or today; inclusive"
+        },
+        {
+          "name": "due_before",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "overdue",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "has_due_date",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "completed_after",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "completed_before",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "include_archived",
           "type": "boolean",
           "required": false,
-          "description": "Include archived (hidden) tasks. Default false; pass true only when the user asks about archived work."
+          "description": "Default false; true only when the user asks about archived work."
         },
         {
           "name": "limit",
           "type": "number",
           "required": false,
-          "description": "Max results per page (default 20, maximum 50)."
+          "description": "Per page (default 20, max 50)."
         },
         {
           "name": "cursor",
           "type": "number",
           "required": false,
-          "description": "Continue a search: pass the cursor the last call reported. When more pages exist the tool says so — keep paging before calling a list complete."
+          "description": "The cursor the last call reported, for the next page. Keep paging before calling a list complete."
         }
       ]
     },
@@ -22888,7 +23348,7 @@
     },
     {
       "name": "set_task_estimate",
-      "description": "Set estimated_hours and/or story_points on a task.",
+      "description": "Set a task's time estimate yourself: `estimate` is the one shown on the task (value + unit), estimated_hours / story_points are the legacy planning fields. To have the AI estimator work it out from history instead, use estimate_task_time.",
       "readOnly": false,
       "scope": "tasks_projects",
       "params": [
@@ -22896,6 +23356,12 @@
           "name": "task_id",
           "type": "number",
           "required": true
+        },
+        {
+          "name": "estimate",
+          "type": "object",
+          "required": false,
+          "description": "Time estimate shown on the task. Set it only when the user asks for estimates. Estimate the time for someone working WITH AI (Kavanah's agent, coding/writing/research assistants), not the unassisted figure: drafting, research, summaries, routine code and data work shrink a lot; review, meetings, approvals, waiting on others and physical work barely shrink."
         },
         {
           "name": "estimated_hours",
@@ -23144,7 +23610,7 @@
     },
     {
       "name": "slack_create_manager",
-      "description": "Put an AI employee in Slack to answer non-members (interns, students, a community) who @mention the Kavanah bot in its channels or DM it; it escalates what it can't answer. In Slack it has NO tools and NONE of this workspace's data — only its instructions and the playbook, its ONLY source of program facts: write it from what the user tells you, never invent a date, deadline or contact. YOU own it: it posts through your Slack connection and bills your credits. The result lists what still blocks it (e.g. a channel the bot must be invited to) — relay only that. Created OFF unless enabled — confirm first. No digital twins. Owners/admins only.",
+      "description": "Put an AI employee in Slack to answer non-members who @mention the Kavanah bot in its channels or DM it; escalates what it can't answer. In Slack it has NO tools and NONE of this workspace's data; the playbook is its ONLY source of facts: write it from what the user says, never invent a date or contact. Posts via YOUR Slack connection, bills YOUR credits. Relay the blockers the result lists. Created OFF unless enabled — confirm first. No digital twins. Owners/admins only.",
       "readOnly": false,
       "scope": "admin",
       "params": [
@@ -23164,61 +23630,73 @@
           "name": "team_id",
           "type": "string",
           "required": false,
-          "description": "Slack workspace id (T…). Default: your default Slack workspace."
+          "description": "Slack team id (T…), default yours."
         },
         {
           "name": "channels",
           "type": "array",
           "required": false,
-          "description": "Channel ids or #names it answers @mentions in."
+          "description": "Channel ids or #names to answer @mentions in."
         },
         {
           "name": "answer_all_channels",
           "type": "boolean",
           "required": false,
-          "description": "Answer in every channel the bot is in."
+          "description": "Answer in every channel it is in."
         },
         {
           "name": "answer_dms",
           "type": "boolean",
           "required": false,
-          "description": "Answer direct messages to the bot."
+          "description": "Answer DMs to the bot."
         },
         {
           "name": "playbook",
           "type": "string",
           "required": false,
-          "description": "The program facts it may state (max 30,000 chars)."
+          "description": "Program facts it may state; max 30k."
         },
         {
           "name": "escalate_to",
           "type": "array",
           "required": false,
-          "description": "Members (id, email or name) alerted on escalation. Default: the owner."
+          "description": "Members (id/email/name) to alert on escalation; default owner."
         },
         {
           "name": "per_person_hourly_limit",
           "type": "number",
           "required": false,
-          "description": "Answers per person per hour (1–100, default 10)."
+          "description": "Per person per hour, 1–100 (default 10)."
         },
         {
           "name": "hourly_reply_cap",
           "type": "number",
           "required": false,
-          "description": "Answers per hour overall (1–5000, default 200)."
+          "description": "Overall per hour (1–5000, default 200)."
         },
         {
           "name": "enabled",
           "type": "boolean",
           "required": false,
           "description": "Answering on. Spends credits — only after the user says yes."
+        },
+        {
+          "name": "remember_people",
+          "type": "boolean",
+          "required": false,
+          "description": "Keep short notes per person (cohort, project)."
+        },
+        {
+          "name": "checkin",
+          "type": "object",
+          "required": false,
+          "description": "Scheduled channel post {enabled, channel, days 0=Sun…6, time HH:MM, timezone (default yours), brief}. Spends credits; playbook facts only."
         }
       ]
     },
     {
       "name": "slack_delete_manager",
-      "description": "Remove an AI Slack manager and its reply history; the AI employee is kept. To pause instead, update enabled false. Owners/admins only.",
+      "description": "Remove an AI Slack manager and its reply history (the employee is kept); to pause, update enabled false. Owners/admins only.",
       "readOnly": false,
       "scope": "admin",
       "params": [
@@ -23278,7 +23756,7 @@
     },
     {
       "name": "slack_list_managers",
-      "description": "List the workspace's AI Slack managers: employee, channels, DMs, on/off, owner (who pays), limits, last 7 days. Pass manager_id for one in full, with its playbook. Owners/admins only.",
+      "description": "List AI Slack managers (employee, channels, DMs, on/off, payer, limits, 7-day stats); manager_id for one in full with playbook. Owners/admins only.",
       "readOnly": true,
       "scope": "admin",
       "params": [
@@ -23331,7 +23809,7 @@
     },
     {
       "name": "slack_update_manager",
-      "description": "Change an AI Slack manager. Fields mean what they do on slack_create_manager; omitted ones stay. playbook REPLACES it, playbook_append adds to it. The owner never changes. Switching on spends credits — confirm first. Owners/admins only.",
+      "description": "Change an AI Slack manager; fields as on slack_create_manager, omitted ones stay. playbook REPLACES, playbook_append adds. Owner never changes. Switching on spends credits — confirm first. Owners/admins only.",
       "readOnly": false,
       "scope": "admin",
       "params": [
@@ -23389,6 +23867,16 @@
         {
           "name": "enabled",
           "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "remember_people",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "checkin",
+          "type": "object",
           "required": false
         },
         {
@@ -25226,7 +25714,7 @@
     },
     {
       "name": "update_agent_schedule",
-      "description": "Change a scheduled autonomous run. Pass only the fields you want to change (name, prompt, frequency, hour_utc, minute_utc, day_of_week, day_of_month, autonomy_level, enabled, persona_id, model, only_when_tasks_for, task_gate, tasks_due_within_days). model 'auto' cuts a simple schedule's cost. To stop a reminder emailing when there's nothing for its person, set only_when_tasks_for to that person. Set enabled:false to pause without deleting. Set persona_id to make an existing schedule run as an AI Employee (e.g. one created before that employee existed), or to an empty string to run as the default agent again. Changing any timing field reschedules the next run. No undo: re-apply the reply's previous to revert.",
+      "description": "Change a scheduled autonomous run. Pass only the fields you want to change (name, prompt, frequency, hour_utc, minute_utc, day_of_week, day_of_month, timezone, weekdays_only, autonomy_level, enabled, persona_id, model, only_when_tasks_for, task_gate, tasks_due_within_days). model 'auto' cuts a simple schedule's cost. To stop a reminder emailing when there's nothing for its person, set only_when_tasks_for to that person. Set enabled:false to pause without deleting. Set persona_id to run as an AI Employee, or '' for the default agent. Changing any timing field reschedules the next run. No undo: re-apply the reply's previous to revert.",
       "readOnly": false,
       "scope": "workflows_automations",
       "params": [
@@ -25269,6 +25757,17 @@
         {
           "name": "day_of_month",
           "type": "number",
+          "required": false
+        },
+        {
+          "name": "timezone",
+          "type": "string",
+          "required": false,
+          "description": "IANA zone; empty = UTC."
+        },
+        {
+          "name": "weekdays_only",
+          "type": "boolean",
           "required": false
         },
         {
@@ -25411,7 +25910,7 @@
         },
         {
           "name": "trigger_type",
-          "type": "created|moved|completed|assigned|status-change|field-change|due-date|property-changed|email-received|integration-item|github-pull-request|github-push|calendar-event|finance-event|document-event|deal-stage-changed|deal-document-signed|meeting-booked|bd-match-found",
+          "type": "created|moved|completed|assigned|status-change|field-change|due-date|property-changed|email-received|integration-item|github-pull-request|github-push|calendar-event|finance-event|document-event|valore-event|deal-stage-changed|deal-document-signed|meeting-booked|bd-match-found",
           "required": false
         },
         {
@@ -25433,6 +25932,61 @@
           "name": "enabled",
           "type": "boolean",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "update_blotter_deal",
+      "description": "Edit a deal's Blotter inputs, logged and revertible: supply, terms, next_action, next_deadline (YYYY-MM-DD), side (sell|buy), stage_label, client_role, manual_blue_chip (\"added\" / \"removed\" — never reversed by a refresh — or null to follow the refresh). Pass null to clear.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "supply",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "terms",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "next_action",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "next_deadline",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "side",
+          "type": "string|null",
+          "required": false,
+          "description": "sell or buy."
+        },
+        {
+          "name": "stage_label",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "client_role",
+          "type": "string|null",
+          "required": false
+        },
+        {
+          "name": "manual_blue_chip",
+          "type": "string|null",
+          "required": false,
+          "description": "added, removed, or null to follow the refresh."
         }
       ]
     },
@@ -27122,6 +27676,12 @@
           "required": false
         },
         {
+          "name": "description_first_line",
+          "type": "string",
+          "required": false,
+          "description": "Use instead of description (which REPLACES all text) to add a line on top; replaces a same-'Label:' first line"
+        },
+        {
           "name": "status",
           "type": "string",
           "required": false,
@@ -27571,6 +28131,92 @@
           "type": "auto|gmail|angelsend",
           "required": false,
           "description": "Send provider. Defaults to auto."
+        }
+      ]
+    },
+    {
+      "name": "valore_delete_record",
+      "description": "Run a DESTRUCTIVE Valore action found with valore_search_tools: delete an event, a ticket type, a coupon, a question or a subscriber; remove a co-host; remove a guest (refund: true also refunds a paid ticket). Not recoverable through the API. Always confirm with the user first and name exactly what will be removed. Refuses anything that is not a delete.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "description": "Action name exactly as valore_search_tools returned it, e.g. 'list-event-guests'. Do not guess."
+        },
+        {
+          "name": "params",
+          "type": "object",
+          "required": false,
+          "description": "One flat object: the path id(s) the action names (e.g. id), its query parameters and its body fields, as valore_search_tools listed them. Unknown keys are refused. Lists take cursor (from a previous next_cursor) and limit."
+        }
+      ]
+    },
+    {
+      "name": "valore_read",
+      "description": "Run a READ-ONLY Valore action found with valore_search_tools — list or fetch events, guests, attendees, orders, feedback, blasts, invites, subscribers, the team. Refuses anything that writes. Lists return next_cursor; pass it back as cursor for the next page.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "description": "Action name exactly as valore_search_tools returned it, e.g. 'list-event-guests'. Do not guess."
+        },
+        {
+          "name": "params",
+          "type": "object",
+          "required": false,
+          "description": "One flat object: the path id(s) the action names (e.g. id), its query parameters and its body fields, as valore_search_tools listed them. Unknown keys are refused. Lists take cursor (from a previous next_cursor) and limit."
+        }
+      ]
+    },
+    {
+      "name": "valore_search_tools",
+      "description": "Search Valore (valore.app), the user's events platform: events, registration, tickets, coupons, orders, guest lists, check-in, feedback, email blasts and invites to guests, subscribers, co-hosts. ALWAYS call this first — it returns each action's exact params, which tool runs it (valore_read / valore_write / valore_delete_record; call that tool directly, or via use_tool), and whether it emails people. Read-only.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "query",
+          "type": "string",
+          "required": false,
+          "description": "What you want to do, in plain words — e.g. 'who registered', 'check someone in', 'message the guests'. Omit to browse."
+        },
+        {
+          "name": "group",
+          "type": "events|guests|tickets|blasts|subscribers|calendar|webhooks",
+          "required": false,
+          "description": "Optional filter: events (incl. hosts, questions, feedback), guests (incl. check-in, invites), tickets (incl. coupons, orders), blasts, subscribers, calendar (team, themes, get-me), webhooks (read-only logs)."
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Max actions to return. Default 12."
+        }
+      ]
+    },
+    {
+      "name": "valore_write",
+      "description": "Run a WRITING Valore action found with valore_search_tools — create or update an event, publish or duplicate it, add guests, approve or decline a guest, check someone in, create ticket types / coupons / questions, add subscribers, create or send a blast, send invites. This changes the user's real events and CAN EMAIL REAL PEOPLE: send-blast and create-event-invite always do; create-event-blast does with send or scheduled_at; update-event, create-event-guest and update-guest do BY DEFAULT unless notify_guests / notify is false. refund: true on update-guest refunds money. Confirm with the user before any call that emails guests, refunds, or changes a published event's time or place, and say who will be emailed. Refuses reads (valore_read) and deletes (valore_delete_record).",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "description": "Action name exactly as valore_search_tools returned it, e.g. 'list-event-guests'. Do not guess."
+        },
+        {
+          "name": "params",
+          "type": "object",
+          "required": false,
+          "description": "One flat object: the path id(s) the action names (e.g. id), its query parameters and its body fields, as valore_search_tools listed them. Unknown keys are refused. Lists take cursor (from a previous next_cursor) and limit."
         }
       ]
     },
