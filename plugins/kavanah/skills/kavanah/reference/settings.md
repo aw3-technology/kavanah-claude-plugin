@@ -11,9 +11,9 @@
 | `blueprints.revert.create` | POST | `/api/blueprints/{id}/revert` | Revert what a blueprint applied, as a set |
 | `blueprints.update` | PATCH | `/api/blueprints/{id}` | Toggle, tick "turn on now" or edit items |
 | `settings.account.delete` | DELETE | `/api/settings/account` | Delete user account |
-| `settings.api-keys.create` | POST | `/api/settings/api-keys` | (undocumented route — params unknown, pass them explicitly) |
-| `settings.api-keys.delete` | DELETE | `/api/settings/api-keys/{p1}` | (undocumented route — params unknown, pass them explicitly) |
-| `settings.api-keys.list` | GET | `/api/settings/api-keys` | (undocumented route — params unknown, pass them explicitly) |
+| `settings.api-keys.create` | POST | `/api/settings/api-keys` | Mint a workspace API key |
+| `settings.api-keys.delete` | DELETE | `/api/settings/api-keys/{id}` | Revoke an API key |
+| `settings.api-keys.list` | GET | `/api/settings/api-keys` | List the workspace's active API keys |
 | `settings.billing.auto-topup.list` | GET | `/api/settings/billing/auto-topup` | Get auto top-up |
 | `settings.billing.auto-topup.set` | PUT | `/api/settings/billing/auto-topup` | Update auto top-up |
 | `settings.billing.balance.list` | GET | `/api/settings/billing/balance` | List balance |
@@ -27,10 +27,10 @@
 | `settings.billing.profile.list` | GET | `/api/settings/billing/profile` | List profile |
 | `settings.billing.profile.set` | PUT | `/api/settings/billing/profile` | Update profile |
 | `settings.billing.switch.create` | POST | `/api/settings/billing/switch` | Switch to the Pay As You Go plan |
-| `settings.billing.team.list` | GET | `/api/settings/billing/team` | (undocumented route — params unknown, pass them explicitly) |
-| `settings.billing.team.update` | PATCH | `/api/settings/billing/team` | (undocumented route — params unknown, pass them explicitly) |
+| `settings.billing.team.list` | GET | `/api/settings/billing/team` | Team billing status, pool balance and month-to-date usage |
+| `settings.billing.team.update` | PATCH | `/api/settings/billing/team` | Configure team billing |
 | `settings.billing.tiers.list` | GET | `/api/settings/billing/tiers` | List tiers |
-| `settings.billing.topup.create` | POST | `/api/settings/billing/topup` | (undocumented route — params unknown, pass them explicitly) |
+| `settings.billing.topup.create` | POST | `/api/settings/billing/topup` | Start a credit top-up checkout |
 | `settings.billing.trial.list` | GET | `/api/settings/billing/trial` | List trial |
 | `settings.connected-apps.delete` | DELETE | `/api/settings/connected-apps/{id}` | Disconnect one of my connected apps |
 | `settings.connected-apps.list` | GET | `/api/settings/connected-apps` | List my connected apps (MCP OAuth connections) |
@@ -55,7 +55,7 @@
 | `settings.trash.list` | GET | `/api/settings/trash` | List trashed items |
 | `settings.update` | PATCH | `/api/settings` | Update user settings |
 | `settings.workspace.delete` | DELETE | `/api/settings/workspace` | Delete workspace (owner only) |
-| `settings.workspace.transfer.create` | POST | `/api/settings/workspace/transfer` | (undocumented route — params unknown, pass them explicitly) |
+| `settings.workspace.transfer.create` | POST | `/api/settings/workspace/transfer` | Transfer workspace ownership to another member |
 
 ---
 
@@ -152,30 +152,33 @@ Delete user account
 
 `POST /api/settings/api-keys`
 
-(undocumented route — params unknown, pass them explicitly)
+Mint a workspace API key
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. The plaintext token is returned once in this response and never again.
+
+Body (application/json):
+  - `name` (string)
 
 ### `settings.api-keys.delete`
 
-`DELETE /api/settings/api-keys/{p1}`
+`DELETE /api/settings/api-keys/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Revoke an API key
+
+Admins only. Soft-deletes the key, scoped to the active workspace.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `settings.api-keys.list`
 
 `GET /api/settings/api-keys`
 
-(undocumented route — params unknown, pass them explicitly)
+List the workspace's active API keys
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. Returns key metadata and prefixes, never the secret.
 
 ### `settings.billing.auto-topup.list`
 
@@ -300,17 +303,24 @@ Body (application/json):
 
 `GET /api/settings/billing/team`
 
-(undocumented route — params unknown, pass them explicitly)
+Team billing status, pool balance and month-to-date usage
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. Returns pool status, the caller's own balance and caps. Admins see every member's month-to-date pool/personal spend, tokens and a per-model breakdown; non-admins see only their own row.
 
 ### `settings.billing.team.update`
 
 `PATCH /api/settings/billing/team`
 
-(undocumented route — params unknown, pass them explicitly)
+Configure team billing
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. One of four operations per call: { enabled } toggles team billing; { provision: true } (re)provisions the pool billing account using the owner's email; { workspace_monthly_cap } sets the workspace pool cap; { user_id, monthly_credit_cap } sets a member cap. A null or empty cap means unlimited; negative is refused.
+
+Body (application/json):
+  - `enabled` (boolean)
+  - `provision` (boolean)
+  - `workspace_monthly_cap` (integer|null)
+  - `user_id` (string<uuid>)
+  - `monthly_credit_cap` (integer|null)
 
 ### `settings.billing.tiers.list`
 
@@ -322,9 +332,14 @@ List tiers
 
 `POST /api/settings/billing/topup`
 
-(undocumented route — params unknown, pass them explicitly)
+Start a credit top-up checkout
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Owner only. Creates a checkout for a credit pack credited to the buyer's personal wallet (default) or the workspace pool. saveCard keeps the card on file for auto top-up.
+
+Body (application/json):
+  - `packId` (string, required)
+  - `target` (string) — one of: `personal`, `pool`
+  - `saveCard` (boolean)
 
 ### `settings.billing.trial.list`
 
@@ -556,8 +571,11 @@ Delete workspace (owner only)
 
 `POST /api/settings/workspace/transfer`
 
-(undocumented route — params unknown, pass them explicitly)
+Transfer workspace ownership to another member
+
+Owner only. In one transaction makes the target (an active member) the owner and demotes the caller to admin, moves a workspace-bought plan to the new owner or turns off pool auto top-up. Then re-stamps the pool billing contact (best-effort) and writes a critical audit entry.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `new_owner_user_id` (string<uuid>, required)

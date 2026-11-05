@@ -1,16 +1,22 @@
 # Tasks
 
-64 commands. Generated — run `npm run skill:gen` to refresh.
+76 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
+| `entity-versions.list` | GET | `/api/entity-versions` | List saved version snapshots of an entity |
+| `entity-versions.restore.create` | POST | `/api/entity-versions/{id}/restore` | Restore a task to a saved version |
 | `geocode.list` | GET | `/api/geocode` | Forward-geocode an address (task Map view) |
-| `tasks.access.list` | GET | `/api/tasks/{p1}/access` | (undocumented route — params unknown, pass them explicitly) |
-| `tasks.access.update` | PATCH | `/api/tasks/{p1}/access` | (undocumented route — params unknown, pass them explicitly) |
+| `task-candidates.create` | POST | `/api/task-candidates` | Manually add a task candidate |
+| `task-candidates.list` | GET | `/api/task-candidates` | List the task-candidate triage queue |
+| `task-candidates.metrics.list` | GET | `/api/task-candidates/metrics` | Triage queue metrics |
+| `task-candidates.update` | PATCH | `/api/task-candidates/{id}` | Accept or dismiss a task candidate |
+| `tasks.access.list` | GET | `/api/tasks/{id}/access` | Read a task's restriction state and access list |
+| `tasks.access.update` | PATCH | `/api/tasks/{id}/access` | Restrict a task and/or replace its access list |
 | `tasks.activity.list` | GET | `/api/tasks/activity` | List activity |
-| `tasks.agent-run.approvals.create` | POST | `/api/tasks/{p1}/agent-run/approvals/{p2}` | (undocumented route — params unknown, pass them explicitly) |
-| `tasks.agent-run.create` | POST | `/api/tasks/{p1}/agent-run` | (undocumented route — params unknown, pass them explicitly) |
-| `tasks.agent-run.list` | GET | `/api/tasks/{p1}/agent-run` | (undocumented route — params unknown, pass them explicitly) |
+| `tasks.agent-run.approvals.create` | POST | `/api/tasks/{id}/agent-run/approvals/{approvalId}` | Approve or deny an action an autonomous task run parked |
+| `tasks.agent-run.create` | POST | `/api/tasks/{id}/agent-run` | Start an autonomous agent run on a task |
+| `tasks.agent-run.list` | GET | `/api/tasks/{id}/agent-run` | Latest autonomous agent run for a task |
 | `tasks.approvals.create` | POST | `/api/tasks/approvals` | Create approval |
 | `tasks.approvals.list` | GET | `/api/tasks/approvals` | List approvals |
 | `tasks.approvals.update` | PATCH | `/api/tasks/approvals/{id}` | Update approval |
@@ -26,7 +32,7 @@
 | `tasks.comments.create` | POST | `/api/tasks/{id}/comments` | Append a comment to a task |
 | `tasks.comments.list` | GET | `/api/tasks/{id}/comments` | List a task's comments |
 | `tasks.context.list` | GET | `/api/tasks/{id}/context` | Task context bundle (Markdown) |
-| `tasks.count.list` | GET | `/api/tasks/count` | (undocumented route — params unknown, pass them explicitly) |
+| `tasks.count.list` | GET | `/api/tasks/count` | Count of open tasks assigned to the caller |
 | `tasks.create` | POST | `/api/tasks` | Create a new task |
 | `tasks.delete` | DELETE | `/api/tasks/{id}` | Delete a task |
 | `tasks.dependencies.create` | POST | `/api/tasks/dependencies` | Create a task dependency |
@@ -39,7 +45,7 @@
 | `tasks.gantt.list` | GET | `/api/tasks/gantt` | List gantt |
 | `tasks.get` | GET | `/api/tasks/{id}` | Get a single task by id |
 | `tasks.import.create` | POST | `/api/tasks/import` | Import tasks from CSV |
-| `tasks.intelligence.agent-capability.create` | POST | `/api/tasks/intelligence/agent-capability` | (undocumented route — params unknown, pass them explicitly) |
+| `tasks.intelligence.agent-capability.create` | POST | `/api/tasks/intelligence/agent-capability` | Assess whether the AI agent can complete a task |
 | `tasks.intelligence.decompose.create` | POST | `/api/tasks/intelligence/decompose` | Create decompose |
 | `tasks.intelligence.entity-links.create` | POST | `/api/tasks/intelligence/entity-links` | Create entity link |
 | `tasks.intelligence.eta-confidence.create` | POST | `/api/tasks/intelligence/eta-confidence` | Create eta confidence |
@@ -68,8 +74,38 @@
 | `tasks.update` | PATCH | `/api/tasks/{id}` | Update a task |
 | `tasks.views.list` | GET | `/api/tasks/views` | List views |
 | `tasks.why-stuck.create` | POST | `/api/tasks/{id}/why-stuck` | Create why stuck |
+| `views.create` | POST | `/api/views` | Create a saved view |
+| `views.create.by-id` | POST | `/api/views/{id}` | Duplicate a saved view |
+| `views.delete` | DELETE | `/api/views/{id}` | Delete a saved view |
+| `views.get` | GET | `/api/views/{id}` | Get a saved view |
+| `views.list` | GET | `/api/views` | List saved views |
+| `views.update` | PATCH | `/api/views/{id}` | Update a saved view |
 
 ---
+
+### `entity-versions.list`
+
+`GET /api/entity-versions`
+
+List saved version snapshots of an entity
+
+Signed-in workspace members. Returns the version history recorded for one entity in the active workspace. Only `task` is supported as an entity type.
+
+Query:
+  - `entity_type` (string, required) — one of: `task`
+  - `entity_id` (string, required)
+  - `limit` (integer)
+
+### `entity-versions.restore.create`
+
+`POST /api/entity-versions/{id}/restore`
+
+Restore a task to a saved version
+
+Signed-in workspace members. Snapshots the task's current state as a "Before restore" version, then overwrites the task's restorable fields from the chosen version. Writes a task-update audit entry. Only task versions can be restored.
+
+Path params (positional, in order):
+  - `id`
 
 ### `geocode.list`
 
@@ -82,27 +118,93 @@ Server-side proxy to OpenStreetMap Nominatim. A null result means the address co
 Query:
   - `q` (string, required)
 
-### `tasks.access.list`
+### `task-candidates.create`
 
-`GET /api/tasks/{p1}/access`
+`POST /api/task-candidates`
 
-(undocumented route — params unknown, pass them explicitly)
+Manually add a task candidate
+
+Any member. Adds a manual, high-confidence candidate to the triage queue.
+
+Body (application/json):
+  - `title` (string, required)
+  - `description` (string)
+  - `suggested_project_ref` (string)
+  - `suggested_assignee` (string)
+  - `suggested_subtasks` (string[])
+  - `source_excerpt` (string)
+
+### `task-candidates.list`
+
+`GET /api/task-candidates`
+
+List the task-candidate triage queue
+
+Any member. enabled reports whether the workspace opted into task capture; reads work either way.
+
+Query:
+  - `status` (string) — one of: `pending`, `accepted`, `dismissed`, `all`
+  - `limit` (integer)
+
+### `task-candidates.metrics.list`
+
+`GET /api/task-candidates/metrics`
+
+Triage queue metrics
+
+Any member. Queue size, time in queue, time per candidate and dismissal-reason distribution.
+
+Query:
+  - `days` (integer)
+
+### `task-candidates.update`
+
+`PATCH /api/task-candidates/{id}`
+
+Accept or dismiss a task candidate
+
+Any member. accept creates the task (with optional overrides); dismiss needs a reason, and out_of_scope with a cited Negation records a negation hit.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `action` (string, required) — one of: `accept`, `dismiss`
+  - `title` (string)
+  - `description` (string)
+  - `project_ref` (string)
+  - `assigned_to` (string)
+  - `subtasks` (string[])
+  - `reason` (string) — one of: `out_of_scope`, `no_checkable_outcome`, `duplicate`, `premature`, `other`
+  - `matched_negation` (string)
+  - `note` (string)
+  - `triage_ms` (number)
+
+### `tasks.access.list`
+
+`GET /api/tasks/{id}/access`
+
+Read a task's restriction state and access list
+
+Requires view access to the task. canManage is true when the caller can edit the task.
+
+Path params (positional, in order):
+  - `id`
 
 ### `tasks.access.update`
 
-`PATCH /api/tasks/{p1}/access`
+`PATCH /api/tasks/{id}/access`
 
-(undocumented route — params unknown, pass them explicitly)
+Restrict a task and/or replace its access list
+
+Requires edit access to the task. members replaces the full ACL; each user must be an active member. A non-admin who restricts a task is kept on it as an editor. Writes an audit entry.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `restricted` (boolean)
+  - `members` (object[])
 
 ### `tasks.activity.list`
 
@@ -112,37 +214,42 @@ List activity
 
 ### `tasks.agent-run.approvals.create`
 
-`POST /api/tasks/{p1}/agent-run/approvals/{p2}`
+`POST /api/tasks/{id}/agent-run/approvals/{approvalId}`
 
-(undocumented route — params unknown, pass them explicitly)
+Approve or deny an action an autonomous task run parked
+
+Admins only (plus tasks:edit). Approving executes the parked tool call after re-checking guardrails and policy; optional edits require reviewed_digest. The approval must belong to this task. Writes an audit entry.
 
 Path params (positional, in order):
-  - `p1`
-  - `p2`
+  - `id`
+  - `approvalId`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `decision` (string, required) — one of: `approve`, `deny`
+  - `edits` (object) — Edits to the parked payload (approve only)
+  - `reviewed_digest` (string)
 
 ### `tasks.agent-run.create`
 
-`POST /api/tasks/{p1}/agent-run`
+`POST /api/tasks/{id}/agent-run`
 
-(undocumented route — params unknown, pass them explicitly)
+Start an autonomous agent run on a task
+
+Requires tasks:edit and edit access to the task, and an effective autonomy level of safe or full. Returns the existing run if one is already running or awaiting approval; otherwise enqueues a background job and writes an audit entry.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `tasks.agent-run.list`
 
-`GET /api/tasks/{p1}/agent-run`
+`GET /api/tasks/{id}/agent-run`
 
-(undocumented route — params unknown, pass them explicitly)
+Latest autonomous agent run for a task
+
+Requires tasks:view and view access to the task. Returns the caller's effective autonomy level, the latest run (with persona_name) and its approvals.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `tasks.approvals.create`
 
@@ -308,9 +415,9 @@ Query:
 
 `GET /api/tasks/count`
 
-(undocumented route — params unknown, pass them explicitly)
+Count of open tasks assigned to the caller
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Cross-workspace count across every workspace the caller is an active member of, for the sidebar badge. Privately cached for 30 seconds.
 
 ### `tasks.create`
 
@@ -457,9 +564,13 @@ Body (application/json):
 
 `POST /api/tasks/intelligence/agent-capability`
 
-(undocumented route — params unknown, pass them explicitly)
+Assess whether the AI agent can complete a task
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires tasks:view. Returns the cached assessment unless refresh is true; otherwise runs a billed model call (subject to the daily token budget) and caches the result. Refused when the effective autonomy level is off.
+
+Body (application/json):
+  - `taskId` (integer, required)
+  - `refresh` (boolean)
 
 ### `tasks.intelligence.decompose.create`
 
@@ -744,3 +855,88 @@ Path params (positional, in order):
   - `id`
 
 Body: application/json (free-form — pass with `--data`)
+
+### `views.create`
+
+`POST /api/views`
+
+Create a saved view
+
+The caller becomes the view's owner.
+
+Body (application/json):
+  - `name` (string, required)
+  - `viewType` (string) — one of: `table`, `board`, `calendar`, `timeline`, `gallery`
+  - `entityType` (string) — one of: `task`
+  - `projectRef` (string|null)
+  - `config` (object)
+  - `shared` (boolean)
+  - `isDefault` (boolean)
+  - `sortOrder` (number)
+
+### `views.create.by-id`
+
+`POST /api/views/{id}`
+
+Duplicate a saved view
+
+Creates a copy owned by the caller. Requires read access to the source view.
+
+Path params (positional, in order):
+  - `id`
+
+### `views.delete`
+
+`DELETE /api/views/{id}`
+
+Delete a saved view
+
+The view's owner or a workspace admin only.
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+### `views.get`
+
+`GET /api/views/{id}`
+
+Get a saved view
+
+Allowed when the view is shared, the caller owns it, or the caller is an admin.
+
+Path params (positional, in order):
+  - `id`
+
+### `views.list`
+
+`GET /api/views`
+
+List saved views
+
+Saved views visible to the caller, plus the available task filter/sort/group fields. projectRef omitted returns workspace and project views together; * returns workspace-wide only.
+
+Query:
+  - `entityType` (string) — one of: `task`
+  - `projectRef` (string)
+
+### `views.update`
+
+`PATCH /api/views/{id}`
+
+Update a saved view
+
+The view's owner or a workspace admin only.
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `name` (string)
+  - `viewType` (string) — one of: `table`, `board`, `calendar`, `timeline`, `gallery`
+  - `projectRef` (string|null)
+  - `config` (object)
+  - `shared` (boolean)
+  - `isDefault` (boolean)
+  - `sortOrder` (number)

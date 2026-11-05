@@ -4,7 +4,7 @@
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
-| `inbox.count.list` | GET | `/api/inbox/count` | (undocumented route — params unknown, pass them explicitly) |
+| `inbox.count.list` | GET | `/api/inbox/count` | Unread mail count for the inbox badge |
 | `inbox.mark-all-read.create` | POST | `/api/inbox/mark-all-read` | Mark all inbox mail read in Kavanah |
 | `inbox.messages.read.create` | POST | `/api/inbox/messages/read` | Mark inbox messages read or unread in Kavanah |
 | `inbox.preferences.list` | GET | `/api/inbox/preferences` | Get inbox preferences |
@@ -16,9 +16,9 @@
 
 `GET /api/inbox/count`
 
-(undocumented route — params unknown, pass them explicitly)
+Unread mail count for the inbox badge
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users. Counts unread email envelopes synced from the caller's connected mail providers. Private cache of 30s with stale-while-revalidate.
 
 ### `inbox.mark-all-read.create`
 

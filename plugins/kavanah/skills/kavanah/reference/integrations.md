@@ -42,10 +42,10 @@
 | `integrations.angelsend.gmail.send.create` | POST | `/api/integrations/angelsend/gmail/send` | Create send |
 | `integrations.angelsend.gmail.status.list` | GET | `/api/integrations/angelsend/gmail/status` | List status |
 | `integrations.angelsend.gmail.thread.list` | GET | `/api/integrations/angelsend/gmail/thread` | List thread |
-| `integrations.angelsend.oauth.mobile-start.list` | GET | `/api/integrations/angelsend/oauth/mobile-start` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.angelsend.oauth.mobile-start.list` | GET | `/api/integrations/angelsend/oauth/mobile-start` | Start the AngelSend calendar/email OAuth from the shell |
 | `integrations.angelsend.oauth.start.list` | GET | `/api/integrations/angelsend/oauth/start` | List start |
-| `integrations.asana.import.preview.list` | GET | `/api/integrations/asana/import/preview` | (undocumented route — params unknown, pass them explicitly) |
-| `integrations.asana.import.run.create` | POST | `/api/integrations/asana/import/run` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.asana.import.preview.list` | GET | `/api/integrations/asana/import/preview` | Preview an Asana import |
+| `integrations.asana.import.run.create` | POST | `/api/integrations/asana/import/run` | Import Asana projects into the workspace |
 | `integrations.asana.tasks.create` | POST | `/api/integrations/asana/tasks` | Create a task in an Asana workspace |
 | `integrations.asana.tasks.delete` | DELETE | `/api/integrations/asana/tasks/{gid}` | Delete task |
 | `integrations.asana.tasks.get` | GET | `/api/integrations/asana/tasks/{gid}` | Fetch task |
@@ -103,7 +103,7 @@
 | `integrations.google-drive.files.update` | PATCH | `/api/integrations/google-drive/files/{fileId}` | Update file |
 | `integrations.google-drive.watch.create` | POST | `/api/integrations/google-drive/watch` | Create watch |
 | `integrations.google-drive.watch.delete` | DELETE | `/api/integrations/google-drive/watch` | Delete watch |
-| `integrations.google-drive.watch.list` | GET | `/api/integrations/google-drive/watch` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.google-drive.watch.list` | GET | `/api/integrations/google-drive/watch` | Whether a Google Drive change watch is active |
 | `integrations.google-meet.imports.get` | GET | `/api/integrations/google-meet/imports/{id}` | One of the caller's imported Google Meet calls, with its transcript |
 | `integrations.google-meet.imports.list` | GET | `/api/integrations/google-meet/imports` | The caller's Google Meet transcript import — settings and imported calls |
 | `integrations.google-meet.imports.update` | PATCH | `/api/integrations/google-meet/imports` | Opt the caller out of (or back into) the Google Meet transcript import |
@@ -116,8 +116,8 @@
 | `integrations.list` | GET | `/api/integrations` | List available integration providers and the user's connections |
 | `integrations.microsoft365.events.create` | POST | `/api/integrations/microsoft365/events` | (undocumented route — params unknown, pass them explicitly) |
 | `integrations.microsoft365.events.list` | GET | `/api/integrations/microsoft365/events` | (undocumented route — params unknown, pass them explicitly) |
-| `integrations.microsoft365.messages.create` | POST | `/api/integrations/microsoft365/messages` | (undocumented route — params unknown, pass them explicitly) |
-| `integrations.microsoft365.messages.list` | GET | `/api/integrations/microsoft365/messages` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.microsoft365.messages.create` | POST | `/api/integrations/microsoft365/messages` | Send mail through Microsoft 365 |
+| `integrations.microsoft365.messages.list` | GET | `/api/integrations/microsoft365/messages` | List synced Outlook mail, or fetch one message |
 | `integrations.monday.import.preview.create` | POST | `/api/integrations/monday/import/preview` | Dry-run a Monday.com export (admin) |
 | `integrations.monday.import.run.create` | POST | `/api/integrations/monday/import/run` | Import a Monday.com export as a new project (admin) |
 | `integrations.multiverseai.agents.chat.create` | POST | `/api/integrations/multiverseai/agents/{id}/chat` | Create chat |
@@ -135,11 +135,11 @@
 | `integrations.notion.connect-token.set` | PUT | `/api/integrations/notion/connect-token` | Connect Notion with an internal integration token |
 | `integrations.notion.import.create` | POST | `/api/integrations/notion/import` | Import a Notion database into a project as tasks |
 | `integrations.notion.import.list` | GET | `/api/integrations/notion/import` | List the Notion databases the connection can see |
-| `integrations.oauth.handoff.create` | POST | `/api/integrations/oauth/handoff` | (undocumented route — params unknown, pass them explicitly) |
-| `integrations.oauth.mobile-start.list` | GET | `/api/integrations/{p1}/oauth/mobile-start` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.oauth.handoff.create` | POST | `/api/integrations/oauth/handoff` | Mint a handoff URL for connecting an integration from the app shell |
+| `integrations.oauth.mobile-start.list` | GET | `/api/integrations/{provider}/oauth/mobile-start` | Start an OAuth connect from the desktop or mobile shell |
 | `integrations.oauth.start.list` | GET | `/api/integrations/{provider}/oauth/start` | Begin an OAuth2 authorization-code flow |
-| `integrations.protonmail.messages.create` | POST | `/api/integrations/protonmail/messages` | (undocumented route — params unknown, pass them explicitly) |
-| `integrations.protonmail.messages.list` | GET | `/api/integrations/protonmail/messages` | (undocumented route — params unknown, pass them explicitly) |
+| `integrations.protonmail.messages.create` | POST | `/api/integrations/protonmail/messages` | Send mail through the Proton Mail Bridge |
+| `integrations.protonmail.messages.list` | GET | `/api/integrations/protonmail/messages` | List synced Proton Mail envelopes |
 | `integrations.quicktube.connect.start.list` | GET | `/api/integrations/quicktube/connect/start` | Start one-click QuickTube connect |
 | `integrations.scrappy.clients.push.create` | POST | `/api/integrations/scrappy/clients/{id}/push` | Create push |
 | `integrations.scrappy.connect.start.list` | GET | `/api/integrations/scrappy/connect/start` | Start one-click Scrappy connect |
@@ -567,9 +567,12 @@ List thread
 
 `GET /api/integrations/angelsend/oauth/mobile-start`
 
-(undocumented route — params unknown, pass them explicitly)
+Start the AngelSend calendar/email OAuth from the shell
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Unauthenticated; identity comes from the signed `h` handoff token. Opened in the system browser. Stores the token in a per-flow cookie and redirects to AngelSend's Google OAuth init URL (calendar and email scopes) with the shell callback. Failures redirect to an error deep link.
+
+Query:
+  - `h` (string, required) — Signed handoff token
 
 ### `integrations.angelsend.oauth.start.list`
 
@@ -581,19 +584,30 @@ List start
 
 `GET /api/integrations/asana/import/preview`
 
-(undocumented route — params unknown, pass them explicitly)
+Preview an Asana import
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. Without `workspace`, lists the Asana workspaces the token can see; with `workspace`, lists that workspace's projects for import. Uses a personal access token from the `x-asana-pat` header or `pat` query param, otherwise the caller's connected Asana OAuth token.
+
+Query:
+  - `workspace` (string) — Asana workspace gid
+  - `includeArchived` (boolean)
+  - `pat` (string)
 
 ### `integrations.asana.import.run.create`
 
 `POST /api/integrations/asana/import/run`
 
-(undocumented route — params unknown, pass them explicitly)
+Import Asana projects into the workspace
+
+Admins only. Imports up to 25 Asana projects (with their tasks) into the active workspace. Uses `pat` from the body if given, otherwise the caller's connected Asana OAuth token. Completed tasks are included unless `includeCompleted` is false.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `workspace` (string, required) — Asana workspace gid
+  - `projectGids` (string[], required)
+  - `pat` (string)
+  - `includeCompleted` (boolean)
 
 ### `integrations.asana.tasks.create`
 
@@ -1142,9 +1156,9 @@ Delete watch
 
 `GET /api/integrations/google-drive/watch`
 
-(undocumented route — params unknown, pass them explicitly)
+Whether a Google Drive change watch is active
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users. Reports whether the caller has an unexpired Drive changes push channel registered; an expired channel reads as not watching.
 
 ### `integrations.google-meet.imports.get`
 
@@ -1269,17 +1283,31 @@ _Not in either OpenAPI spec — flags are passed through unvalidated._
 
 `POST /api/integrations/microsoft365/messages`
 
-(undocumented route — params unknown, pass them explicitly)
+Send mail through Microsoft 365
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users with Microsoft 365 connected. Sends via Graph sendMail. Address lists are comma-separated strings. The workspace compliance archive BCC is added; a send that cannot carry it is refused.
+
+Body (application/json):
+  - `to` (string, required)
+  - `cc` (string)
+  - `bcc` (string)
+  - `subject` (string)
+  - `body` (string)
+  - `isHtml` (boolean)
+  - `inReplyTo` (string)
+  - `skipDefaultBcc` (boolean)
 
 ### `integrations.microsoft365.messages.list`
 
 `GET /api/integrations/microsoft365/messages`
 
-(undocumented route — params unknown, pass them explicitly)
+List synced Outlook mail, or fetch one message
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users with Microsoft 365 connected. Without `id`, lists Inbox envelopes already synced into Kavanah (no bodies). With `id`, fetches that message's full body live from Microsoft Graph. Kavanah read marks are applied to the unread flag.
+
+Query:
+  - `id` (string) — External message id
+  - `limit` (integer)
 
 ### `integrations.monday.import.preview.create`
 
@@ -1445,20 +1473,26 @@ List the Notion databases the connection can see
 
 `POST /api/integrations/oauth/handoff`
 
-(undocumented route — params unknown, pass them explicitly)
+Mint a handoff URL for connecting an integration from the app shell
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users. Creates a short-lived signed token bound to the caller and returns the `mobile-start` URL the desktop/mobile shell opens in the system browser. The provider must be an OAuth2 provider, or AngelSend / XDocs.
+
+Body (application/json):
+  - `provider` (string, required) — Provider slug
 
 ### `integrations.oauth.mobile-start.list`
 
-`GET /api/integrations/{p1}/oauth/mobile-start`
+`GET /api/integrations/{provider}/oauth/mobile-start`
 
-(undocumented route — params unknown, pass them explicitly)
+Start an OAuth connect from the desktop or mobile shell
+
+Unauthenticated; identity comes from the signed `h` handoff token minted by POST /api/integrations/oauth/handoff. Opened in the system browser. Sets a per-flow state cookie and redirects to the provider's consent page with the shell-specific callback. Every failure redirects to a `kavanah://` deep link with an error message instead of returning JSON.
 
 Path params (positional, in order):
-  - `p1`
+  - `provider`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Query:
+  - `h` (string, required) — Signed handoff token
 
 ### `integrations.oauth.start.list`
 
@@ -1475,17 +1509,29 @@ Path params (positional, in order):
 
 `POST /api/integrations/protonmail/messages`
 
-(undocumented route — params unknown, pass them explicitly)
+Send mail through the Proton Mail Bridge
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users with Proton Mail connected. Sends over the Bridge SMTP. The workspace compliance archive BCC is added; a send that cannot carry it is refused. On success the integration is marked connected.
+
+Body (application/json):
+  - `to` (string, required)
+  - `cc` (string)
+  - `bcc` (string)
+  - `subject` (string)
+  - `body` (string)
+  - `replyTo` (string)
+  - `skipDefaultBcc` (boolean)
 
 ### `integrations.protonmail.messages.list`
 
 `GET /api/integrations/protonmail/messages`
 
-(undocumented route — params unknown, pass them explicitly)
+List synced Proton Mail envelopes
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Signed-in users. Lists Inbox envelopes the background sync already pulled into Kavanah (no live IMAP call). Kavanah read marks are applied to the unread flag.
+
+Query:
+  - `limit` (integer)
 
 ### `integrations.quicktube.connect.start.list`
 

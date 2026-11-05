@@ -1,6 +1,6 @@
 # Notifications
 
-46 commands. Generated — run `npm run skill:gen` to refresh.
+49 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -22,7 +22,7 @@
 | `notifications.admin.teams.list` | GET | `/api/notifications/admin/teams` | List teams |
 | `notifications.admin.workspace-defaults.list` | GET | `/api/notifications/admin/workspace-defaults` | List workspace defaults |
 | `notifications.admin.workspace-defaults.update` | PATCH | `/api/notifications/admin/workspace-defaults` | Update workspace defaults |
-| `notifications.count.list` | GET | `/api/notifications/count` | (undocumented route — params unknown, pass them explicitly) |
+| `notifications.count.list` | GET | `/api/notifications/count` | Unread project-notification count across workspaces |
 | `notifications.digest.list` | GET | `/api/notifications/digest` | List digest |
 | `notifications.digest.update` | PATCH | `/api/notifications/digest` | Update digest |
 | `notifications.dispatch.create` | POST | `/api/notifications/dispatch` | Create dispatch |
@@ -33,8 +33,6 @@
 | `notifications.other-workspaces.list` | GET | `/api/notifications/other-workspaces` | Unread notification counts for the user's OTHER workspaces |
 | `notifications.preferences.list` | GET | `/api/notifications/preferences` | List preferences |
 | `notifications.preferences.update` | PATCH | `/api/notifications/preferences` | Update preferences |
-| `notifications.process.create` | POST | `/api/notifications/process` | Process pending notifications |
-| `notifications.process.list` | GET | `/api/notifications/process` | (undocumented route — params unknown, pass them explicitly) |
 | `notifications.push-tokens.create` | POST | `/api/notifications/push-tokens` | Create push token |
 | `notifications.push-tokens.delete` | DELETE | `/api/notifications/push-tokens` | Delete push tokens |
 | `notifications.push-tokens.list` | GET | `/api/notifications/push-tokens` | List push tokens |
@@ -49,6 +47,11 @@
 | `notifications.unsubscribe.create` | POST | `/api/notifications/unsubscribe` | Create unsubscribe |
 | `notifications.unsubscribe.list` | GET | `/api/notifications/unsubscribe` | List unsubscribe |
 | `notifications.update` | PATCH | `/api/notifications` | Update notification state |
+| `push.devices.create` | POST | `/api/push/devices` | Register a native push device token |
+| `push.devices.delete` | DELETE | `/api/push/devices` | Revoke a native push device token |
+| `push.refresh-badge.create` | POST | `/api/push/refresh-badge` | Recompute the badge and push it to every device |
+| `push.refresh-badge.list` | GET | `/api/push/refresh-badge` | Read the caller's unified app-icon badge count |
+| `sidebar.counts.list` | GET | `/api/sidebar/counts` | All sidebar badge counts in one request |
 | `sidebar.unread-sources.list` | GET | `/api/sidebar/unread-sources` | Where the Messages and Email Inbox unread items are |
 
 ---
@@ -189,9 +192,9 @@ Body: application/json (free-form — pass with `--data`)
 
 `GET /api/notifications/count`
 
-(undocumented route — params unknown, pass them explicitly)
+Unread project-notification count across workspaces
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Same number as the Alerts pill and dock badge, computed across all the caller's workspaces. Never cached.
 
 ### `notifications.digest.list`
 
@@ -264,22 +267,6 @@ List preferences
 Update preferences
 
 Body: application/json (free-form — pass with `--data`)
-
-### `notifications.process.create`
-
-`POST /api/notifications/process`
-
-Process pending notifications
-
-Body: application/json (free-form — pass with `--data`)
-
-### `notifications.process.list`
-
-`GET /api/notifications/process`
-
-(undocumented route — params unknown, pass them explicitly)
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
 
 ### `notifications.push-tokens.create`
 
@@ -402,6 +389,56 @@ Body (application/json):
   - `projectRef` (string, required)
   - `notificationId` (string, required)
   - `action` (any, required)
+
+### `push.devices.create`
+
+`POST /api/push/devices`
+
+Register a native push device token
+
+Called by the native shells after notification permission is granted. Idempotent upsert for the signed-in user; revives a previously revoked token. Requires a selected workspace.
+
+Body (application/json):
+  - `deviceToken` (string, required)
+  - `platform` (string, required) — one of: `ios`, `android`, `macos`
+  - `appVersion` (string)
+
+### `push.devices.delete`
+
+`DELETE /api/push/devices`
+
+Revoke a native push device token
+
+Marks the caller's device token revoked (used on sign-out).
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Body (application/json):
+  - `deviceToken` (string, required)
+
+### `push.refresh-badge.create`
+
+`POST /api/push/refresh-badge`
+
+Recompute the badge and push it to every device
+
+Recomputes the caller's cross-workspace unread badge count and sends a badge-only push to all of the caller's registered devices.
+
+### `push.refresh-badge.list`
+
+`GET /api/push/refresh-badge`
+
+Read the caller's unified app-icon badge count
+
+Returns the same cross-workspace unread count the POST would push, without sending anything. Used by the native shells while the app is running.
+
+### `sidebar.counts.list`
+
+`GET /api/sidebar/counts`
+
+All sidebar badge counts in one request
+
+Cross-workspace counts for the caller (tasks, dev, messages, notifications, inbox, requests, plus inboxBadge). A failing source degrades to 0 and is named in failed. Never cached.
 
 ### `sidebar.unread-sources.list`
 

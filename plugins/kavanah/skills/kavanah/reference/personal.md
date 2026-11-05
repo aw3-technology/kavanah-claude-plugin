@@ -1,6 +1,6 @@
 # Personal
 
-19 commands. Generated — run `npm run skill:gen` to refresh.
+22 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -10,8 +10,11 @@
 | `learn.progress.list` | GET | `/api/learn/progress` | The caller's Learn progress — completions, listening, reading |
 | `learn.progress.set` | PUT | `/api/learn/progress` | Mark a Learn lesson complete or not complete |
 | `learn.progress.update` | PATCH | `/api/learn/progress` | Save a Learn listening or reading checkpoint |
+| `me.notes.create` | POST | `/api/me/notes` | Create a personal note |
+| `me.notes.delete` | DELETE | `/api/me/notes/{id}` | Delete one of the caller's notes |
 | `me.notes.list` | GET | `/api/me/notes` | Get the caller's scratch note |
 | `me.notes.set` | PUT | `/api/me/notes` | Upsert the caller's scratch note |
+| `me.notes.update` | PATCH | `/api/me/notes/{id}` | Update one of the caller's notes |
 | `me.reminders.create` | POST | `/api/me/reminders` | Create a reminder |
 | `me.reminders.delete` | DELETE | `/api/me/reminders/{id}` | Delete a reminder |
 | `me.reminders.list` | GET | `/api/me/reminders` | List the caller's reminders |
@@ -92,6 +95,31 @@ Body (application/json):
   - `readSectionsTotal` (integer)
   - `clientUpdatedAt` (string<date-time>) — When the client captured this checkpoint
 
+### `me.notes.create`
+
+`POST /api/me/notes`
+
+Create a personal note
+
+Creates a private note owned by the caller in the current workspace. At most 500 notes per user.
+
+Body (application/json):
+  - `title` (string) — Trimmed; defaults to empty
+  - `body` (string) — Defaults to empty
+
+### `me.notes.delete`
+
+`DELETE /api/me/notes/{id}`
+
+Delete one of the caller's notes
+
+Permanently deletes a note owned by the caller in the current workspace.
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
 ### `me.notes.list`
 
 `GET /api/me/notes`
@@ -106,6 +134,21 @@ Upsert the caller's scratch note
 
 Body (application/json):
   - `body` (string, required) — Note body (capped, 413 if too large).
+
+### `me.notes.update`
+
+`PATCH /api/me/notes/{id}`
+
+Update one of the caller's notes
+
+Updates title and/or body of a note owned by the caller in the current workspace.
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `title` (string)
+  - `body` (string)
 
 ### `me.reminders.create`
 

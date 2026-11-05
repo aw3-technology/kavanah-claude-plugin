@@ -30,11 +30,11 @@
 | `projects.health.set` | PUT | `/api/projects/health` | Update health |
 | `projects.icon.create` | POST | `/api/projects/{id}/icon` | Create icon |
 | `projects.icon.delete` | DELETE | `/api/projects/{id}/icon` | Delete icon |
-| `projects.kvn.create` | POST | `/api/projects/kvn` | (undocumented route — params unknown, pass them explicitly) |
-| `projects.kvn.delete` | DELETE | `/api/projects/kvn` | (undocumented route — params unknown, pass them explicitly) |
-| `projects.kvn.generate.create` | POST | `/api/projects/kvn/generate` | (undocumented route — params unknown, pass them explicitly) |
-| `projects.kvn.list` | GET | `/api/projects/kvn` | (undocumented route — params unknown, pass them explicitly) |
-| `projects.kvn.set` | PUT | `/api/projects/kvn` | (undocumented route — params unknown, pass them explicitly) |
+| `projects.kvn.create` | POST | `/api/projects/kvn` | Add a false-friend entry to a project's KVN charter |
+| `projects.kvn.delete` | DELETE | `/api/projects/kvn` | Remove a false friend from a project's KVN charter |
+| `projects.kvn.generate.create` | POST | `/api/projects/kvn/generate` | Draft one axis of a project KVN charter with AI |
+| `projects.kvn.list` | GET | `/api/projects/kvn` | Get one project's KVN charter, or list all |
+| `projects.kvn.set` | PUT | `/api/projects/kvn` | Upsert a project's KVN charter (Know-how, Vision, Negation, North Star) |
 | `projects.list` | GET | `/api/projects` | Get workspace project bundle |
 | `projects.members.create` | POST | `/api/projects/{id}/members` | Add a member to a project |
 | `projects.members.delete` | DELETE | `/api/projects/{id}/members` | Remove a member from a project |
@@ -296,43 +296,69 @@ Path params (positional, in order):
 
 `POST /api/projects/kvn`
 
-(undocumented route — params unknown, pass them explicitly)
+Add a false-friend entry to a project's KVN charter
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires projects:edit on the project. approach is truncated to 2000 chars and whyWrong to 4000. Invalidates the charter cache, so the first false friend arms the KVN gate for the project immediately.
+
+Body (application/json):
+  - `projectRef` (string, required)
+  - `approach` (string, required)
+  - `whyWrong` (string)
 
 ### `projects.kvn.delete`
 
 `DELETE /api/projects/kvn`
 
-(undocumented route — params unknown, pass them explicitly)
+Remove a false friend from a project's KVN charter
+
+Requires edit permission on the project. Invalidates the charter cache, so removing the last false friend can disarm the project's KVN gate immediately.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Query:
+  - `projectRef` (string, required)
+  - `id` (string, required) — False-friend id
 
 ### `projects.kvn.generate.create`
 
 `POST /api/projects/kvn/generate`
 
-(undocumented route — params unknown, pass them explicitly)
+Draft one axis of a project KVN charter with AI
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires projects:edit on the project. Returns generated text only and writes nothing; a person must save it via PUT /api/projects/kvn. The model call is billed to the caller.
+
+Body (application/json):
+  - `axis` (string, required) — one of: `know_how`, `vision`, `negation`
+  - `projectRef` (string, required)
+  - `projectName` (string)
+  - `projectDescription` (string)
+  - `prompt` (string)
 
 ### `projects.kvn.list`
 
 `GET /api/projects/kvn`
 
-(undocumented route — params unknown, pass them explicitly)
+Get one project's KVN charter, or list all
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+With projectRef, requires view permission on that project and returns its charter; without it, lists every project charter in the workspace.
+
+Query:
+  - `projectRef` (string)
 
 ### `projects.kvn.set`
 
 `PUT /api/projects/kvn`
 
-(undocumented route — params unknown, pass them explicitly)
+Upsert a project's KVN charter (Know-how, Vision, Negation, North Star)
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires projects:edit on the project. Absent axes are left unchanged; northStar null clears the project metric so it inherits the workspace one. Invalidates the charter cache and writes an audit entry.
+
+Body (application/json):
+  - `projectRef` (string, required)
+  - `knowHow` (string)
+  - `vision` (string)
+  - `negation` (string)
+  - `northStar` (object|null) — Partial North Star patch (project scope; Deal Room sources refused), or null to clear.
 
 ### `projects.list`
 

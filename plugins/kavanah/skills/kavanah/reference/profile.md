@@ -1,19 +1,21 @@
 # Profile
 
-10 commands. Generated — run `npm run skill:gen` to refresh.
+12 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
-| `profile.emails.create` | POST | `/api/profile/emails` | (undocumented route — params unknown, pass them explicitly) |
-| `profile.emails.delete` | DELETE | `/api/profile/emails/{p1}` | (undocumented route — params unknown, pass them explicitly) |
-| `profile.emails.list` | GET | `/api/profile/emails` | (undocumented route — params unknown, pass them explicitly) |
-| `profile.emails.promote.create` | POST | `/api/profile/emails/{p1}/promote` | (undocumented route — params unknown, pass them explicitly) |
-| `profile.emails.resend.create` | POST | `/api/profile/emails/{p1}/resend` | (undocumented route — params unknown, pass them explicitly) |
-| `profile.handle.list` | GET | `/api/profile/handle` | (undocumented route — params unknown, pass them explicitly) |
-| `profile.handle.set` | PUT | `/api/profile/handle` | (undocumented route — params unknown, pass them explicitly) |
+| `profile.emails.create` | POST | `/api/profile/emails` | Add a secondary email and send a verification message |
+| `profile.emails.delete` | DELETE | `/api/profile/emails/{id}` | Remove a secondary email |
+| `profile.emails.list` | GET | `/api/profile/emails` | List the caller's secondary emails |
+| `profile.emails.promote.create` | POST | `/api/profile/emails/{id}/promote` | Make a verified secondary email the primary login email |
+| `profile.emails.resend.create` | POST | `/api/profile/emails/{id}/resend` | Resend a secondary email's verification message |
+| `profile.handle.list` | GET | `/api/profile/handle` | Get the caller's public handle |
+| `profile.handle.set` | PUT | `/api/profile/handle` | Set or clear the caller's public handle |
 | `profile.list` | GET | `/api/profile` | Get current user profile |
-| `profile.timezone.create` | POST | `/api/profile/timezone` | (undocumented route — params unknown, pass them explicitly) |
+| `profile.timezone.create` | POST | `/api/profile/timezone` | Record the caller's device timezone |
 | `profile.update` | PATCH | `/api/profile` | Update user profile |
+| `user.font-size.list` | GET | `/api/user/font-size` | The caller's font-size preference |
+| `user.font-size.set` | PUT | `/api/user/font-size` | Set the caller's font-size preference |
 
 ---
 
@@ -21,68 +23,70 @@
 
 `POST /api/profile/emails`
 
-(undocumented route — params unknown, pass them explicitly)
+Add a secondary email and send a verification message
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Up to 10 secondary emails. Rate limited to 10 per hour. The verification email is best-effort; a send failure does not fail the add.
+
+Body (application/json):
+  - `email` (string, required)
 
 ### `profile.emails.delete`
 
-`DELETE /api/profile/emails/{p1}`
+`DELETE /api/profile/emails/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Remove a secondary email
+
+Rate limited to 30 per hour.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `profile.emails.list`
 
 `GET /api/profile/emails`
 
-(undocumented route — params unknown, pass them explicitly)
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+List the caller's secondary emails
 
 ### `profile.emails.promote.create`
 
-`POST /api/profile/emails/{p1}/promote`
+`POST /api/profile/emails/{id}/promote`
 
-(undocumented route — params unknown, pass them explicitly)
+Make a verified secondary email the primary login email
+
+The previous primary becomes a secondary email. Rate limited to 20 per hour.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `profile.emails.resend.create`
 
-`POST /api/profile/emails/{p1}/resend`
+`POST /api/profile/emails/{id}/resend`
 
-(undocumented route — params unknown, pass them explicitly)
+Resend a secondary email's verification message
+
+Rate limited to 10 per hour. No-op when already verified; send failures are not reported.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `profile.handle.list`
 
 `GET /api/profile/handle`
 
-(undocumented route — params unknown, pass them explicitly)
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Get the caller's public handle
 
 ### `profile.handle.set`
 
 `PUT /api/profile/handle`
 
-(undocumented route — params unknown, pass them explicitly)
+Set or clear the caller's public handle
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+The handle others use to send message requests. 3 to 30 lowercase letters, digits or underscores; reserved handles are refused. null clears it.
+
+Body (application/json):
+  - `handle` (string|null)
 
 ### `profile.list`
 
@@ -94,9 +98,12 @@ Get current user profile
 
 `POST /api/profile/timezone`
 
-(undocumented route — params unknown, pass them explicitly)
+Record the caller's device timezone
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Stores the IANA zone on the profile only when it changed; server-side schedulers use it.
+
+Body (application/json):
+  - `timezone` (string, required) — IANA zone name
 
 ### `profile.update`
 
@@ -114,3 +121,18 @@ Body (application/json):
   - `department` (string)
   - `bio` (string)
   - `avatarTone` (string)
+
+### `user.font-size.list`
+
+`GET /api/user/font-size`
+
+The caller's font-size preference
+
+### `user.font-size.set`
+
+`PUT /api/user/font-size`
+
+Set the caller's font-size preference
+
+Body (application/json):
+  - `fontSize` (string, required) — one of: `small`, `medium`, `large`

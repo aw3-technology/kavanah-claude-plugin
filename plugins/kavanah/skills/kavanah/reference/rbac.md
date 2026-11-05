@@ -48,8 +48,8 @@
 | `rbac.time-bound-grants.list` | GET | `/api/rbac/time-bound-grants` | List time bound grants |
 | `rbac.user-roles.list` | GET | `/api/rbac/user-roles` | List user roles |
 | `rbac.user-roles.set` | PUT | `/api/rbac/user-roles` | Update user roles |
-| `rbac.users.departments.list` | GET | `/api/rbac/users/{p1}/departments` | (undocumented route — params unknown, pass them explicitly) |
-| `rbac.users.departments.set` | PUT | `/api/rbac/users/{p1}/departments` | (undocumented route — params unknown, pass them explicitly) |
+| `rbac.users.departments.list` | GET | `/api/rbac/users/{userId}/departments` | List a user's department memberships |
+| `rbac.users.departments.set` | PUT | `/api/rbac/users/{userId}/departments` | Replace a user's department memberships |
 
 ---
 
@@ -413,22 +413,25 @@ Body: application/json (free-form — pass with `--data`)
 
 ### `rbac.users.departments.list`
 
-`GET /api/rbac/users/{p1}/departments`
+`GET /api/rbac/users/{userId}/departments`
 
-(undocumented route — params unknown, pass them explicitly)
+List a user's department memberships
+
+Returns the department ids (and membership rows) the user belongs to in the caller's workspace. Any authenticated member.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `userId`
 
 ### `rbac.users.departments.set`
 
-`PUT /api/rbac/users/{p1}/departments`
+`PUT /api/rbac/users/{userId}/departments`
 
-(undocumented route — params unknown, pass them explicitly)
+Replace a user's department memberships
+
+Admins only. Replaces the user's full department set in one transaction; is_lead is preserved for surviving memberships. Writes an audit log entry.
 
 Path params (positional, in order):
-  - `p1`
+  - `userId`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `departmentIds` (string[], required)

@@ -33,7 +33,7 @@
 | `portfolio.resources.requests.create` | POST | `/api/portfolio/resources/requests` | Create request |
 | `portfolio.resources.requests.list` | GET | `/api/portfolio/resources/requests` | List requests |
 | `portfolio.resources.requests.update` | PATCH | `/api/portfolio/resources/requests` | Update requests |
-| `portfolio.workload-distribution.list` | GET | `/api/portfolio/workload-distribution` | (undocumented route — params unknown, pass them explicitly) |
+| `portfolio.workload-distribution.list` | GET | `/api/portfolio/workload-distribution` | Open-task workload distribution across members |
 
 ---
 
@@ -272,6 +272,6 @@ Body: application/json (free-form — pass with `--data`)
 
 `GET /api/portfolio/workload-distribution`
 
-(undocumented route — params unknown, pass them explicitly)
+Open-task workload distribution across members
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. Per-person active task counts (shared tasks count for each assignee) with coefficient of variation, median and p90. Pure SQL, no model call.

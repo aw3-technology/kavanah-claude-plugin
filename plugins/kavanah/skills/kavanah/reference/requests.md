@@ -15,7 +15,7 @@
 | `requests.pages.fields.set` | PUT | `/api/requests/pages/{id}/fields` | Replace the custom fields for a request intake link |
 | `requests.pages.list` | GET | `/api/requests/pages` | List request intake links (pages) |
 | `requests.pages.update` | PATCH | `/api/requests/pages` | Update a request intake link |
-| `requests.sla.list` | GET | `/api/requests/sla` | (undocumented route — params unknown, pass them explicitly) |
+| `requests.sla.list` | GET | `/api/requests/sla` | Request response and resolution time metrics |
 | `requests.update` | PATCH | `/api/requests` | Update the status of an intake request |
 
 ---
@@ -138,9 +138,12 @@ Body (application/json):
 
 `GET /api/requests/sla`
 
-(undocumented route — params unknown, pass them explicitly)
+Request response and resolution time metrics
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Aggregate SLA metrics for the workspace's requests over a window. Any workspace member.
+
+Query:
+  - `days` (integer)
 
 ### `requests.update`
 

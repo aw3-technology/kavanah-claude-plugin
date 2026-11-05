@@ -19,21 +19,21 @@
 | `knowledge.decisions.get` | GET | `/api/knowledge/decisions/{id}` |  |
 | `knowledge.decisions.list` | GET | `/api/knowledge/decisions` | List decisions (ADR-style) |
 | `knowledge.decisions.update` | PATCH | `/api/knowledge/decisions/{id}` | Update a decision |
-| `knowledge.documents.backlinks.list` | GET | `/api/knowledge/documents/{p1}/backlinks` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.comments.create` | POST | `/api/knowledge/documents/{p1}/comments` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.comments.delete` | DELETE | `/api/knowledge/documents/{p1}/comments/{p2}` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.comments.list` | GET | `/api/knowledge/documents/{p1}/comments` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.comments.update` | PATCH | `/api/knowledge/documents/{p1}/comments/{p2}` | (undocumented route — params unknown, pass them explicitly) |
+| `knowledge.documents.backlinks.list` | GET | `/api/knowledge/documents/{id}/backlinks` | Documents that link to this document |
+| `knowledge.documents.comments.create` | POST | `/api/knowledge/documents/{id}/comments` | Comment on a document block |
+| `knowledge.documents.comments.delete` | DELETE | `/api/knowledge/documents/{id}/comments/{commentId}` | Delete a block comment |
+| `knowledge.documents.comments.list` | GET | `/api/knowledge/documents/{id}/comments` | List block comments on a document |
+| `knowledge.documents.comments.update` | PATCH | `/api/knowledge/documents/{id}/comments/{commentId}` | Edit, resolve or reopen a block comment |
 | `knowledge.documents.create` | POST | `/api/knowledge/documents` | Create a knowledge document |
 | `knowledge.documents.delete` | DELETE | `/api/knowledge/documents/{id}` | Delete a knowledge document (moves to trash) |
-| `knowledge.documents.from-template.create` | POST | `/api/knowledge/documents/from-template` | (undocumented route — params unknown, pass them explicitly) |
+| `knowledge.documents.from-template.create` | POST | `/api/knowledge/documents/from-template` | Create a document from a template |
 | `knowledge.documents.get` | GET | `/api/knowledge/documents/{id}` | Get a knowledge document |
 | `knowledge.documents.list` | GET | `/api/knowledge/documents` | List knowledge documents |
-| `knowledge.documents.publish.delete` | DELETE | `/api/knowledge/documents/{p1}/publish` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.publish.list` | GET | `/api/knowledge/documents/{p1}/publish` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.publish.set` | PUT | `/api/knowledge/documents/{p1}/publish` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.search.list` | GET | `/api/knowledge/documents/search` | (undocumented route — params unknown, pass them explicitly) |
-| `knowledge.documents.templates.list` | GET | `/api/knowledge/documents/templates` | (undocumented route — params unknown, pass them explicitly) |
+| `knowledge.documents.publish.delete` | DELETE | `/api/knowledge/documents/{id}/publish` | Unpublish a document |
+| `knowledge.documents.publish.list` | GET | `/api/knowledge/documents/{id}/publish` | Get a document's public publication settings |
+| `knowledge.documents.publish.set` | PUT | `/api/knowledge/documents/{id}/publish` | Publish a document or update its publication |
+| `knowledge.documents.search.list` | GET | `/api/knowledge/documents/search` | Search document titles |
+| `knowledge.documents.templates.list` | GET | `/api/knowledge/documents/templates` | List document templates |
 | `knowledge.documents.update` | PATCH | `/api/knowledge/documents/{id}` | Update a knowledge document |
 | `knowledge.glossary.create` | POST | `/api/knowledge/glossary` | Create a glossary term |
 | `knowledge.glossary.delete` | DELETE | `/api/knowledge/glossary/{id}` | Delete a glossary term |
@@ -208,62 +208,71 @@ Path params (positional, in order):
 
 ### `knowledge.documents.backlinks.list`
 
-`GET /api/knowledge/documents/{p1}/backlinks`
+`GET /api/knowledge/documents/{id}/backlinks`
 
-(undocumented route — params unknown, pass them explicitly)
+Documents that link to this document
+
+Requires knowledge view permission.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `knowledge.documents.comments.create`
 
-`POST /api/knowledge/documents/{p1}/comments`
+`POST /api/knowledge/documents/{id}/comments`
 
-(undocumented route — params unknown, pass them explicitly)
+Comment on a document block
+
+Requires knowledge edit permission. Notifies any @mentioned teammates (best-effort) and writes an audit entry.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `blockId` (string, required)
+  - `body` (string, required)
+  - `parentCommentId` (string<uuid>) — Reply to this comment
 
 ### `knowledge.documents.comments.delete`
 
-`DELETE /api/knowledge/documents/{p1}/comments/{p2}`
+`DELETE /api/knowledge/documents/{id}/comments/{commentId}`
 
-(undocumented route — params unknown, pass them explicitly)
+Delete a block comment
+
+Requires knowledge edit permission. Writes an audit entry.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
-  - `p2`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
+  - `commentId`
 
 ### `knowledge.documents.comments.list`
 
-`GET /api/knowledge/documents/{p1}/comments`
+`GET /api/knowledge/documents/{id}/comments`
 
-(undocumented route — params unknown, pass them explicitly)
+List block comments on a document
+
+Requires knowledge view permission.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `knowledge.documents.comments.update`
 
-`PATCH /api/knowledge/documents/{p1}/comments/{p2}`
+`PATCH /api/knowledge/documents/{id}/comments/{commentId}`
 
-(undocumented route — params unknown, pass them explicitly)
+Edit, resolve or reopen a block comment
+
+Requires knowledge edit permission. Writes an audit entry.
 
 Path params (positional, in order):
-  - `p1`
-  - `p2`
+  - `id`
+  - `commentId`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `body` (string)
+  - `resolved` (boolean)
 
 ### `knowledge.documents.create`
 
@@ -291,9 +300,14 @@ Path params (positional, in order):
 
 `POST /api/knowledge/documents/from-template`
 
-(undocumented route — params unknown, pass them explicitly)
+Create a document from a template
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires knowledge create permission. Copies the template's blocks (with fresh block ids), tags and icon into a new non-template document. Writes an audit entry.
+
+Body (application/json):
+  - `templateId` (string<uuid>, required)
+  - `title` (string) — Defaults to the template's title
+  - `projectRef` (string)
 
 ### `knowledge.documents.get`
 
@@ -316,54 +330,62 @@ Query:
 
 ### `knowledge.documents.publish.delete`
 
-`DELETE /api/knowledge/documents/{p1}/publish`
+`DELETE /api/knowledge/documents/{id}/publish`
 
-(undocumented route — params unknown, pass them explicitly)
+Unpublish a document
+
+Requires knowledge edit permission. Removes the publication; succeeds even if none existed. Writes an audit entry when one was removed.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `knowledge.documents.publish.list`
 
-`GET /api/knowledge/documents/{p1}/publish`
+`GET /api/knowledge/documents/{id}/publish`
 
-(undocumented route — params unknown, pass them explicitly)
+Get a document's public publication settings
+
+Requires knowledge view permission. `publication` is null when the document has never been published.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `knowledge.documents.publish.set`
 
-`PUT /api/knowledge/documents/{p1}/publish`
+`PUT /api/knowledge/documents/{id}/publish`
 
-(undocumented route — params unknown, pass them explicitly)
+Publish a document or update its publication
+
+Requires knowledge edit permission. Creates or updates the document's public publication; `isActive` defaults to true, so an empty body publishes. Templates cannot be published. Writes a publish/unpublish audit entry.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `isActive` (boolean)
+  - `showTitle` (boolean)
+  - `showFooterBranding` (boolean)
 
 ### `knowledge.documents.search.list`
 
 `GET /api/knowledge/documents/search`
 
-(undocumented route — params unknown, pass them explicitly)
+Search document titles
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires knowledge view permission.
+
+Query:
+  - `q` (string)
 
 ### `knowledge.documents.templates.list`
 
 `GET /api/knowledge/documents/templates`
 
-(undocumented route — params unknown, pass them explicitly)
+List document templates
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Requires knowledge view permission. Returns up to 200 templates.
 
 ### `knowledge.documents.update`
 

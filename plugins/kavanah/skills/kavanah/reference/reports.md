@@ -31,7 +31,7 @@
 | `reports.schedules.create` | POST | `/api/reports/schedules` | Create schedule |
 | `reports.schedules.delete` | DELETE | `/api/reports/schedules/{id}` | Delete schedule |
 | `reports.schedules.list` | GET | `/api/reports/schedules` | List schedules |
-| `reports.schedules.run.create` | POST | `/api/reports/schedules/{p1}/run` | (undocumented route — params unknown, pass them explicitly) |
+| `reports.schedules.run.create` | POST | `/api/reports/schedules/{id}/run` | Deliver a saved report schedule now |
 | `reports.schedules.update` | PATCH | `/api/reports/schedules/{id}` | Update schedule |
 | `reports.state-of-business.create` | POST | `/api/reports/state-of-business` | Configure the State of the Business report (admin) |
 | `reports.state-of-business.list` | GET | `/api/reports/state-of-business` | Get the State of the Business report config + status |
@@ -286,14 +286,14 @@ List schedules
 
 ### `reports.schedules.run.create`
 
-`POST /api/reports/schedules/{p1}/run`
+`POST /api/reports/schedules/{id}/run`
 
-(undocumented route — params unknown, pass them explicitly)
+Deliver a saved report schedule now
+
+Requires export:edit. Generates the report and emails the resolved recipients immediately, bypassing the enabled flag, and stamps last_sent_at. Non-admins are refused for deal-forecast schedules. ok is true only when the report was actually sent.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `reports.schedules.update`
 

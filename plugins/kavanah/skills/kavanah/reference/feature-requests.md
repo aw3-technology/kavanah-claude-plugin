@@ -6,8 +6,8 @@
 | --- | --- | --- | --- |
 | `feature-requests.create` | POST | `/api/feature-requests` | Submit a feature request |
 | `feature-requests.list` | GET | `/api/feature-requests` | List the public feature-request board plus the caller's own submissions |
-| `feature-requests.vote.create` | POST | `/api/feature-requests/{p1}/vote` | (undocumented route — params unknown, pass them explicitly) |
-| `feature-requests.vote.delete` | DELETE | `/api/feature-requests/{p1}/vote` | (undocumented route — params unknown, pass them explicitly) |
+| `feature-requests.vote.create` | POST | `/api/feature-requests/{id}/vote` | Upvote a feature request |
+| `feature-requests.vote.delete` | DELETE | `/api/feature-requests/{id}/vote` | Withdraw an upvote |
 
 ---
 
@@ -27,24 +27,24 @@ Optional query params: status (active|all), category, search, limit (max 200).
 
 ### `feature-requests.vote.create`
 
-`POST /api/feature-requests/{p1}/vote`
+`POST /api/feature-requests/{id}/vote`
 
-(undocumented route — params unknown, pass them explicitly)
+Upvote a feature request
+
+Signed-in users. Idempotent; voting again returns the current count unchanged.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `feature-requests.vote.delete`
 
-`DELETE /api/feature-requests/{p1}/vote`
+`DELETE /api/feature-requests/{id}/vote`
 
-(undocumented route — params unknown, pass them explicitly)
+Withdraw an upvote
+
+Signed-in users. Idempotent; withdrawing a vote that does not exist returns the current count.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`

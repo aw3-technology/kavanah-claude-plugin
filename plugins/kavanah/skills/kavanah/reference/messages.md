@@ -1,6 +1,6 @@
 # Messages
 
-89 commands. Generated — run `npm run skill:gen` to refresh.
+79 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -22,7 +22,7 @@
 | `messages.client-channels.members.list` | GET | `/api/messages/client-channels/{channelId}/members` | List members |
 | `messages.client-channels.messages.create` | POST | `/api/messages/client-channels/{channelId}/messages` | Create message |
 | `messages.client-channels.messages.list` | GET | `/api/messages/client-channels/{channelId}/messages` | List messages |
-| `messages.count.list` | GET | `/api/messages/count` | (undocumented route — params unknown, pass them explicitly) |
+| `messages.count.list` | GET | `/api/messages/count` | Unread direct-message count for the sidebar badge |
 | `messages.files.get` | GET | `/api/messages/files/{messageId}/{attachmentId}` | Download a message attachment |
 | `messages.files.list` | GET | `/api/messages/files` | List files |
 | `messages.groups.create` | POST | `/api/messages/groups` | Create a group chat |
@@ -39,11 +39,11 @@
 | `messages.push.subscribe.create` | POST | `/api/messages/push/subscribe` | Create subscribe |
 | `messages.push.subscribe.delete` | DELETE | `/api/messages/push/subscribe` | Delete subscribe |
 | `messages.push.vapid-key.list` | GET | `/api/messages/push/vapid-key` | List vapid key |
-| `messages.requests.count.list` | GET | `/api/messages/requests/count` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.requests.create` | POST | `/api/messages/requests` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.requests.list` | GET | `/api/messages/requests` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.requests.lookup.list` | GET | `/api/messages/requests/lookup` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.requests.respond.create` | POST | `/api/messages/requests/{p1}/respond` | (undocumented route — params unknown, pass them explicitly) |
+| `messages.requests.count.list` | GET | `/api/messages/requests/count` | Count of pending incoming message requests |
+| `messages.requests.create` | POST | `/api/messages/requests` | Send a message request to another user |
+| `messages.requests.list` | GET | `/api/messages/requests` | List the caller's message requests |
+| `messages.requests.lookup.list` | GET | `/api/messages/requests/lookup` | Preview who a message request would reach |
+| `messages.requests.respond.create` | POST | `/api/messages/requests/{id}/respond` | Accept, decline, block, unblock or restore a message request |
 | `messages.rtc-config.list` | GET | `/api/messages/rtc-config` | ICE servers for the chat call transport |
 | `messages.scheduled-processor.create` | POST | `/api/messages/scheduled-processor` | Create scheduled processor |
 | `messages.scheduled.create` | POST | `/api/messages/scheduled` | Create scheduled |
@@ -59,7 +59,7 @@
 | `messages.templates.list` | GET | `/api/messages/templates` | List templates |
 | `messages.templates.update` | PATCH | `/api/messages/templates/{templateId}` | Update template |
 | `messages.threads.delete` | DELETE | `/api/messages/threads/{contactId}` | Delete a conversation thread |
-| `messages.threads.deliver.create` | POST | `/api/messages/threads/{p1}/deliver` | (undocumented route — params unknown, pass them explicitly) |
+| `messages.threads.deliver.create` | POST | `/api/messages/threads/{contactId}/deliver` | Acknowledge delivery of a thread's messages |
 | `messages.threads.meeting.recording.chunk.create` | POST | `/api/messages/threads/{contactId}/meeting/recording/{recordingId}/chunk` | Create chunk |
 | `messages.threads.meeting.recording.consent.create` | POST | `/api/messages/threads/{contactId}/meeting/recording/{recordingId}/consent` | Create consent |
 | `messages.threads.meeting.recording.create` | POST | `/api/messages/threads/{contactId}/meeting/recording` | Create recording |
@@ -69,21 +69,11 @@
 | `messages.threads.meeting.recording.stop.create` | POST | `/api/messages/threads/{contactId}/meeting/recording/{recordingId}/stop` | Create stop |
 | `messages.threads.meeting.recording.transcript.create` | POST | `/api/messages/threads/{contactId}/meeting/recording/{recordingId}/transcript` | Create transcript |
 | `messages.threads.meeting.recording.transcript.list` | GET | `/api/messages/threads/{contactId}/meeting/recording/{recordingId}/transcript` | List transcript |
-| `messages.threads.meeting.recording.transcript.update` | PATCH | `/api/messages/threads/{p1}/meeting/recording/{p2}/transcript` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.create` | POST | `/api/messages/threads/{p1}/meeting/twin` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.delete` | DELETE | `/api/messages/threads/{p1}/meeting/twin` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.host-token.create` | POST | `/api/messages/threads/{p1}/meeting/twin/host-token` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.list` | GET | `/api/messages/threads/{p1}/meeting/twin` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.listen.create` | POST | `/api/messages/threads/{p1}/meeting/twin/listen` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.room.list` | GET | `/api/messages/threads/{p1}/meeting/twin/room` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.signals.create` | POST | `/api/messages/threads/{p1}/meeting/twin/signals` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.signals.list` | GET | `/api/messages/threads/{p1}/meeting/twin/signals` | (undocumented route — params unknown, pass them explicitly) |
-| `messages.threads.meeting.twin.speak.create` | POST | `/api/messages/threads/{p1}/meeting/twin/speak` | (undocumented route — params unknown, pass them explicitly) |
 | `messages.threads.members.list` | GET | `/api/messages/threads/{contactId}/members` | List the members of a group-type chat (team chat, group, or channel) |
 | `messages.threads.messages.create` | POST | `/api/messages/threads/{contactId}/messages` | Send a message |
 | `messages.threads.messages.delete` | DELETE | `/api/messages/threads/{contactId}/messages/{messageId}` | Delete a message |
 | `messages.threads.messages.forward.create` | POST | `/api/messages/threads/{contactId}/messages/forward` | Create forward |
-| `messages.threads.messages.list` | GET | `/api/messages/threads/{p1}/messages` | (undocumented route — params unknown, pass them explicitly) |
+| `messages.threads.messages.list` | GET | `/api/messages/threads/{contactId}/messages` | Page older messages in a thread |
 | `messages.threads.messages.reactions.create` | POST | `/api/messages/threads/{contactId}/messages/{messageId}/reactions` | Toggle an emoji reaction on a message |
 | `messages.threads.messages.read.create` | POST | `/api/messages/threads/{contactId}/messages/{messageId}/read` | Create read |
 | `messages.threads.messages.replies.create` | POST | `/api/messages/threads/{contactId}/messages/{messageId}/replies` | Reply in a message thread |
@@ -273,9 +263,9 @@ Path params (positional, in order):
 
 `GET /api/messages/count`
 
-(undocumented route — params unknown, pass them explicitly)
+Unread direct-message count for the sidebar badge
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Sum of unread counts across all the caller's chat threads, across workspaces. Cached privately for 30 seconds.
 
 ### `messages.files.get`
 
@@ -418,44 +408,56 @@ List vapid key
 
 `GET /api/messages/requests/count`
 
-(undocumented route — params unknown, pass them explicitly)
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Count of pending incoming message requests
 
 ### `messages.requests.create`
 
 `POST /api/messages/requests`
 
-(undocumented route — params unknown, pass them explicitly)
+Send a message request to another user
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Addresses the target by exactly one of memberUserId, handle or email. If the target had already requested the caller, both requests auto-accept, the intros are delivered and the chat opens. Refused when the target blocked the caller or does not accept requests.
+
+Body (application/json):
+  - `memberUserId` (string)
+  - `handle` (string)
+  - `email` (string)
+  - `message` (string) — Optional intro message
 
 ### `messages.requests.list`
 
 `GET /api/messages/requests`
 
-(undocumented route — params unknown, pass them explicitly)
+List the caller's message requests
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Incoming and outgoing message requests plus the requesters the caller has blocked.
 
 ### `messages.requests.lookup.list`
 
 `GET /api/messages/requests/lookup`
 
-(undocumented route — params unknown, pass them explicitly)
+Preview who a message request would reach
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Resolves exactly one of handle, email or workspaceSlug. A workspace slug returns the workspace and its members (excluding the caller).
+
+Query:
+  - `handle` (string)
+  - `email` (string)
+  - `workspaceSlug` (string)
 
 ### `messages.requests.respond.create`
 
-`POST /api/messages/requests/{p1}/respond`
+`POST /api/messages/requests/{id}/respond`
 
-(undocumented route — params unknown, pass them explicitly)
+Accept, decline, block, unblock or restore a message request
+
+Acts on a request addressed to the caller. Accepting creates the connection and delivers the requester's intro into the new chat.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `action` (string, required) — one of: `accept`, `decline`, `block`, `unblock`, `restore`
 
 ### `messages.rtc-config.list`
 
@@ -590,14 +592,14 @@ Path params (positional, in order):
 
 ### `messages.threads.deliver.create`
 
-`POST /api/messages/threads/{p1}/deliver`
+`POST /api/messages/threads/{contactId}/deliver`
 
-(undocumented route — params unknown, pass them explicitly)
+Acknowledge delivery of a thread's messages
+
+Idempotent. Stamps delivered_at on the caller's undelivered messages in the thread and, when any were marked, pushes a refreshed badge count to the caller's other devices.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `contactId`
 
 ### `messages.threads.meeting.recording.chunk.create`
 
@@ -699,119 +701,6 @@ Path params (positional, in order):
   - `contactId`
   - `recordingId`
 
-### `messages.threads.meeting.recording.transcript.update`
-
-`PATCH /api/messages/threads/{p1}/meeting/recording/{p2}/transcript`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-  - `p2`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.create`
-
-`POST /api/messages/threads/{p1}/meeting/twin`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.delete`
-
-`DELETE /api/messages/threads/{p1}/meeting/twin`
-
-(undocumented route — params unknown, pass them explicitly)
-
-**Destructive** — needs `--yes` against a non-local base URL.
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.host-token.create`
-
-`POST /api/messages/threads/{p1}/meeting/twin/host-token`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.list`
-
-`GET /api/messages/threads/{p1}/meeting/twin`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.listen.create`
-
-`POST /api/messages/threads/{p1}/meeting/twin/listen`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.room.list`
-
-`GET /api/messages/threads/{p1}/meeting/twin/room`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.signals.create`
-
-`POST /api/messages/threads/{p1}/meeting/twin/signals`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.signals.list`
-
-`GET /api/messages/threads/{p1}/meeting/twin/signals`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
-### `messages.threads.meeting.twin.speak.create`
-
-`POST /api/messages/threads/{p1}/meeting/twin/speak`
-
-(undocumented route — params unknown, pass them explicitly)
-
-Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
-
 ### `messages.threads.members.list`
 
 `GET /api/messages/threads/{contactId}/members`
@@ -861,14 +750,18 @@ Body: application/json (free-form — pass with `--data`)
 
 ### `messages.threads.messages.list`
 
-`GET /api/messages/threads/{p1}/messages`
+`GET /api/messages/threads/{contactId}/messages`
 
-(undocumented route — params unknown, pass them explicitly)
+Page older messages in a thread
+
+Returns messages older than the given timestamp, newest-first paging for infinite scroll. API keys pinned to a workspace cannot read group threads of the user's other workspaces.
 
 Path params (positional, in order):
-  - `p1`
+  - `contactId`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Query:
+  - `before` (string<date-time>, required) — ISO timestamp
+  - `limit` (integer)
 
 ### `messages.threads.messages.reactions.create`
 

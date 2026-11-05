@@ -1,6 +1,6 @@
 # AI Agent
 
-108 commands. Generated — run `npm run skill:gen` to refresh.
+118 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -9,8 +9,8 @@
 | `ai-agent.action-policies.set` | PUT | `/api/ai-agent/action-policies` | Bulk upsert agent action policies (admin) |
 | `ai-agent.activity-report.list` | GET | `/api/ai-agent/activity-report` | Agent activity/self-report — totals, categories, top tools, approvals (admin) |
 | `ai-agent.activity.list` | GET | `/api/ai-agent/activity` | Agent activity timeline — individual ledger rows (admin) |
-| `ai-agent.admin.conversations.get` | GET | `/api/ai-agent/admin/conversations/{p1}` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.admin.conversations.list` | GET | `/api/ai-agent/admin/conversations` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.admin.conversations.get` | GET | `/api/ai-agent/admin/conversations/{id}` | Read one workspace conversation with its full message history |
+| `ai-agent.admin.conversations.list` | GET | `/api/ai-agent/admin/conversations` | List every AI conversation in the workspace |
 | `ai-agent.approvals.create` | POST | `/api/ai-agent/approvals/{approvalId}` | Approve or deny a parked agent action (admin) |
 | `ai-agent.approvals.get` | GET | `/api/ai-agent/approvals/{approvalId}` | One parked action, in full - the reply desk (admin) |
 | `ai-agent.approvals.list` | GET | `/api/ai-agent/approvals` | Global agent approvals inbox (admin) |
@@ -18,7 +18,7 @@
 | `ai-agent.attachments.delete` | DELETE | `/api/ai-agent/attachments` | Delete attachments |
 | `ai-agent.attachments.list` | GET | `/api/ai-agent/attachments` | List attachments |
 | `ai-agent.audit.list` | GET | `/api/ai-agent/audit` | List audit |
-| `ai-agent.chat-runs.get` | GET | `/api/ai-agent/chat-runs/{p1}` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.chat-runs.get` | GET | `/api/ai-agent/chat-runs/{id}` | Poll the live progress of one interactive chat turn |
 | `ai-agent.config.list` | GET | `/api/ai-agent/config` | List config |
 | `ai-agent.config.update` | PATCH | `/api/ai-agent/config` | Update config |
 | `ai-agent.conversations.away.create` | POST | `/api/ai-agent/conversations/{id}/away` | Report the chat client away or back |
@@ -52,26 +52,26 @@
 | `ai-agent.org-templates.preview.create` | POST | `/api/ai-agent/org-templates/{key}/preview` | Preview applying an org template in this workspace |
 | `ai-agent.outcomes.create` | POST | `/api/ai-agent/outcomes` | Cancel a pending outcome check (admin) |
 | `ai-agent.outcomes.list` | GET | `/api/ai-agent/outcomes` | Agent outcome checks and hit rate (admin) |
-| `ai-agent.persona-departments.list` | GET | `/api/ai-agent/persona-departments` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.personas.avatar.generate.create` | POST | `/api/ai-agent/personas/avatar/generate` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.persona-departments.list` | GET | `/api/ai-agent/persona-departments` | List every persona-to-department membership in the workspace |
+| `ai-agent.personas.avatar.generate.create` | POST | `/api/ai-agent/personas/avatar/generate` | Generate an avatar image for an AI employee |
 | `ai-agent.personas.create` | POST | `/api/ai-agent/personas` | Create an AI agent persona |
 | `ai-agent.personas.delete` | DELETE | `/api/ai-agent/personas/{id}` | Delete an AI agent persona |
-| `ai-agent.personas.departments.list` | GET | `/api/ai-agent/personas/{p1}/departments` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.personas.departments.set` | PUT | `/api/ai-agent/personas/{p1}/departments` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.personas.departments.list` | GET | `/api/ai-agent/personas/{id}/departments` | List the departments an AI employee belongs to |
+| `ai-agent.personas.departments.set` | PUT | `/api/ai-agent/personas/{id}/departments` | Replace an AI employee's department set |
 | `ai-agent.personas.generate.create` | POST | `/api/ai-agent/personas/generate` | Draft a persona from a natural-language description |
 | `ai-agent.personas.list` | GET | `/api/ai-agent/personas` | List AI agent personas (AI employees) |
-| `ai-agent.personas.members.list` | GET | `/api/ai-agent/personas/{p1}/members` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.personas.members.set` | PUT | `/api/ai-agent/personas/{p1}/members` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.personas.members.list` | GET | `/api/ai-agent/personas/{id}/members` | List who may talk to an AI employee |
+| `ai-agent.personas.members.set` | PUT | `/api/ai-agent/personas/{id}/members` | Replace an AI employee's access list |
 | `ai-agent.personas.org-chart.list` | GET | `/api/ai-agent/personas/org-chart` | The AI-employee org chart |
 | `ai-agent.personas.update` | PATCH | `/api/ai-agent/personas/{id}` | Update an AI agent persona |
 | `ai-agent.personas.week.list` | GET | `/api/ai-agent/personas/week` | Each AI employee's last seven days |
 | `ai-agent.preferences.list` | GET | `/api/ai-agent/preferences` | List preferences |
 | `ai-agent.preferences.update` | PATCH | `/api/ai-agent/preferences` | Update preferences |
-| `ai-agent.schedules.create` | POST | `/api/ai-agent/schedules` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.schedules.delete` | DELETE | `/api/ai-agent/schedules/{p1}` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.schedules.list` | GET | `/api/ai-agent/schedules` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.schedules.create` | POST | `/api/ai-agent/schedules` | Create a scheduled agent run |
+| `ai-agent.schedules.delete` | DELETE | `/api/ai-agent/schedules/{id}` | Delete a scheduled agent run |
+| `ai-agent.schedules.list` | GET | `/api/ai-agent/schedules` | List scheduled agent runs |
 | `ai-agent.schedules.runs.list` | GET | `/api/ai-agent/schedules/runs` | List scheduled autonomous agent runs |
-| `ai-agent.schedules.update` | PATCH | `/api/ai-agent/schedules/{p1}` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.schedules.update` | PATCH | `/api/ai-agent/schedules/{id}` | Update a scheduled agent run |
 | `ai-agent.share.create` | POST | `/api/ai-agent/share` | Share an agent answer or conversation |
 | `ai-agent.share.get` | GET | `/api/ai-agent/share/{id}` | Read a shared agent snapshot |
 | `ai-agent.skipped.list` | GET | `/api/ai-agent/skipped` | What Kavanah skipped in the last 24 hours, and why |
@@ -83,15 +83,23 @@
 | `ai-agent.slack-managers.update` | PATCH | `/api/ai-agent/slack-managers/{id}` | Update an AI Slack manager (admin) |
 | `ai-agent.tools.execute.create` | POST | `/api/ai-agent/tools/{name}/execute` | Execute one agent tool by name |
 | `ai-agent.tools.list` | GET | `/api/ai-agent/tools` | List the agent tools the caller may execute |
-| `ai-agent.twin.create` | POST | `/api/ai-agent/twin` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.twin.delete` | DELETE | `/api/ai-agent/twin` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.twin.grounding.create` | POST | `/api/ai-agent/twin/grounding` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.twin.grounding.delete` | DELETE | `/api/ai-agent/twin/grounding` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.twin.grounding.list` | GET | `/api/ai-agent/twin/grounding` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.twin.list` | GET | `/api/ai-agent/twin` | (undocumented route — params unknown, pass them explicitly) |
-| `ai-agent.twin.reply.create` | POST | `/api/ai-agent/twin/reply` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.twin.create` | POST | `/api/ai-agent/twin` | Create or update the caller's digital twin |
+| `ai-agent.twin.delete` | DELETE | `/api/ai-agent/twin` | Delete the caller's digital twin |
+| `ai-agent.twin.grounding.create` | POST | `/api/ai-agent/twin/grounding` | Index the caller's own data into their twin's grounding store |
+| `ai-agent.twin.grounding.delete` | DELETE | `/api/ai-agent/twin/grounding` | Clear the caller's twin grounding index |
+| `ai-agent.twin.grounding.list` | GET | `/api/ai-agent/twin/grounding` | Count the grounding chunks indexed for the caller's twin |
+| `ai-agent.twin.list` | GET | `/api/ai-agent/twin` | Get the caller's digital twin |
+| `ai-agent.twin.reply.create` | POST | `/api/ai-agent/twin/reply` | What a digital twin attending a call says next |
 | `ai-agent.undo.create` | POST | `/api/ai-agent/undo` | Create undo |
-| `ai-agent.usage-breakdown.list` | GET | `/api/ai-agent/usage-breakdown` | (undocumented route — params unknown, pass them explicitly) |
+| `ai-agent.usage-breakdown.list` | GET | `/api/ai-agent/usage-breakdown` | AI token usage breakdown for the workspace |
+| `exec-meetings.boardrooms.create` | POST | `/api/exec-meetings/boardrooms` | Create a boardroom |
+| `exec-meetings.boardrooms.delete` | DELETE | `/api/exec-meetings/boardrooms/{id}` | Delete a boardroom |
+| `exec-meetings.boardrooms.get` | GET | `/api/exec-meetings/boardrooms/{id}` | Get one boardroom with its seats |
+| `exec-meetings.boardrooms.list` | GET | `/api/exec-meetings/boardrooms` | List exec-meeting boardrooms with their seats |
+| `exec-meetings.boardrooms.run.create` | POST | `/api/exec-meetings/boardrooms/{id}/run` | Run a boardroom meeting now |
+| `exec-meetings.boardrooms.update` | PATCH | `/api/exec-meetings/boardrooms/{id}` | Update a boardroom |
+| `exec-meetings.meetings.get` | GET | `/api/exec-meetings/meetings/{id}` | Get one exec meeting and its turns |
+| `exec-meetings.meetings.list` | GET | `/api/exec-meetings/meetings` | List past exec meetings |
 | `meeting-twin.external.consents.create` | POST | `/api/meeting-twin/external/consents` | Withdraw consent to the caller's cloned voice or video avatar |
 | `meeting-twin.external.face.create` | POST | `/api/meeting-twin/external/face` | Start / finish the video avatar upload |
 | `meeting-twin.external.face.list` | GET | `/api/meeting-twin/external/face` | The caller's video avatar training status |
@@ -106,6 +114,8 @@
 | `meeting-twin.external.vendors.test.create` | POST | `/api/meeting-twin/external/vendors/test` | Test a meeting-twin vendor connection |
 | `meeting-twin.external.voice-clone.create` | POST | `/api/meeting-twin/external/voice-clone` | Clone the caller's own voice (with recorded consent) |
 | `meeting-twin.external.voices.list` | GET | `/api/meeting-twin/external/voices` | Voices the caller may give their twin |
+| `realtime.elevenlabs.config.list` | GET | `/api/realtime/elevenlabs/config` | Whether realtime voice conversation is configured |
+| `realtime.elevenlabs.token.create` | POST | `/api/realtime/elevenlabs/token` | Mint a realtime voice conversation session token |
 | `water-cooler.threads.create` | POST | `/api/water-cooler/threads` | Start a Water Cooler conversation |
 | `water-cooler.threads.delete` | DELETE | `/api/water-cooler/threads/{id}` | Delete a thread (starter or admin) |
 | `water-cooler.threads.get` | GET | `/api/water-cooler/threads/{id}` | Get a thread with its messages |
@@ -170,22 +180,27 @@ Query:
 
 ### `ai-agent.admin.conversations.get`
 
-`GET /api/ai-agent/admin/conversations/{p1}`
+`GET /api/ai-agent/admin/conversations/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Read one workspace conversation with its full message history
+
+Admins only. Returns any conversation in the workspace, not just the caller's.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `ai-agent.admin.conversations.list`
 
 `GET /api/ai-agent/admin/conversations`
 
-(undocumented route — params unknown, pass them explicitly)
+List every AI conversation in the workspace
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. Workspace-wide roll-up of AI agent conversations, optionally filtered to one user or one persona.
+
+Query:
+  - `limit` (integer)
+  - `user` (string) — User id to filter by
+  - `persona` (string) — Persona id to filter by
 
 ### `ai-agent.approvals.create`
 
@@ -258,14 +273,14 @@ List audit
 
 ### `ai-agent.chat-runs.get`
 
-`GET /api/ai-agent/chat-runs/{p1}`
+`GET /api/ai-agent/chat-runs/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Poll the live progress of one interactive chat turn
+
+Owner-scoped: only the user who started the run can read it. A reconnecting client polls this while a run is active, then reloads the conversation once the status is terminal. `stale` means the server died mid-turn without finalizing, and is treated as terminal.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `ai-agent.config.list`
 
@@ -610,17 +625,23 @@ Query:
 
 `GET /api/ai-agent/persona-departments`
 
-(undocumented route — params unknown, pass them explicitly)
+List every persona-to-department membership in the workspace
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any workspace member. Read-only; each row carries the persona's name, role title, avatar and whether it leads the department. Powers the People Departments view.
 
 ### `ai-agent.personas.avatar.generate.create`
 
 `POST /api/ai-agent/personas/avatar/generate`
 
-(undocumented route — params unknown, pass them explicitly)
+Generate an avatar image for an AI employee
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. Generates an image from a description (plus optional persona context) and returns it as a base64 data URL; nothing is saved, so the client persists it via the personas endpoints. Spends credits, subject to a cooldown (429 with Retry-After) and a credit preflight. Writes an audit log entry.
+
+Body (application/json):
+  - `name` (string)
+  - `role_title` (string)
+  - `personality` (string)
+  - `avatar_prompt` (string)
 
 ### `ai-agent.personas.create`
 
@@ -661,25 +682,28 @@ Path params (positional, in order):
 
 ### `ai-agent.personas.departments.list`
 
-`GET /api/ai-agent/personas/{p1}/departments`
+`GET /api/ai-agent/personas/{id}/departments`
 
-(undocumented route — params unknown, pass them explicitly)
+List the departments an AI employee belongs to
+
+Any workspace member. Refused when the AI agent is disabled for the workspace.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `ai-agent.personas.departments.set`
 
-`PUT /api/ai-agent/personas/{p1}/departments`
+`PUT /api/ai-agent/personas/{id}/departments`
 
-(undocumented route — params unknown, pass them explicitly)
+Replace an AI employee's department set
+
+Admins only. Replaces the full set in one transaction (non-string ids are dropped) and writes an audit log entry with the added and removed department ids.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `departmentIds` (string[], required)
 
 ### `ai-agent.personas.generate.create`
 
@@ -700,25 +724,28 @@ List AI agent personas (AI employees)
 
 ### `ai-agent.personas.members.list`
 
-`GET /api/ai-agent/personas/{p1}/members`
+`GET /api/ai-agent/personas/{id}/members`
 
-(undocumented route — params unknown, pass them explicitly)
+List who may talk to an AI employee
+
+Any workspace member. Returns the persona's access list joined with each user's email and name. An empty list means the persona is open to every member. Refused when the AI agent is disabled.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `ai-agent.personas.members.set`
 
-`PUT /api/ai-agent/personas/{p1}/members`
+`PUT /api/ai-agent/personas/{id}/members`
 
-(undocumented route — params unknown, pass them explicitly)
+Replace an AI employee's access list
+
+Admins only. `[]` or `null` opens the persona to all members; a list of user ids restricts it. Invalid and duplicate ids are dropped. If none of the ids are active members the existing list is left unchanged. Writes an audit log entry with the added and removed user ids.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `member_user_ids` (array|null, required)
 
 ### `ai-agent.personas.org-chart.list`
 
@@ -770,30 +797,51 @@ Body: application/json (free-form — pass with `--data`)
 
 `POST /api/ai-agent/schedules`
 
-(undocumented route — params unknown, pass them explicitly)
+Create a scheduled agent run
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member; the schedule is owned by its creator. A bound persona must be in this workspace, enabled and on the caller's roster (admins bypass the roster). autonomy_level 'safe' requires the workspace autonomy ceiling to allow at least 'safe'. By default the schedule only runs while the creator has open tasks (see only_when_tasks_for / task_gate). Clock fields are clamped; unset ones default to 09:00 UTC, Monday, the 1st.
+
+Body (application/json):
+  - `name` (string, required)
+  - `prompt` (string, required)
+  - `frequency` (string, required) — one of: `hourly`, `daily`, `weekly`, `monthly`
+  - `persona_id` (string|null)
+  - `autonomy_level` (string) — one of: `none`, `safe`
+  - `hour_utc` (integer)
+  - `minute_utc` (integer)
+  - `day_of_week` (integer)
+  - `day_of_month` (integer)
+  - `timezone` (string|null) — IANA zone; null, empty or UTC means UTC
+  - `weekdays_only` (boolean)
+  - `enabled` (boolean)
+  - `model` (string|null) — Registry model id or auto; absent inherits
+  - `only_when_tasks_for` (string|null) — Person whose tasks gate the run; empty or null runs always
+  - `task_gate` (string) — one of: `due`, `open`
+  - `tasks_due_within_days` (integer)
 
 ### `ai-agent.schedules.delete`
 
-`DELETE /api/ai-agent/schedules/{p1}`
+`DELETE /api/ai-agent/schedules/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Delete a scheduled agent run
+
+Admins and the owner may delete any schedule; other members only their own.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `ai-agent.schedules.list`
 
 `GET /api/ai-agent/schedules`
 
-(undocumented route — params unknown, pass them explicitly)
+List scheduled agent runs
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. Admins and the owner see every schedule in the workspace; other members see only the schedules they created. `canManage` is true for admins.
+
+Query:
+  - `persona` (string) — Only schedules bound to this persona
 
 ### `ai-agent.schedules.runs.list`
 
@@ -807,14 +855,32 @@ Query:
 
 ### `ai-agent.schedules.update`
 
-`PATCH /api/ai-agent/schedules/{p1}`
+`PATCH /api/ai-agent/schedules/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Update a scheduled agent run
+
+Admins and the owner may edit any schedule; other members only their own (a foreign id reads as not found). Only supplied fields change. persona_id null or empty unbinds. Re-enabling or switching to autonomy 'safe' is refused while workspace autonomy is off, and re-enabling counts against the active-schedule limit.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `name` (string)
+  - `prompt` (string)
+  - `frequency` (string) — one of: `hourly`, `daily`, `weekly`, `monthly`
+  - `persona_id` (string|null)
+  - `autonomy_level` (string) — one of: `none`, `safe`
+  - `hour_utc` (integer)
+  - `minute_utc` (integer)
+  - `day_of_week` (integer)
+  - `day_of_month` (integer)
+  - `timezone` (string|null)
+  - `weekdays_only` (boolean)
+  - `enabled` (boolean)
+  - `model` (string|null)
+  - `only_when_tasks_for` (string|null)
+  - `task_gate` (string) — one of: `due`, `open`
+  - `tasks_due_within_days` (integer)
 
 ### `ai-agent.share.create`
 
@@ -984,61 +1050,74 @@ Query:
 
 `POST /api/ai-agent/twin`
 
-(undocumented route — params unknown, pass them explicitly)
+Create or update the caller's digital twin
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member, for their own twin only (the twin owner comes from the session). Idempotent: creates the twin on first call, seeding blank fields from the caller's profile, and updates it in place afterwards. A model override is refused here (admin-only via the personas endpoint). Writes an audit log entry.
+
+Body (application/json):
+  - `name` (string)
+  - `role_title` (string|null)
+  - `personality` (string|null)
+  - `disclosure_policy` (string|null)
+  - `avatar_url` (string|null) — Uploaded image or https image URL
+  - `avatar_color` (string|null)
+  - `avatar_prompt` (string|null)
+  - `enabled` (boolean)
+  - `voice_id` (string|null) — ElevenLabs preset or a voice id from the caller's account
 
 ### `ai-agent.twin.delete`
 
 `DELETE /api/ai-agent/twin`
 
-(undocumented route — params unknown, pass them explicitly)
+Delete the caller's digital twin
+
+Any member, for their own twin. No-op when none exists. Writes an audit log entry.
 
 **Destructive** — needs `--yes` against a non-local base URL.
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
 
 ### `ai-agent.twin.grounding.create`
 
 `POST /api/ai-agent/twin/grounding`
 
-(undocumented route — params unknown, pass them explicitly)
+Index the caller's own data into their twin's grounding store
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member, for their own twin. Embeds the caller's profile bio, up to 500 completed tasks assigned to them and up to 500 discussion threads they authored. Idempotent (deduplicated by content hash). Embedding calls are billed to the caller. Requires the server to have an embeddings key. Writes an audit log entry.
 
 ### `ai-agent.twin.grounding.delete`
 
 `DELETE /api/ai-agent/twin/grounding`
 
-(undocumented route — params unknown, pass them explicitly)
+Clear the caller's twin grounding index
+
+Any member, for their own twin. Writes an audit log entry.
 
 **Destructive** — needs `--yes` against a non-local base URL.
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
 
 ### `ai-agent.twin.grounding.list`
 
 `GET /api/ai-agent/twin/grounding`
 
-(undocumented route — params unknown, pass them explicitly)
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Count the grounding chunks indexed for the caller's twin
 
 ### `ai-agent.twin.list`
 
 `GET /api/ai-agent/twin`
 
-(undocumented route — params unknown, pass them explicitly)
+Get the caller's digital twin
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member; always the caller's own twin, or null if none exists. Refused when the AI agent is disabled.
 
 ### `ai-agent.twin.reply.create`
 
 `POST /api/ai-agent/twin/reply`
 
-(undocumented route — params unknown, pass them explicitly)
+What a digital twin attending a call says next
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Called by the runner hosting a twin in a live call, authenticated by a twin host Bearer token (not a session) that must match the call. Tool-less: returns text only, or `text: null` for silence (too little heard, a declined or failed generation, the workspace's headless spend ceiling reached, which also sets `refused`, or a compliance journal failure). Model usage is metered against the workspace's headless budget; under compliance archiving the reply is journaled with what it answers.
+
+Body (application/json):
+  - `contactId` (string, required) — The call the twin is attending
+  - `heard` (string) — What was said since the twin last spoke (last 4000 chars used)
 
 ### `ai-agent.undo.create`
 
@@ -1052,9 +1131,125 @@ Body: application/json (free-form — pass with `--data`)
 
 `GET /api/ai-agent/usage-breakdown`
 
-(undocumented route — params unknown, pass them explicitly)
+AI token usage breakdown for the workspace
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only.
+
+Query:
+  - `days` (integer)
+
+### `exec-meetings.boardrooms.create`
+
+`POST /api/exec-meetings/boardrooms`
+
+Create a boardroom
+
+Admins only. Creates a standing AI exec meeting. It is created disabled unless `enabled: true` is sent, in which case the next run time is scheduled. Seat and chair personas must belong to this workspace. Max 20 boardrooms per workspace and 6 seats per boardroom.
+
+Body (application/json):
+  - `name` (string, required)
+  - `kind` (string) — one of: `exec`, `board`, `department`, `standup`
+  - `model` (string|null) — Series model; null resolves the model per seat
+  - `agenda` (string)
+  - `chair_persona_id` (string)
+  - `discussion_rounds` (integer)
+  - `frequency` (string) — one of: `daily`, `weekdays`, `weekly`
+  - `hour_utc` (integer)
+  - `minute_utc` (integer)
+  - `day_of_week` (integer)
+  - `enabled` (boolean)
+  - `seats` (object[])
+
+### `exec-meetings.boardrooms.delete`
+
+`DELETE /api/exec-meetings/boardrooms/{id}`
+
+Delete a boardroom
+
+Admins only.
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+### `exec-meetings.boardrooms.get`
+
+`GET /api/exec-meetings/boardrooms/{id}`
+
+Get one boardroom with its seats
+
+Any workspace member.
+
+Path params (positional, in order):
+  - `id`
+
+### `exec-meetings.boardrooms.list`
+
+`GET /api/exec-meetings/boardrooms`
+
+List exec-meeting boardrooms with their seats
+
+Any workspace member. Returns every boardroom with its seated personas, whether exec meetings are enabled for the workspace, and a per-model cost table for estimating a series' monthly spend.
+
+### `exec-meetings.boardrooms.run.create`
+
+`POST /api/exec-meetings/boardrooms/{id}/run`
+
+Run a boardroom meeting now
+
+Admins only. Runs an off-cycle meeting synchronously (up to 40 model calls; up to 300s) without advancing the scheduled next run. Requires exec meetings to be enabled for the workspace. A failed meeting still answers 200 with `ok: false` and a filed meeting record.
+
+Path params (positional, in order):
+  - `id`
+
+### `exec-meetings.boardrooms.update`
+
+`PATCH /api/exec-meetings/boardrooms/{id}`
+
+Update a boardroom
+
+Admins only. Partial update; accepts the same fields as create. `seats`, when sent, replaces the whole seat list. Changing the cadence, or re-enabling a disabled boardroom, recomputes the next run time. Seats are validated before anything is written.
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `name` (string)
+  - `kind` (string) — one of: `exec`, `board`, `department`, `standup`
+  - `model` (string|null)
+  - `agenda` (string|null)
+  - `chair_persona_id` (string|null)
+  - `discussion_rounds` (integer)
+  - `frequency` (string) — one of: `daily`, `weekdays`, `weekly`
+  - `hour_utc` (integer)
+  - `minute_utc` (integer)
+  - `day_of_week` (integer|null)
+  - `enabled` (boolean)
+  - `seats` (object[])
+
+### `exec-meetings.meetings.get`
+
+`GET /api/exec-meetings/meetings/{id}`
+
+Get one exec meeting and its turns
+
+Any workspace member. Turns are returned in recorded order; in the concurrent update phase `seat_order` is the running order.
+
+Path params (positional, in order):
+  - `id`
+
+### `exec-meetings.meetings.list`
+
+`GET /api/exec-meetings/meetings`
+
+List past exec meetings
+
+Any workspace member. Newest first. A non-numeric limit falls back to the default.
+
+Query:
+  - `boardroom_id` (string)
+  - `limit` (integer)
 
 ### `meeting-twin.external.consents.create`
 
@@ -1192,6 +1387,25 @@ Body: multipart/form-data (free-form — pass with `--data`)
 Voices the caller may give their twin
 
 The workspace ElevenLabs account's stock/designed voices plus the caller's own consented clone (other people's clones are hidden), and — when Kavanah's included voice service is available — its presets plus the caller's own clone there (Kavanah's shared account is never listed).
+
+### `realtime.elevenlabs.config.list`
+
+`GET /api/realtime/elevenlabs/config`
+
+Whether realtime voice conversation is configured
+
+Returns { enabled } based on whether the server has the voice provider credentials configured. Does not call the provider. Any signed-in user.
+
+### `realtime.elevenlabs.token.create`
+
+`POST /api/realtime/elevenlabs/token`
+
+Mint a realtime voice conversation session token
+
+Signed-in user with an active workspace. Rate-limited to 20 starts per hour per user. Mints a provider conversation token, records a session row, and bills one minute at mint (the remainder is billed by the post-call webhook). Optionally speaks as a persona.
+
+Body (application/json):
+  - `persona_id` (string)
 
 ### `water-cooler.threads.create`
 

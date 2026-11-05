@@ -47,29 +47,29 @@
 | `deals.cadences.angelsend.create` | POST | `/api/deals/cadences/{id}/angelsend` | Sync a cadence's AngelSend campaign now |
 | `deals.cadences.angelsend.list` | GET | `/api/deals/cadences/{id}/angelsend` | The native AngelSend campaign(s) behind a cadence |
 | `deals.cadences.angelsend.set` | PUT | `/api/deals/cadences/{id}/angelsend` | Back a cadence with a native AngelSend campaign, or stop |
-| `deals.cadences.create` | POST | `/api/deals/cadences` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.cadences.delete` | DELETE | `/api/deals/cadences/{p1}` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.cadences.create` | POST | `/api/deals/cadences` | Create a cadence |
+| `deals.cadences.delete` | DELETE | `/api/deals/cadences/{id}` | Delete a cadence |
 | `deals.cadences.enroll-bulk.create` | POST | `/api/deals/cadences/{id}/enroll-bulk` | Enroll up to 200 contacts in one cadence |
-| `deals.cadences.enroll.create` | POST | `/api/deals/cadences/{p1}/enroll` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.cadences.enroll.create` | POST | `/api/deals/cadences/{id}/enroll` | Enroll a contact in a network cadence |
 | `deals.cadences.experiment.list` | GET | `/api/deals/cadences/{id}/experiment` | A cadence's subject/sender experiment and winner policy |
 | `deals.cadences.experiment.update` | PATCH | `/api/deals/cadences/{id}/experiment` | Configure a cadence's experiment design and automatic winner policy |
-| `deals.cadences.list` | GET | `/api/deals/cadences` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.cadences.update` | PATCH | `/api/deals/cadences/{p1}` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.cadences.list` | GET | `/api/deals/cadences` | List cadences and active enrollments |
+| `deals.cadences.update` | PATCH | `/api/deals/cadences/{id}` | Update a cadence |
 | `deals.contact-runway.list` | GET | `/api/deals/contact-runway` | How long each live network cadence can keep reaching new people |
 | `deals.contact-runway.update` | PATCH | `/api/deals/contact-runway` | Set the contact-runway warning threshold (admin) |
 | `deals.conversations.list` | GET | `/api/deals/conversations` | The Rain Room conversation map |
-| `deals.create` | POST | `/api/deals` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.create` | POST | `/api/deals` | Create a deal |
 | `deals.data-room-analysis.create` | POST | `/api/deals/{id}/data-room-analysis` | Read the deal's data room now |
 | `deals.data-room-analysis.list` | GET | `/api/deals/{id}/data-room-analysis` | The deal's stored data-room reading |
-| `deals.follow-ups.list` | GET | `/api/deals/follow-ups` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.follow-ups.list` | GET | `/api/deals/follow-ups` | Deals due a follow-up, by staleness |
 | `deals.forecast.list` | GET | `/api/deals/forecast` | The Deal Room revenue forecast, calculated live |
 | `deals.forecast.preview-email.create` | POST | `/api/deals/forecast/preview-email` | Email the weekly forecast to yourself for review |
 | `deals.forecast.recalculate.create` | POST | `/api/deals/forecast/recalculate` | Recalculate the forecast onto every open deal now (admin) |
 | `deals.forecast.settings.list` | GET | `/api/deals/forecast/settings` | Forecast settings and the weekly forecast email schedule |
 | `deals.forecast.settings.set` | PUT | `/api/deals/forecast/settings` | Configure the forecast (admin) |
-| `deals.get` | GET | `/api/deals/{p1}` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.import.create` | POST | `/api/deals/import` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.import.preview.create` | POST | `/api/deals/import/preview` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.get` | GET | `/api/deals/{id}` | One deal with its contacts, team, activity and documents |
+| `deals.import.create` | POST | `/api/deals/import` | Import deals from a Google Sheet tab or an Asana project |
+| `deals.import.preview.create` | POST | `/api/deals/import/preview` | Preview a deal import source |
 | `deals.issuer-campaigns.create` | POST | `/api/deals/issuer-campaigns` | Create an issuer campaign |
 | `deals.issuer-campaigns.get` | GET | `/api/deals/issuer-campaigns/{id}` | One issuer campaign |
 | `deals.issuer-campaigns.list` | GET | `/api/deals/issuer-campaigns` | List issuer campaigns (client prospecting) |
@@ -79,20 +79,20 @@
 | `deals.issuer-campaigns.rank.create` | POST | `/api/deals/issuer-campaigns/{id}/rank` | Rank issuers against the campaign's mandate |
 | `deals.issuer-campaigns.start.create` | POST | `/api/deals/issuer-campaigns/{id}/start` | Start, top up or resume an issuer campaign |
 | `deals.issuer-campaigns.update` | PATCH | `/api/deals/issuer-campaigns/{id}` | Edit an issuer campaign's definition |
-| `deals.list` | GET | `/api/deals` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.sheet-link.list` | GET | `/api/deals/sheet-link` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.sheet-link.sync.create` | POST | `/api/deals/sheet-link/sync` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.sheet-link.update` | PATCH | `/api/deals/sheet-link` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.list` | GET | `/api/deals` | The Deal Room board |
+| `deals.sheet-link.list` | GET | `/api/deals/sheet-link` | The Google Sheet linked to a pipeline |
+| `deals.sheet-link.sync.create` | POST | `/api/deals/sheet-link/sync` | Run a two-way sync of a pipeline with its linked sheet |
+| `deals.sheet-link.update` | PATCH | `/api/deals/sheet-link` | Configure the outbound mirror for a pipeline's sheet link |
 | `deals.staffing-settings.list` | GET | `/api/deals/staffing-settings` | Deal-team staffing settings |
 | `deals.staffing-settings.set` | PUT | `/api/deals/staffing-settings` | Update deal-team staffing settings (admin) |
-| `deals.stages.create` | POST | `/api/deals/stages` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.stages.delete` | DELETE | `/api/deals/stages/{p1}` | (undocumented route — params unknown, pass them explicitly) |
-| `deals.stages.update` | PATCH | `/api/deals/stages/{p1}` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.stages.create` | POST | `/api/deals/stages` | Create a pipeline stage |
+| `deals.stages.delete` | DELETE | `/api/deals/stages/{id}` | Delete a pipeline stage |
+| `deals.stages.update` | PATCH | `/api/deals/stages/{id}` | Update a pipeline stage |
 | `deals.team.list` | GET | `/api/deals/{id}/team` | The deal team (our side) |
 | `deals.team.set` | PUT | `/api/deals/{id}/team` | Replace the deal team |
 | `deals.team.staff.create` | POST | `/api/deals/{id}/team/staff` | Confirm a staffing proposal |
 | `deals.team.suggest.list` | GET | `/api/deals/{id}/team/suggest` | Propose a deal team (read-only) |
-| `deals.update` | PATCH | `/api/deals/{p1}` | (undocumented route — params unknown, pass them explicitly) |
+| `deals.update` | PATCH | `/api/deals/{id}` | Update a deal, its contacts or its cadence enrollments |
 | `firms.create` | POST | `/api/firms` | Create or update a firm |
 | `firms.delete` | DELETE | `/api/firms/{id}` | Archive a firm |
 | `firms.get` | GET | `/api/firms/{id}` | One firm, plus every relationship held there |
@@ -631,22 +631,34 @@ Body (application/json):
 
 `POST /api/deals/cadences`
 
-(undocumented route — params unknown, pass them explicitly)
+Create a cadence
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. kind defaults to deal. A network cadence must keep its unsubscribe link (default on). Steps are validated, strictly when enforceStructure is true; a booking-link variable in a step requires bookingUrl.
+
+Body (application/json):
+  - `name` (string, required)
+  - `description` (string)
+  - `steps` (object[])
+  - `kind` (string) — one of: `deal`, `network`
+  - `enforceStructure` (boolean)
+  - `includeUnsubscribe` (boolean)
+  - `bookingUrl` (string|null)
 
 ### `deals.cadences.delete`
 
-`DELETE /api/deals/cadences/{p1}`
+`DELETE /api/deals/cadences/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Delete a cadence
+
+Admins only. Refused while enrollments are active unless force=1, which stops them.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Query:
+  - `force` (string) — one of: `1`
 
 ### `deals.cadences.enroll-bulk.create`
 
@@ -669,14 +681,18 @@ Body (application/json):
 
 ### `deals.cadences.enroll.create`
 
-`POST /api/deals/cadences/{p1}/enroll`
+`POST /api/deals/cadences/{id}/enroll`
 
-(undocumented route — params unknown, pass them explicitly)
+Enroll a contact in a network cadence
+
+Any member. Only for network cadences (deal cadences are enrolled through PATCH /api/deals/{id}). Steps send from the caller's own connected mailbox.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `contactId` (string<uuid>, required)
+  - `provider` (string) — one of: `auto`, `gmail`, `angelsend`
 
 ### `deals.cadences.experiment.list`
 
@@ -713,20 +729,30 @@ Body (application/json):
 
 `GET /api/deals/cadences`
 
-(undocumented route — params unknown, pass them explicitly)
+List cadences and active enrollments
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member.
 
 ### `deals.cadences.update`
 
-`PATCH /api/deals/cadences/{p1}`
+`PATCH /api/deals/cadences/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Update a cadence
+
+Admins only. Turning enforceStructure on re-validates the stored steps. kind cannot change while enrollments are active. A network cadence cannot drop its unsubscribe link.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `name` (string)
+  - `description` (string|null)
+  - `steps` (object[])
+  - `enabled` (boolean)
+  - `kind` (string) — one of: `deal`, `network`
+  - `enforceStructure` (boolean)
+  - `includeUnsubscribe` (boolean)
+  - `bookingUrl` (string|null)
 
 ### `deals.contact-runway.list`
 
@@ -765,9 +791,20 @@ Query:
 
 `POST /api/deals`
 
-(undocumented route — params unknown, pass them explicitly)
+Create a deal
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. The pipeline and stage must belong to this workspace and the stage to that pipeline. The caller becomes the deal owner; ownerName defaults to the caller's name.
+
+Body (application/json):
+  - `name` (string, required)
+  - `pipelineId` (string, required)
+  - `stageId` (string, required)
+  - `amountCents` (integer|null)
+  - `revenueCents` (integer|null)
+  - `ownerName` (string)
+  - `expectedClose` (string|null<date>)
+  - `category` (string)
+  - `notes` (string)
 
 ### `deals.data-room-analysis.create`
 
@@ -799,9 +836,13 @@ Path params (positional, in order):
 
 `GET /api/deals/follow-ups`
 
-(undocumented route — params unknown, pass them explicitly)
+Deals due a follow-up, by staleness
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member; private deals the caller cannot open are excluded.
+
+Query:
+  - `owner` (string) — Owner name to filter by
+  - `onlyStale` (string) — one of: `1`
 
 ### `deals.forecast.list`
 
@@ -866,32 +907,50 @@ Body (application/json):
 
 ### `deals.get`
 
-`GET /api/deals/{p1}`
+`GET /api/deals/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+One deal with its contacts, team, activity and documents
+
+Requires view access to the deal. Includes contacts (with any active cadence), the deal team, up to 200 activity entries, e-signature envelopes, document views and the enabled cadences.
 
 Path params (positional, in order):
-  - `p1`
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+  - `id`
 
 ### `deals.import.create`
 
 `POST /api/deals/import`
 
-(undocumented route — params unknown, pass them explicitly)
+Import deals from a Google Sheet tab or an Asana project
+
+Any member, using their own Google Sheets or Asana connection. Imports into an existing pipeline or a new one. columnMapping maps source headers to canonical fields and must contain at least one.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `source` (string) — one of: `google-sheets`, `asana`
+  - `spreadsheetId` (string)
+  - `tabName` (string)
+  - `projectGid` (string)
+  - `pipelineId` (string)
+  - `newPipelineName` (string)
+  - `rainRoomStages` (boolean)
+  - `columnMapping` (object, required)
 
 ### `deals.import.preview.create`
 
 `POST /api/deals/import/preview`
 
-(undocumented route — params unknown, pass them explicitly)
+Preview a deal import source
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. For Google Sheets returns the tabs, headers and up to 5 sample rows of a tab (the first tab by default). For Asana, mode workspaces lists workspaces, mode projects lists a workspace's unarchived projects, otherwise previews a project's headers and rows.
+
+Body (application/json):
+  - `source` (string) — one of: `google-sheets`, `asana`
+  - `spreadsheetId` (string)
+  - `tabName` (string)
+  - `mode` (string) — one of: `workspaces`, `projects`
+  - `workspaceGid` (string)
+  - `projectGid` (string)
 
 ### `deals.issuer-campaigns.create`
 
@@ -1035,33 +1094,49 @@ Body: application/json (free-form — pass with `--data`)
 
 `GET /api/deals`
 
-(undocumented route — params unknown, pass them explicitly)
+The Deal Room board
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. Returns pipelines, stages, the deals the caller may see (private deals they cannot reach are filtered out) and each deal's contacts. Creates a default pipeline on first use. Closed and archived deals are excluded unless asked for.
+
+Query:
+  - `pipeline` (string)
+  - `includeClosed` (string) — one of: `1`
+  - `includeArchived` (string) — one of: `1`
 
 ### `deals.sheet-link.list`
 
 `GET /api/deals/sheet-link`
 
-(undocumented route — params unknown, pass them explicitly)
+The Google Sheet linked to a pipeline
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. A link is established by importing from a sheet.
+
+Query:
+  - `pipelineId` (string, required)
 
 ### `deals.sheet-link.sync.create`
 
 `POST /api/deals/sheet-link/sync`
 
-(undocumented route — params unknown, pass them explicitly)
+Run a two-way sync of a pipeline with its linked sheet
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. Imports from the linked sheet, then mirrors outbound. The hourly cron only mirrors outbound; inbound happens only through this call or the agent.
+
+Body (application/json):
+  - `pipelineId` (string, required)
 
 ### `deals.sheet-link.update`
 
 `PATCH /api/deals/sheet-link`
 
-(undocumented route — params unknown, pass them explicitly)
+Configure the outbound mirror for a pipeline's sheet link
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+The mirror tab may not be the source tab.
+
+Body (application/json):
+  - `pipelineId` (string, required)
+  - `mirrorEnabled` (boolean)
+  - `mirrorTabName` (string)
 
 ### `deals.staffing-settings.list`
 
@@ -1088,33 +1163,53 @@ Body (application/json):
 
 `POST /api/deals/stages`
 
-(undocumented route — params unknown, pass them explicitly)
+Create a pipeline stage
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Admins only. kind defaults to open. Omitting sortOrder appends the stage. Numeric fields are clamped (sortOrder 0-100000, staleAfterDays 1-3650, defaultProbability 0-100).
+
+Body (application/json):
+  - `pipelineId` (string, required)
+  - `name` (string, required)
+  - `kind` (string) — one of: `open`, `won`, `lost`
+  - `sortOrder` (integer)
+  - `staleAfterDays` (integer)
+  - `defaultProbability` (number)
+  - `color` (string)
 
 ### `deals.stages.delete`
 
-`DELETE /api/deals/stages/{p1}`
+`DELETE /api/deals/stages/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Delete a pipeline stage
+
+Admins only. Deals in the stage can be moved to another stage with moveTo.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Query:
+  - `moveTo` (string) — Stage id to move the stage's deals to
 
 ### `deals.stages.update`
 
-`PATCH /api/deals/stages/{p1}`
+`PATCH /api/deals/stages/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Update a pipeline stage
+
+Admins only. Changing kind re-derives the closed flag of every deal in the stage.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `name` (string)
+  - `kind` (string) — one of: `open`, `won`, `lost`
+  - `sortOrder` (number)
+  - `staleAfterDays` (number|null)
+  - `defaultProbability` (number|null)
+  - `color` (string|null)
 
 ### `deals.team.list`
 
@@ -1174,14 +1269,56 @@ Path params (positional, in order):
 
 ### `deals.update`
 
-`PATCH /api/deals/{p1}`
+`PATCH /api/deals/{id}`
 
-(undocumented route — params unknown, pass them explicitly)
+Update a deal, its contacts or its cadence enrollments
+
+Requires edit access to the deal. Besides deal fields (only supplied ones change; null clears), side-channels add, update or remove a contact, enroll a contact on the deal in a cadence (sends from the caller's mailbox), stop a cadence (cancelling pending follow-ups) or record activity; each writes a timeline entry. A new stage must be in the deal's pipeline; ownerUserId must be an active member. Forecast-hold changes are audited on the timeline.
 
 Path params (positional, in order):
-  - `p1`
+  - `id`
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Body (application/json):
+  - `name` (string)
+  - `stageId` (string)
+  - `amountCents` (integer|null)
+  - `revenueCents` (integer|null)
+  - `probability` (number|null)
+  - `expectedClose` (string|null<date>)
+  - `ownerName` (string|null)
+  - `ownerUserId` (string|null<uuid>)
+  - `category` (string|null)
+  - `initialCloserName` (string|null)
+  - `finalCloserName` (string|null)
+  - `notes` (string|null)
+  - `staleAfterDays` (integer|null)
+  - `archived` (boolean)
+  - `forecastHold` (boolean)
+  - `forecastHoldReason` (string|null)
+  - `addContact` (object)
+  - `addContact.fullName` (string)
+  - `addContact.email` (string)
+  - `addContact.phone` (string)
+  - `addContact.company` (string)
+  - `addContact.title` (string)
+  - `addContact.role` (string) — one of: `primary`, `initial_closer`, `final_closer`, `owner`, `rr`, `introducer`, `signer`, `watcher`, `other`
+  - `addContact.isPrimary` (boolean)
+  - `removeContactId` (string<uuid>)
+  - `updateContact` (object)
+  - `updateContact.contactId` (string<uuid>)
+  - `updateContact.status` (string|null)
+  - `updateContact.nextStep` (string|null)
+  - `updateContact.nextStepDue` (string|null<date>)
+  - `updateContact.relationshipStatus` (string|null)
+  - `enrollCadence` (object)
+  - `enrollCadence.contactId` (string<uuid>)
+  - `enrollCadence.cadenceId` (string)
+  - `stopCadence` (object)
+  - `stopCadence.contactId` (string<uuid>)
+  - `recordActivity` (object)
+  - `recordActivity.kind` (string) — one of: `note`, `call`, `meeting`, `email_outbound`, `email_inbound`
+  - `recordActivity.summary` (string)
+  - `recordActivity.contactId` (string)
 
 ### `firms.create`
 

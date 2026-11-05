@@ -16,10 +16,10 @@
 | `clients.portal-access.delete` | DELETE | `/api/clients/{id}/portal-access` | Revoke portal access for a client employee |
 | `clients.portal-access.list` | GET | `/api/clients/{id}/portal-access` | List portal members for a client |
 | `clients.portal-access.update` | PATCH | `/api/clients/{id}/portal-access/{memberId}` | Update a portal member's access |
-| `clients.sheet-link.create` | POST | `/api/clients/sheet-link` | (undocumented route — params unknown, pass them explicitly) |
-| `clients.sheet-link.list` | GET | `/api/clients/sheet-link` | (undocumented route — params unknown, pass them explicitly) |
-| `clients.sheet-link.sync.create` | POST | `/api/clients/sheet-link/sync` | (undocumented route — params unknown, pass them explicitly) |
-| `clients.sheet-link.update` | PATCH | `/api/clients/sheet-link` | (undocumented route — params unknown, pass them explicitly) |
+| `clients.sheet-link.create` | POST | `/api/clients/sheet-link` | Link a Google Sheet to the client directory and import it |
+| `clients.sheet-link.list` | GET | `/api/clients/sheet-link` | The Google Sheet linked to the client directory |
+| `clients.sheet-link.sync.create` | POST | `/api/clients/sheet-link/sync` | Run a two-way sync of the client directory with its linked sheet |
+| `clients.sheet-link.update` | PATCH | `/api/clients/sheet-link` | Configure the outbound mirror for the client sheet link |
 | `clients.update` | PATCH | `/api/clients/{id}` | Update a client |
 | `record-shares.create` | POST | `/api/record-shares` | Create record share |
 | `record-shares.delete` | DELETE | `/api/record-shares` | Delete record share |
@@ -178,33 +178,40 @@ Body (application/json):
 
 `POST /api/clients/sheet-link`
 
-(undocumented route — params unknown, pass them explicitly)
+Link a Google Sheet to the client directory and import it
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member with Google Sheets connected. With only `spreadsheet` it is a dry run returning the tab list. With `tab` as well it reads the header row, maps columns (from `columnMapping`, or guessed), runs the import and saves the link. A column must map to `company`.
+
+Body (application/json):
+  - `spreadsheet` (string, required) — Sheets URL or spreadsheet id
+  - `tab` (string)
+  - `columnMapping` (object) — Header to client field
 
 ### `clients.sheet-link.list`
 
 `GET /api/clients/sheet-link`
 
-(undocumented route — params unknown, pass them explicitly)
-
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+The Google Sheet linked to the client directory
 
 ### `clients.sheet-link.sync.create`
 
 `POST /api/clients/sheet-link/sync`
 
-(undocumented route — params unknown, pass them explicitly)
+Run a two-way sync of the client directory with its linked sheet
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+Any member. Imports from the linked sheet, then mirrors outbound. The hourly cron only mirrors outbound; inbound happens only through this call or the agent.
 
 ### `clients.sheet-link.update`
 
 `PATCH /api/clients/sheet-link`
 
-(undocumented route — params unknown, pass them explicitly)
+Configure the outbound mirror for the client sheet link
 
-_Not in either OpenAPI spec — flags are passed through unvalidated._
+The mirror tab may not be the source tab.
+
+Body (application/json):
+  - `mirrorEnabled` (boolean)
+  - `mirrorTabName` (string)
 
 ### `clients.update`
 
