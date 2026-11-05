@@ -29,7 +29,7 @@
     },
     {
       "name": "add_blotter_tasks",
-      "description": "Put emails you wrote in chat (a chat Play) onto the user's Tasks board, so they can be reviewed and Executed there like any Grow task. Supersedes the board's earlier open Grow / chat tasks unless keep_existing. Each email: to, subject, body (no sign-off name — it is added), and optionally deal_id, gmail_thread_id to reply on, ev_class, minutes, rationale. EV is computed by the Blotter, not by you. Your reply automatically gets the live Tasks card, where they can review, edit and send what you added.",
+      "description": "Put emails you wrote in chat (a chat Play) onto the user's Tasks board, so they can be reviewed and Executed there like any Grow task. Supersedes the board's earlier open Grow / chat tasks unless keep_existing. Each email: to, subject, body (no sign-off name — it is added), deal_id — or gates_deal_ids for an internal / compliance task (a task that names no fee it unblocks is not added) — and optionally gmail_thread_id to reply on, ev_class, minutes, principal, rationale. EV is computed by the Blotter, not by you. Your reply automatically gets the live Tasks card, where they can review, edit and send what you added.",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -5660,6 +5660,30 @@
           "name": "refresh_max_shift_points",
           "type": "number",
           "required": false
+        },
+        {
+          "name": "relationship_cost_principal_usd",
+          "type": "number",
+          "required": false,
+          "description": "Deducted from a task's EV when the recipient is a principal (default 1500)."
+        },
+        {
+          "name": "relationship_cost_other_usd",
+          "type": "number",
+          "required": false,
+          "description": "Deducted for anyone else (default 400)."
+        },
+        {
+          "name": "recency_gate_days",
+          "type": "number",
+          "required": false,
+          "description": "No draft to anyone written to in this many days unless they wrote back (default 10)."
+        },
+        {
+          "name": "do_not_contact",
+          "type": "array",
+          "required": false,
+          "description": "Addresses, domains or firm names never drafted to (replaces the list)."
         }
       ]
     },
@@ -7094,7 +7118,7 @@
     },
     {
       "name": "create_knowledge_document",
-      "description": "Create a knowledge document. Prefer structured `blocks` over `body` — each block has {id, type, text} where type is one of paragraph, heading_1..3, bulleted_list_item, numbered_list_item, todo, quote, callout, code, divider. Use [[Page Title]] inside text to link to another doc. Set is_template=true to register a reusable template; pair with template_category to surface it under a heading in the templates gallery.",
+      "description": "Create a knowledge document. Prefer structured `blocks` over `body` — each block has {id, type, text} where type is one of paragraph, heading_1..3, bulleted_list_item, numbered_list_item, todo, quote, callout, code, divider, equation. An equation block's text is TeX source with no $$ delimiters; inline math in any other block is $…$ or \\(…\\). Use [[Page Title]] inside text to link to another doc. Set is_template=true to register a reusable template; pair with template_category to surface it under a heading in the templates gallery.",
       "readOnly": false,
       "scope": "knowledge_files",
       "params": [
@@ -9636,6 +9660,12 @@
           "type": "boolean",
           "required": false,
           "description": "Set true if `body` is HTML rather than plain text. Defaults to false."
+        },
+        {
+          "name": "from_my_mailbox",
+          "type": "boolean",
+          "required": false,
+          "description": "Optional, for to_member / your own address. true sends it as a normal email from YOUR connected mailbox (Gmail, Outlook, …) instead of as a Kavanah notice, so it reads as yours and replies land in your mailbox — use it when the instructions say the email should come from the user's address. If the mailbox cannot send, it still goes out as a Kavanah notice and the result says so (mailbox_error). Without it, a teammate's digest comes from Kavanah's address with replies directed to you."
         }
       ]
     },
@@ -15847,6 +15877,100 @@
       ]
     },
     {
+      "name": "log_blotter_signal",
+      "description": "Feed the next Generate revenue press (a Play never writes Gmail drafts itself). kind hot: an off-email hot signal (WhatsApp, Slack, a call) — email, text, source, deal_id, gmail_thread_id, type (closing|commitment|supply_match|demand_match|price_move|deadline|fee|decision|at_risk|paper|call|intro), strength 1-3; it is pinned to the top. kind net_new: a party with no Gmail thread — email, name, org, deal_id, tier (blue_chips|all_deals|opportunities), why, size, role, side (buy|sell), principal.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "kind",
+          "type": "hot|net_new",
+          "required": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "gmail_thread_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "strength",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "org",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "tier",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "why",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "side",
+          "type": "buy|sell",
+          "required": false
+        },
+        {
+          "name": "principal",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "asked_about_it",
+          "type": "boolean",
+          "required": false,
+          "description": "net_new: they asked about the deal themselves (offerable with no buy-box)."
+        }
+      ]
+    },
+    {
       "name": "log_time_entry",
       "description": "Log a closed time entry. Two ways: professional-services style, passing `hours` as decimal hours (\"0.3\") with `started_at` as the date the work happened — this is what someone means by \"put 0.3 on the Acme matter\"; or stopwatch style, passing explicit started_at and ended_at. `description` is the billing narrative and appears on the invoice line, so write what was actually done (\"Drafted motion to dismiss\"), not a category. The workspace's rounding policy is applied to the billed quantity.",
       "readOnly": false,
@@ -18750,7 +18874,7 @@
     },
     {
       "name": "reject_blotter_task",
-      "description": "Take a task off the board with the user's reason. The next Grow batch reads every reason as a rule, so pass their words (\"the ball is with Umergence\").",
+      "description": "Take a task off the board with the user's reason (its Gmail draft is removed too). Every later batch reads the reason as a rule, so pass their words (\"the ball is with the broker-dealer\").",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -19469,14 +19593,42 @@
       ]
     },
     {
+      "name": "run_blotter_matching",
+      "description": "Matching Engine (no model call): every buy-box against every supply block, fit enforced in code — tier A (all fits incl. price inside their max all-in), B (name + size, price unknown), C (theme only, redirect use). Crossable pairs first, with the metrics vs the targets (supply match 60%+, demand fill 50%+, known ceilings 70%+, Qualified→Diligence above 45%). Pass buybox_id + deal_id + status (offered | declined | open, reason) to record a person's call on one pair; a decline is appended to the buy-box.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "buybox_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "offered|declined|open",
+          "required": false
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "run_blotter_play",
-      "description": "Run a Blotter Play (billed to the caller; nothing is sent). grow: write the next batch of revenue-generating emails onto the Tasks board from the mail, Drive and intel since the last Play. close: put one sell-side Blue Chip's supply in front of every buy-side contact (one per firm), as Gmail drafts. engage: draft replies for one Blue Chip's most likely buyers, as Gmail drafts. refresh: re-read one deal's mail (Blue Chip status, buyers, supply, fee, stage, probability), every change logged and revertible. Confirm with the user before running. When automatic refresh is on and the Blue Chips were last refreshed over 20 hours ago, grow and close refresh them first (also billed), as the page does. Afterwards your reply automatically gets the live Tasks card, so summarize what the Play produced.",
+      "description": "Run a Blotter Play (billed to the caller; nothing is sent). generate: Generate revenue — the ONE button: the top 10 revenue-generating emails across every deal and party, the hot lane first, straight into Gmail Drafts and onto the board; run again for the next ten (anything on the board, cleared in 10 days or in Gmail Drafts is skipped). Prefer it over grow / close. grow: write the next batch of revenue-generating emails onto the Tasks board from the mail, Drive and intel since the last Play. close: put one sell-side Blue Chip's supply in front of every buy-side contact (one per firm), as Gmail drafts. engage: draft replies for one Blue Chip's most likely buyers, as Gmail drafts. refresh: re-read one deal's mail (Blue Chip status, buyers, supply, fee, stage, probability), every change logged and revertible. Confirm with the user before running. When automatic refresh is on and the Blue Chips were last refreshed over 20 hours ago, grow and close refresh them first (also billed), as the page does. Afterwards your reply automatically gets the live Tasks card, so summarize what the Play produced.",
       "readOnly": false,
       "scope": "crm",
       "params": [
         {
           "name": "play",
-          "type": "grow|close|engage|refresh",
+          "type": "generate|grow|close|engage|refresh",
           "required": true
         },
         {
@@ -19542,6 +19694,95 @@
           "type": "number",
           "required": false,
           "description": "Cap returned rows (default 50, max 200)."
+        }
+      ]
+    },
+    {
+      "name": "save_blotter_buybox",
+      "description": "Matching Engine: write a buyer's buy-box, keyed by email — the names and themes they want, ticket size, layers (L1/L2/L3), the max all-in they will pay per name (ceilings: {\"<name or deal_id>\": {maxValuationUsd, maxPps, note}}), fee tolerance, declines [{name, reason, date}] (a declined name is never re-offered), status live|cooling|dead, principal, sources (field → thread/quote). Fields you leave out are kept. Every number they state goes here with its source; unknowns stay blank. Returns their matches. Never reveal a buyer's identity, ceiling or fee tolerance to anyone.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "firm",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "principal",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "names",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "themes",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "size_min_usd",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "size_max_usd",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "layers",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "ceilings",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "fee_tolerance",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "declines",
+          "type": "array",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "live|cooling|dead",
+          "required": false
+        },
+        {
+          "name": "last_confirmed",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD"
+        },
+        {
+          "name": "sources",
+          "type": "object",
+          "required": false
         }
       ]
     },
@@ -19951,6 +20192,45 @@
       ]
     },
     {
+      "name": "scrappy_browser_batch",
+      "description": "Run up to 25 steps in one call. Each step is `{action, ...params}` with the single-step tool's params; names use underscores (wait_for_selector, read_page) plus `wait {ms}`. Check each step's result. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true,
+          "description": "Kavanah browser session id, from `scrappy_browser_list_sessions`."
+        },
+        {
+          "name": "steps",
+          "type": "array",
+          "required": true,
+          "description": "1–25 `{action, ...params}` objects."
+        },
+        {
+          "name": "stop_on_error",
+          "type": "boolean",
+          "required": false,
+          "description": "Default true."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_browser_cancel_agent_run",
+      "description": "Stop a Scrappy agent run at its next turn.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "run_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "scrappy_browser_captcha",
       "description": "Check whether a captcha is blocking the page, and optionally attempt to solve it. Run `detect` first and treat it as diagnosis — it tells you a selector will never appear because the page is challenged, which is otherwise indistinguishable from a slow load. `solve` SPENDS the user's money on a third-party solving service per attempt, so only use it when they have asked you to get through a specific blocked page, and tell them it is being used. A cleared challenge is not a guarantee: these systems also score the session server-side.",
       "readOnly": false,
@@ -20145,13 +20425,13 @@
           "name": "screen_width",
           "type": "number",
           "required": false,
-          "description": "Window width. Default 1280."
+          "description": "Window width, 640–3840. Default 1280."
         },
         {
           "name": "screen_height",
           "type": "number",
           "required": false,
-          "description": "Window height. Default 720."
+          "description": "Window height, 480–2160. Default 720."
         }
       ]
     },
@@ -20262,6 +20542,55 @@
           "type": "number",
           "required": false,
           "description": "Milliseconds. Default ~10000."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_browser_fill_form",
+      "description": "Fill up to 50 fields, then optionally click submit (only if every field succeeded). Target each by `ref` (preferred) or `selector`; string value for text/select, boolean for a checkbox. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true,
+          "description": "Kavanah browser session id, from `scrappy_browser_list_sessions`."
+        },
+        {
+          "name": "fields",
+          "type": "array",
+          "required": true,
+          "description": "{ref|selector, value, kind?: text|select|check, clear?}"
+        },
+        {
+          "name": "submit_ref",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "submit_selector",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "stop_on_error",
+          "type": "boolean",
+          "required": false,
+          "description": "Default true."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_browser_get_agent_run",
+      "description": "Status and summary of one Scrappy agent run.",
+      "readOnly": true,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "run_id",
+          "type": "string",
+          "required": true
         }
       ]
     },
@@ -20476,6 +20805,30 @@
       ]
     },
     {
+      "name": "scrappy_browser_list_agent_runs",
+      "description": "Recent Scrappy agent runs, newest first.",
+      "readOnly": true,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": false,
+          "description": "Kavanah browser session id, from `scrappy_browser_list_sessions`."
+        },
+        {
+          "name": "status",
+          "type": "QUEUED|RUNNING|SUCCEEDED|FAILED|CANCELLED",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "scrappy_browser_list_profiles",
       "description": "List the user's saved logins — sites they have already signed in to, which a session can start from to act as them. Stored cookies are never returned, only labels. Read-only and free. These belong to the user who captured them and cannot be used for anyone else.",
       "readOnly": true,
@@ -20612,6 +20965,63 @@
           "type": "string",
           "required": false,
           "description": "Tab id, when the session has more than one."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_browser_recording",
+      "description": "Screen-record a session. After `stop` the reply has a download link; fetch it BEFORE releasing the session.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true,
+          "description": "Kavanah browser session id, from `scrappy_browser_list_sessions`."
+        },
+        {
+          "name": "action",
+          "type": "start|stop|status|discard",
+          "required": true
+        },
+        {
+          "name": "fps",
+          "type": "number",
+          "required": false,
+          "description": "1–15."
+        },
+        {
+          "name": "max_duration_seconds",
+          "type": "number",
+          "required": false,
+          "description": "Max 900, default 120."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_browser_recover_tab",
+      "description": "Replace a hung tab with a fresh one at the same URL, keeping sign-in. Old refs become invalid.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true,
+          "description": "Kavanah browser session id, from `scrappy_browser_list_sessions`."
+        },
+        {
+          "name": "tab",
+          "type": "string",
+          "required": false,
+          "description": "Default: active tab."
+        },
+        {
+          "name": "restore_url",
+          "type": "boolean",
+          "required": false,
+          "description": "Default true."
         }
       ]
     },
@@ -20922,6 +21332,49 @@
       ]
     },
     {
+      "name": "scrappy_browser_start_agent_run",
+      "description": "Hand a goal to Scrappy's own agent, which drives the session in the background (poll get_agent_run). BILLS Scrappy credits per token in a possibly signed-in browser: only when the user asked, with tight `allowed_hosts`. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true,
+          "description": "Kavanah browser session id, from `scrappy_browser_list_sessions`."
+        },
+        {
+          "name": "task",
+          "type": "string",
+          "required": true,
+          "description": "Max 4000 chars."
+        },
+        {
+          "name": "start_url",
+          "type": "string",
+          "required": false,
+          "description": "Also the only allowed host unless allowed_hosts is set."
+        },
+        {
+          "name": "allowed_hosts",
+          "type": "array",
+          "required": false,
+          "description": "Without this or start_url, the agent is unrestricted."
+        },
+        {
+          "name": "model",
+          "type": "claude-sonnet-5-5|claude-opus-5-5|claude-fable-5-1",
+          "required": false
+        },
+        {
+          "name": "max_steps",
+          "type": "number",
+          "required": false,
+          "description": "1–100."
+        }
+      ]
+    },
+    {
       "name": "scrappy_browser_storage",
       "description": "Read, set, or delete localStorage / sessionStorage entries for the current page. Many single-page apps keep their auth token here, so the same rule as cookies applies: never echo a value that looks like a credential and never copy one out of the session. `action: 'delete'` with no key clears the whole store.",
       "readOnly": false,
@@ -21071,7 +21524,7 @@
           "name": "timeout",
           "type": "number",
           "required": false,
-          "description": "Milliseconds."
+          "description": "Milliseconds, at least 1000."
         }
       ]
     },
@@ -21129,13 +21582,13 @@
           "name": "screen_width",
           "type": "number",
           "required": false,
-          "description": "Window width. Default 1280."
+          "description": "Window width, 640–3840. Default 1280."
         },
         {
           "name": "screen_height",
           "type": "number",
           "required": false,
-          "description": "Window height. Default 720."
+          "description": "Window height, 480–2160. Default 720."
         }
       ]
     },
@@ -21187,7 +21640,7 @@
     },
     {
       "name": "scrappy_create_campaign",
-      "description": "Create a new Scrappy deal campaign. Only `name` is required; the target fields (industry/geography/company size) steer Scrappy's AI source discovery and account ranking.",
+      "description": "Create a new Scrappy deal campaign (it starts as DRAFT). Only `name` is required; the optional target fields are saved into the campaign's deal notes.",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -21201,6 +21654,12 @@
           "name": "description",
           "type": "string",
           "required": false
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "description": "Optional Scrappy project id to file the campaign under."
         },
         {
           "name": "target_industry",
@@ -21330,6 +21789,56 @@
       ]
     },
     {
+      "name": "scrappy_create_outreach_sequence",
+      "description": "Create a DRAFT Scrappy email sequence (nothing is sent). The from address must be on a domain verified in Scrappy. Subject and body support {{firstName}}, {{company}} and similar variables.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "from_email",
+          "type": "string",
+          "required": true,
+          "description": "On a verified Scrappy outreach domain."
+        },
+        {
+          "name": "from_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reply_to",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "body_html",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "body_text",
+          "type": "string",
+          "required": false,
+          "description": "Plain-text alternative."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "scrappy_create_source",
       "description": "Create a new Scrappy scraping source. Requires `name`, `url`, `scrape_type`, and `selectors` (an object of CSS/XPath selectors keyed by the field to extract). The source starts as DRAFT — call `scrappy_activate_source` before running a job against it.",
       "readOnly": false,
@@ -21368,6 +21877,12 @@
           "type": "string",
           "required": false,
           "description": "Optional scraping schedule."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "description": "Scrappy project to create the source in. Optional when the account has exactly one project; otherwise the tool lists them."
         }
       ]
     },
@@ -21382,6 +21897,19 @@
           "type": "number",
           "required": false,
           "description": "Lookback window in days. Default 30, capped at 365."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_delete_outreach_sequence",
+      "description": "Delete a Scrappy email outreach sequence.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "sequence_id",
+          "type": "string",
+          "required": true
         }
       ]
     },
@@ -21402,6 +21930,19 @@
           "type": "number",
           "required": false,
           "description": "How many sources to discover (1-10)."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_enrich_lead",
+      "description": "Enrich one Scrappy lead from the web: finds a LinkedIn / Twitter profile, company domain and likely email addresses (with confidence). Fills ONLY empty fields on the lead.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "lead_id",
+          "type": "string",
+          "required": true
         }
       ]
     },
@@ -21442,7 +21983,13 @@
           "name": "auto_save",
           "type": "boolean",
           "required": false,
-          "description": "Automatically save generated sources to the project."
+          "description": "Automatically save generated sources (as DRAFT)."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "description": "Optional Scrappy project to save generated sources into."
         }
       ]
     },
@@ -21480,6 +22027,263 @@
       "params": [
         {
           "name": "export_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_get_outreach_sequence",
+      "description": "One Scrappy email outreach sequence, including its subject and body.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "sequence_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_import_leads",
+      "description": "Bulk-import up to 1000 leads into Scrappy. Each row needs firstName, lastName or fullName; rows whose email already exists are skipped as duplicates.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "rows",
+          "type": "array",
+          "required": true,
+          "description": "Each: {firstName?, lastName?, fullName?, email?, phone?, company?, companyDomain?, jobTitle?, linkedin?, twitter?, tags?: string[], notes?}."
+        },
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false,
+          "description": "Optional Scrappy project to import into."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_account_viewer",
+      "description": "Get a fresh link to the LinkedIn sign-in browser for an account (the previous link expires in ~5 minutes).",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_cancel_action",
+      "description": "Cancel a LinkedIn invite or message that has not been sent yet (queued, rate-limited or held).",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "action_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_connect_account",
+      "description": "Start connecting the user's LinkedIn: returns a short-lived link to a live browser on linkedin.com where THEY sign in (including 2FA). Then call scrappy_linkedin_verify_account. Opens a browser billed to their Scrappy credits. Also the fix for an account in needs_reauth.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": []
+    },
+    {
+      "name": "scrappy_linkedin_delete_account",
+      "description": "Remove a LinkedIn account from Scrappy, with its saved login, queued actions and synced messages. Irreversible.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_get_action",
+      "description": "The current status of one LinkedIn invite or message (queued / sent / failed …), with any error.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "action_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_list_accepted_connections",
+      "description": "List invitations sent through Scrappy that the recipient accepted.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "since",
+          "type": "string",
+          "required": false,
+          "description": "ISO timestamp."
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Default 50, max 500."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_list_accounts",
+      "description": "List the user's LinkedIn accounts connected through Scrappy, with status (active / not_signed_in / needs_reauth / restricted) and today's invite and message usage against the daily limits.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": []
+    },
+    {
+      "name": "scrappy_linkedin_list_actions",
+      "description": "List queued and completed LinkedIn invites and messages, most recently updated first.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "status",
+          "type": "queued|running|sent|already_connected|invite_pending|not_connected|profile_unavailable|failed|cancelled|rate_limited|needs_reauth",
+          "required": false
+        },
+        {
+          "name": "external_ref",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Default 25, max 200."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_list_messages",
+      "description": "Read the synced LinkedIn inbox for an account (oldest first; syncs about every 15 minutes, recent threads only). Page with `since` = the last message's sentAt.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "since",
+          "type": "string",
+          "required": false,
+          "description": "ISO timestamp; only messages after it."
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Default 50, max 500."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_send_invite",
+      "description": "Queue a LinkedIn connection request from the user's own account to a member profile (linkedin.com/in/…). Reaches a real person. Optional note ≤300 chars. Costs Scrappy credits only if sent. Pass an idempotency_key when retrying so it is never sent twice.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "profile_url",
+          "type": "string",
+          "required": true,
+          "description": "A LinkedIn member profile URL (/in/…). Company and search URLs are refused."
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "required": false,
+          "description": "Invitation note, max 300 characters."
+        },
+        {
+          "name": "external_ref",
+          "type": "string",
+          "required": false,
+          "description": "Your own reference (e.g. a Kavanah client id) to find the action later."
+        },
+        {
+          "name": "idempotency_key",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_send_message",
+      "description": "Queue a LinkedIn direct message from the user's own account. Reaches a real person. Only works for 1st-degree connections — otherwise it ends not_connected and is not charged. Pass an idempotency_key when retrying.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "profile_url",
+          "type": "string",
+          "required": true,
+          "description": "The recipient's LinkedIn profile URL (/in/…)."
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "description": "Message body, max 8000 characters."
+        },
+        {
+          "name": "external_ref",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "idempotency_key",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "scrappy_linkedin_verify_account",
+      "description": "Check whether a LinkedIn account is signed in, after the user finished signing in through the viewer. On success it saves the login and requeues any held actions.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "account_id",
           "type": "string",
           "required": true
         }
@@ -21572,6 +22376,32 @@
       "params": []
     },
     {
+      "name": "scrappy_list_outreach_emails",
+      "description": "Per-recipient delivery status (sent / failed / skipped) for one Scrappy email sequence.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "sequence_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_list_outreach_sequences",
+      "description": "List Scrappy email outreach sequences with status and sent / failed counts.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "project_id",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "scrappy_list_sources",
       "description": "List Scrappy data sources (the configured scrapers, one per target URL). Filter by `status` (DRAFT/ACTIVE/ARCHIVED). A source must be ACTIVE before `scrappy_create_job` can run against it.",
       "readOnly": true,
@@ -21591,24 +22421,63 @@
       ]
     },
     {
-      "name": "scrappy_pipeline_overview",
-      "description": "Get the Scrappy pipeline funnel: total leads, leads by lifecycle status, email-validation rate, new-leads-last-7-days, and conversion rate. Use when the user asks 'how's my Scrappy pipeline?' or wants a dashboard snapshot.",
-      "readOnly": true,
+      "name": "scrappy_merge_leads",
+      "description": "Merge duplicate Scrappy leads into one primary: first non-empty field wins and tags are combined. The duplicates are DELETED from Scrappy and cannot be un-merged — confirm the ids with the user first.",
+      "readOnly": false,
       "scope": "crm",
       "params": [
         {
-          "name": "project_id",
+          "name": "primary_id",
           "type": "string",
-          "required": false,
-          "description": "Optional Scrappy project id to scope to."
+          "required": true,
+          "description": "The lead to keep."
         },
         {
-          "name": "days",
-          "type": "number",
-          "required": false,
-          "description": "Lookback window in days. Default 30, capped at 365."
+          "name": "secondary_ids",
+          "type": "array",
+          "required": true,
+          "description": "1–10 duplicates to fold in and remove."
         }
       ]
+    },
+    {
+      "name": "scrappy_outreach_send_emails",
+      "description": "SEND a Scrappy email sequence to up to 500 Scrappy leads, immediately. Real emails to real people; cannot be recalled. Unsubscribed addresses are skipped and an unsubscribe footer is added. Confirm the sequence and recipients with the user first.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "sequence_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "lead_ids",
+          "type": "array",
+          "required": true,
+          "description": "1–500 Scrappy lead ids."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_pause_job",
+      "description": "Pause a RUNNING Scrappy scraping job. Reports the job's real status afterwards.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "job_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_pipeline_overview",
+      "description": "Get a Scrappy pipeline snapshot for the whole account: total leads, active sources, running and queued jobs, and the most recent jobs. Use when the user asks 'how's my Scrappy pipeline?' or wants a dashboard snapshot.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": []
     },
     {
       "name": "scrappy_push_kavanah_client",
@@ -21621,6 +22490,32 @@
           "type": "string",
           "required": true,
           "description": "Kavanah client id (UUID) to push."
+        }
+      ]
+    },
+    {
+      "name": "scrappy_resume_job",
+      "description": "Resume a PAUSED Scrappy scraping job (no extra charge).",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "job_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "scrappy_retry_job",
+      "description": "Re-queue a failed, cancelled or stuck Scrappy job. Retrying a FAILED or CANCELLED job charges a new scraping job's credits; a completed job cannot be retried.",
+      "readOnly": false,
+      "scope": "workflows_automations",
+      "params": [
+        {
+          "name": "job_id",
+          "type": "string",
+          "required": true
         }
       ]
     },
@@ -21669,6 +22564,54 @@
         },
         {
           "name": "notes",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "scrappy_update_outreach_sequence",
+      "description": "Edit a Scrappy email sequence. Refused while it is sending.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "sequence_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "from_email",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "from_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "reply_to",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "subject",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "body_html",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "body_text",
           "type": "string",
           "required": false
         }
@@ -22248,6 +23191,34 @@
           "type": "number",
           "required": false,
           "description": "New per-minute burst limit per member. At least 1,000,000, and no more than the hourly limit."
+        }
+      ]
+    },
+    {
+      "name": "set_blotter_rulebook",
+      "description": "Replace the desk's rulebook — every email rule from the chat workflows, carried into every drafting prompt (drafting, max 6.5 KB) and every ranking prompt (matching, max 2.5 KB). It layers on the Blotter's own rules (the stricter wins) and never switches off a code-enforced gate. Rewrite it whenever the chat rules change; the Tasks page flags it red past 3 days.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "drafting",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "matching",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
         }
       ]
     },
@@ -25937,7 +26908,7 @@
     },
     {
       "name": "update_blotter_deal",
-      "description": "Edit a deal's Blotter inputs, logged and revertible: supply, terms, next_action, next_deadline (YYYY-MM-DD), side (sell|buy), stage_label, client_role, manual_blue_chip (\"added\" / \"removed\" — never reversed by a refresh — or null to follow the refresh). Pass null to clear.",
+      "description": "Edit a deal's Blotter inputs, logged and revertible: supply, terms, next_action, next_deadline (YYYY-MM-DD), side (sell|buy), stage_label, client_role, manual_blue_chip (\"added\" / \"removed\" — never reversed by a refresh — or null to follow the refresh); bankable (above Verbal); fee_papered (fee first: until true, an unpapered Blue Chip is marketed to nobody and its only task is the fee letter); umg_cleared, supply_hold; price_book {ask, bid, lastTrade, basis, spread, view — the desk's view overrides every draft}; path {buyer, supply, economics, paper, walkaway, steps: [{id, text, owner, due, done}]}; supply_ledger {sizeUsd, minimumUsd, layer L1|L2|L3, valuationUsd (the all-in ask incl. every fee), pps, fees, chain, confirmedAt (YYYY-MM-DD, written confirmation), source}. Every number a counterparty states goes in with its source; unknowns stay blank. Pass null to clear.",
       "readOnly": false,
       "scope": "crm",
       "params": [
@@ -25987,6 +26958,47 @@
           "type": "string|null",
           "required": false,
           "description": "added, removed, or null to follow the refresh."
+        },
+        {
+          "name": "bankable",
+          "type": "boolean|null",
+          "required": false
+        },
+        {
+          "name": "fee_papered",
+          "type": "boolean|null",
+          "required": false
+        },
+        {
+          "name": "umg_cleared",
+          "type": "boolean|null",
+          "required": false
+        },
+        {
+          "name": "supply_hold",
+          "type": "boolean|null",
+          "required": false
+        },
+        {
+          "name": "price_book",
+          "type": "object|null",
+          "required": false
+        },
+        {
+          "name": "path",
+          "type": "object|null",
+          "required": false
+        },
+        {
+          "name": "supply_ledger",
+          "type": "object|null",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false,
+          "description": "Where the numbers came from (thread, call)."
         }
       ]
     },
@@ -26368,7 +27380,7 @@
           "name": "custom_fields",
           "type": "object",
           "required": false,
-          "description": "Named per-deal fields shown on the deal in Deal Room, merged into the existing ones: { \"Vitality Score\": \"80%\", \"RR\": \"Augustine\" }. Values are strings, numbers or booleans; null removes a field. Up to 50 fields."
+          "description": "Named per-deal fields shown on the deal in Deal Room, merged into the existing ones: { \"Vitality Score\": \"80%\", \"RR\": \"Jordan Lee\" }. Values are strings, numbers or booleans; null removes a field. Up to 50 fields."
         },
         {
           "name": "forecast_hold",
@@ -26380,7 +27392,7 @@
           "name": "forecast_hold_reason",
           "type": "string|null",
           "required": false,
-          "description": "Why the deal is held out of the forecast, e.g. 'Compliance hold — Umergence clearance pending'."
+          "description": "Why the deal is held out of the forecast, e.g. 'Compliance hold — broker-dealer clearance pending'."
         },
         {
           "name": "reason",

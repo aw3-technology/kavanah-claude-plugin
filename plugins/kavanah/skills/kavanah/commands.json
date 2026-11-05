@@ -6216,6 +6216,44 @@
       ]
     },
     {
+      "name": "browser.sessions.recording.list",
+      "method": "GET",
+      "path": "/api/browser/sessions/{id}/recording",
+      "group": "Integrations",
+      "summary": "Stream a browser session's finished screen recording (MP4)",
+      "description": "Proxies the recording through Kavanah, because Scrappy's own download URL needs the user's Scrappy API key. Same ACL as every other session route (anyone who may drive the session). Not gated by browser_sessions_enabled: retrieving what was already recorded spends nothing. Once the session is released upstream the recording is gone (404).",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The recording (video/mp4, inline)"
+        },
+        {
+          "code": "401",
+          "description": "Unauthorized"
+        },
+        {
+          "code": "404",
+          "description": "Session not found, or no recording (RECORDING_NOT_FOUND)"
+        },
+        {
+          "code": "409",
+          "description": "The recording is still being written (RECORDING_IN_PROGRESS)"
+        },
+        {
+          "code": "412",
+          "description": "Scrappy is not connected"
+        }
+      ]
+    },
+    {
       "name": "browser.sessions.scrape-mode.create",
       "method": "POST",
       "path": "/api/browser/sessions/{id}/scrape-mode",
@@ -8196,6 +8234,155 @@
       ]
     },
     {
+      "name": "deals.blotter.buyboxes.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/buyboxes",
+      "group": "Deals",
+      "summary": "Write a buyer's buy-box, keyed by email — fields left out are kept; ceilings, declines and sources merge",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "firm",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "principal",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "names",
+          "type": "string[]",
+          "required": false
+        },
+        {
+          "name": "themes",
+          "type": "string[]",
+          "required": false
+        },
+        {
+          "name": "sizeMinUsd",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "sizeMaxUsd",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "layers",
+          "type": "string[]",
+          "required": false
+        },
+        {
+          "name": "ceilings",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "feeTolerance",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "declines",
+          "type": "object[]",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "lastConfirmed",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sources",
+          "type": "object",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved"
+        },
+        {
+          "code": "400",
+          "description": "Invalid buy-box"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.buyboxes.delete",
+      "method": "DELETE",
+      "path": "/api/deals/blotter/buyboxes/{id}",
+      "group": "Deals",
+      "summary": "Remove a buy-box and its matches",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Removed"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.buyboxes.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/buyboxes",
+      "group": "Deals",
+      "summary": "The Matching Engine's buy-box ledger",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Buy-boxes"
+        }
+      ]
+    },
+    {
       "name": "deals.blotter.changes.revert.create",
       "method": "POST",
       "path": "/api/deals/blotter/changes/{id}/revert",
@@ -8383,6 +8570,51 @@
       ]
     },
     {
+      "name": "deals.blotter.generate.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/generate",
+      "group": "Deals",
+      "summary": "One round of Generate revenue — the top revenue-generating emails, hot lane first, into Gmail Drafts and the board",
+      "description": "The one button that replaced Close and Grow pipeline. Reviews every deal and every engaged, unresponsive and not-yet-contacted party and writes up to 4 emails per round, in leaderboard order — the hot lane, then Blue Chips (Bankable, Verbal, probability, fee), All Deals and net-new parties — gated in code by the recency gate, the no-replica rule, do-not-contact, fee first and the Matching Engine's fit. Each is saved to Gmail Drafts and the board. Call round 0..3 with the running `alreadyMade` until `done`; a new runId is \"Next 10\" (anything on the board, cleared in 10 days or in Gmail Drafts is skipped). One model call per round, billed to the caller. Nothing is sent.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "runId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "round",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "alreadyMade",
+          "type": "integer",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The round's result"
+        },
+        {
+          "code": "402",
+          "description": "Not enough credits"
+        },
+        {
+          "code": "403",
+          "description": "The Blotter is off"
+        }
+      ]
+    },
+    {
       "name": "deals.blotter.grow.create",
       "method": "POST",
       "path": "/api/deals/blotter/grow",
@@ -8502,6 +8734,25 @@
       ]
     },
     {
+      "name": "deals.blotter.learning.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/learning",
+      "group": "Deals",
+      "summary": "Learned from your calls — your newest 100 rejections and approvals, what every generation reads",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Decisions, newest first"
+        }
+      ]
+    },
+    {
       "name": "deals.blotter.list",
       "method": "GET",
       "path": "/api/deals/blotter",
@@ -8525,6 +8776,111 @@
         {
           "code": "200",
           "description": "The Blotter view (BlotterView, src/lib/deal-blotter/view-types.ts), or { enabled: false } when the workspace has not turned it on."
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.matching.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/matching",
+      "group": "Deals",
+      "summary": "Record a person's call on one buyer × block pair (offered, declined, open)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "buyboxId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "dealId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "offered",
+            "declined",
+            "open"
+          ]
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved"
+        },
+        {
+          "code": "400",
+          "description": "Invalid"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.matching.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/matching",
+      "group": "Deals",
+      "summary": "Run the Matching Engine (no model call) — matches crossable first, metrics and the targets for an A",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Matches and metrics"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.opportunities.approve.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/opportunities/{id}/approve",
+      "group": "Deals",
+      "summary": "Approve a card — logged for every later generation; opens the draft to review and send (sends nothing)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "note",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Approved"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
         }
       ]
     },
@@ -8584,6 +8940,42 @@
       ]
     },
     {
+      "name": "deals.blotter.opportunities.gmail-deleted.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/opportunities/{id}/gmail-deleted",
+      "group": "Deals",
+      "summary": "Say why a draft flagged \"deleted in Gmail\" was deleted — logged as a rejection (via gmail-deleted)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Logged"
+        },
+        {
+          "code": "400",
+          "description": "No reason given"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
+        }
+      ]
+    },
+    {
       "name": "deals.blotter.opportunities.list",
       "method": "GET",
       "path": "/api/deals/blotter/opportunities",
@@ -8600,6 +8992,31 @@
         {
           "code": "200",
           "description": "Board"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.opportunities.not-now.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/opportunities/{id}/not-now",
+      "group": "Deals",
+      "summary": "Set a card aside without a rejection — no rule is learned; the person is skipped for 10 days",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Set aside"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
         }
       ]
     },
@@ -8890,6 +9307,70 @@
       ]
     },
     {
+      "name": "deals.blotter.rulebook.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/rulebook",
+      "group": "Deals",
+      "summary": "The desk's rulebook every drafting and ranking prompt carries, with version, date and freshness",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Rulebook"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.rulebook.set",
+      "method": "PUT",
+      "path": "/api/deals/blotter/rulebook",
+      "group": "Deals",
+      "summary": "Replace the rulebook (drafting ≤ 6.5 KB, matching ≤ 2.5 KB); it layers on the Blotter's rules, the stricter wins",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "drafting",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "matching",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "version",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved"
+        },
+        {
+          "code": "400",
+          "description": "Empty or over budget"
+        }
+      ]
+    },
+    {
       "name": "deals.blotter.settings.list",
       "method": "GET",
       "path": "/api/deals/blotter/settings",
@@ -8949,6 +9430,138 @@
         {
           "code": "409",
           "description": "The settings were loaded for a different workspace"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.signals.create",
+      "method": "POST",
+      "path": "/api/deals/blotter/signals",
+      "group": "Deals",
+      "summary": "Log an off-email hot signal or a net-new party for the next Generate press",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "hot",
+            "net_new"
+          ]
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "deal_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "gmail_thread_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "strength",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "org",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "tier",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "why",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "size",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "side",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "principal",
+          "type": "boolean",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "201",
+          "description": "Logged"
+        },
+        {
+          "code": "400",
+          "description": "Invalid signal"
+        },
+        {
+          "code": "404",
+          "description": "Deal not found"
+        }
+      ]
+    },
+    {
+      "name": "deals.blotter.signals.list",
+      "method": "GET",
+      "path": "/api/deals/blotter/signals",
+      "group": "Deals",
+      "summary": "Your open hot signals and net-new parties — what the next Generate press pins and serves",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Signals"
         }
       ]
     },

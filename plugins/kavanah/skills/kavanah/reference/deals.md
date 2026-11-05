@@ -1,6 +1,6 @@
 # Deals
 
-95 commands. Generated — run `npm run skill:gen` to refresh.
+109 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -8,17 +8,27 @@
 | `deals.audience.list` | GET | `/api/deals/audience` | This workspace's outbound opt-out list |
 | `deals.audience.schedule.list` | GET | `/api/deals/audience/schedule` | The scheduled AngelSend audience sync |
 | `deals.audience.schedule.set` | PUT | `/api/deals/audience/schedule` | Turn the scheduled AngelSend directions on or off |
+| `deals.blotter.buyboxes.create` | POST | `/api/deals/blotter/buyboxes` | Write a buyer's buy-box, keyed by email — fields left out are kept; ceilings, declines and sources merge |
+| `deals.blotter.buyboxes.delete` | DELETE | `/api/deals/blotter/buyboxes/{id}` | Remove a buy-box and its matches |
+| `deals.blotter.buyboxes.list` | GET | `/api/deals/blotter/buyboxes` | The Matching Engine's buy-box ledger |
 | `deals.blotter.changes.revert.create` | POST | `/api/deals/blotter/changes/{id}/revert` | Revert one logged Blotter change |
 | `deals.blotter.close.create` | POST | `/api/deals/blotter/close` | Close pipeline for one sell-side Blue Chip — drafts to every buy-side contact |
 | `deals.blotter.deals.get` | GET | `/api/deals/blotter/deals/{id}` | One deal's Blotter detail — parties, the "Why", your open drafts, and every change |
 | `deals.blotter.deals.update` | PATCH | `/api/deals/blotter/deals/{id}` | Edit a deal's Blotter inputs (logged, revertible) |
 | `deals.blotter.engage.create` | POST | `/api/deals/blotter/engage` | Draft replies for ONE deal into your Gmail Drafts (nothing is sent) |
+| `deals.blotter.generate.create` | POST | `/api/deals/blotter/generate` | One round of Generate revenue — the top revenue-generating emails, hot lane first, into Gmail Drafts and the board |
 | `deals.blotter.grow.create` | POST | `/api/deals/blotter/grow` | One round of Grow pipeline — up to 4 revenue-generating emails onto your Tasks board |
 | `deals.blotter.intel.create` | POST | `/api/deals/blotter/intel` | Save intel for the next Grow batch |
 | `deals.blotter.intel.list` | GET | `/api/deals/blotter/intel` | The intel Grow pipeline reads (web research and internal notes) |
+| `deals.blotter.learning.list` | GET | `/api/deals/blotter/learning` | Learned from your calls — your newest 100 rejections and approvals, what every generation reads |
 | `deals.blotter.list` | GET | `/api/deals/blotter` | The Deal Blotter — measured close rates, close probabilities with reasons, Blue Chips |
+| `deals.blotter.matching.create` | POST | `/api/deals/blotter/matching` | Record a person's call on one buyer × block pair (offered, declined, open) |
+| `deals.blotter.matching.list` | GET | `/api/deals/blotter/matching` | Run the Matching Engine (no model call) — matches crossable first, metrics and the targets for an A |
+| `deals.blotter.opportunities.approve.create` | POST | `/api/deals/blotter/opportunities/{id}/approve` | Approve a card — logged for every later generation; opens the draft to review and send (sends nothing) |
 | `deals.blotter.opportunities.execute.create` | POST | `/api/deals/blotter/opportunities/{id}/execute` | Send one draft from your Gmail (irreversible) |
+| `deals.blotter.opportunities.gmail-deleted.create` | POST | `/api/deals/blotter/opportunities/{id}/gmail-deleted` | Say why a draft flagged "deleted in Gmail" was deleted — logged as a rejection (via gmail-deleted) |
 | `deals.blotter.opportunities.list` | GET | `/api/deals/blotter/opportunities` | Your Opportunities board |
+| `deals.blotter.opportunities.not-now.create` | POST | `/api/deals/blotter/opportunities/{id}/not-now` | Set a card aside without a rejection — no rule is learned; the person is skipped for 10 days |
 | `deals.blotter.opportunities.reject.create` | POST | `/api/deals/blotter/opportunities/{id}/reject` | Reject a task with a reason the next Grow batch applies |
 | `deals.blotter.opportunities.update` | PATCH | `/api/deals/blotter/opportunities/{id}` | Edit, dismiss or restore one of your drafts |
 | `deals.blotter.plays.create` | POST | `/api/deals/blotter/plays` | Add a curated play |
@@ -26,8 +36,12 @@
 | `deals.blotter.plays.list` | GET | `/api/deals/blotter/plays` | Opportunities — the firm-level plays the desk curates |
 | `deals.blotter.plays.update` | PATCH | `/api/deals/blotter/plays/{id}` | Edit a curated play |
 | `deals.blotter.refresh.create` | POST | `/api/deals/blotter/refresh` | Re-read ONE deal's mail and update its Blotter inputs |
+| `deals.blotter.rulebook.list` | GET | `/api/deals/blotter/rulebook` | The desk's rulebook every drafting and ranking prompt carries, with version, date and freshness |
+| `deals.blotter.rulebook.set` | PUT | `/api/deals/blotter/rulebook` | Replace the rulebook (drafting ≤ 6.5 KB, matching ≤ 2.5 KB); it layers on the Blotter's rules, the stricter wins |
 | `deals.blotter.settings.list` | GET | `/api/deals/blotter/settings` | Deal Blotter settings, plus the caller's own signoff |
 | `deals.blotter.settings.set` | PUT | `/api/deals/blotter/settings` | Change the Deal Blotter settings (admin) |
+| `deals.blotter.signals.create` | POST | `/api/deals/blotter/signals` | Log an off-email hot signal or a net-new party for the next Generate press |
+| `deals.blotter.signals.list` | GET | `/api/deals/blotter/signals` | Your open hot signals and net-new parties — what the next Generate press pins and serves |
 | `deals.blotter.signoff.set` | PUT | `/api/deals/blotter/signoff` | Set your own email signoff for Engage drafts |
 | `deals.blotter.verify-drafts.create` | POST | `/api/deals/blotter/verify-drafts` | Check that a run's Gmail drafts still exist, and flag the missing ones |
 | `deals.cadences.angelsend.create` | POST | `/api/deals/cadences/{id}/angelsend` | Sync a cadence's AngelSend campaign now |
@@ -152,6 +166,47 @@ Body (application/json):
   - `contactsPushEnabled` (boolean)
   - `pushProjectId` (string) — Required to turn the push on.
 
+### `deals.blotter.buyboxes.create`
+
+`POST /api/deals/blotter/buyboxes`
+
+Write a buyer's buy-box, keyed by email — fields left out are kept; ceilings, declines and sources merge
+
+Body (application/json):
+  - `email` (string, required)
+  - `name` (string)
+  - `firm` (string)
+  - `role` (string)
+  - `principal` (boolean)
+  - `names` (string[])
+  - `themes` (string[])
+  - `sizeMinUsd` (number)
+  - `sizeMaxUsd` (number)
+  - `layers` (string[])
+  - `ceilings` (object)
+  - `feeTolerance` (string)
+  - `declines` (object[])
+  - `status` (string)
+  - `lastConfirmed` (string)
+  - `sources` (object)
+
+### `deals.blotter.buyboxes.delete`
+
+`DELETE /api/deals/blotter/buyboxes/{id}`
+
+Remove a buy-box and its matches
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+### `deals.blotter.buyboxes.list`
+
+`GET /api/deals/blotter/buyboxes`
+
+The Matching Engine's buy-box ledger
+
 ### `deals.blotter.changes.revert.create`
 
 `POST /api/deals/blotter/changes/{id}/revert`
@@ -214,6 +269,19 @@ Body (application/json):
   - `mode` (string) — one of: `close`, `grow`
   - `runId` (string)
 
+### `deals.blotter.generate.create`
+
+`POST /api/deals/blotter/generate`
+
+One round of Generate revenue — the top revenue-generating emails, hot lane first, into Gmail Drafts and the board
+
+The one button that replaced Close and Grow pipeline. Reviews every deal and every engaged, unresponsive and not-yet-contacted party and writes up to 4 emails per round, in leaderboard order — the hot lane, then Blue Chips (Bankable, Verbal, probability, fee), All Deals and net-new parties — gated in code by the recency gate, the no-replica rule, do-not-contact, fee first and the Matching Engine's fit. Each is saved to Gmail Drafts and the board. Call round 0..3 with the running `alreadyMade` until `done`; a new runId is "Next 10" (anything on the board, cleared in 10 days or in Gmail Drafts is skipped). One model call per round, billed to the caller. Nothing is sent.
+
+Body (application/json):
+  - `runId` (string, required)
+  - `round` (integer)
+  - `alreadyMade` (integer)
+
 ### `deals.blotter.grow.create`
 
 `POST /api/deals/blotter/grow`
@@ -249,6 +317,12 @@ The intel Grow pipeline reads (web research and internal notes)
 
 Intel filed on a deal the caller cannot open is left out.
 
+### `deals.blotter.learning.list`
+
+`GET /api/deals/blotter/learning`
+
+Learned from your calls — your newest 100 rejections and approvals, what every generation reads
+
 ### `deals.blotter.list`
 
 `GET /api/deals/blotter`
@@ -259,6 +333,36 @@ Opt-in per workspace (Blotter settings → enabled). Off, it answers `{ enabled:
 
 Query:
   - `tz` (string) — IANA timezone for 'today', the week and the streak. Defaults to the caller's.
+
+### `deals.blotter.matching.create`
+
+`POST /api/deals/blotter/matching`
+
+Record a person's call on one buyer × block pair (offered, declined, open)
+
+Body (application/json):
+  - `buyboxId` (string, required)
+  - `dealId` (string, required)
+  - `status` (string, required) — one of: `offered`, `declined`, `open`
+  - `reason` (string)
+
+### `deals.blotter.matching.list`
+
+`GET /api/deals/blotter/matching`
+
+Run the Matching Engine (no model call) — matches crossable first, metrics and the targets for an A
+
+### `deals.blotter.opportunities.approve.create`
+
+`POST /api/deals/blotter/opportunities/{id}/approve`
+
+Approve a card — logged for every later generation; opens the draft to review and send (sends nothing)
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `note` (string)
 
 ### `deals.blotter.opportunities.execute.create`
 
@@ -278,6 +382,18 @@ Body (application/json):
   - `subject` (string)
   - `body` (string)
 
+### `deals.blotter.opportunities.gmail-deleted.create`
+
+`POST /api/deals/blotter/opportunities/{id}/gmail-deleted`
+
+Say why a draft flagged "deleted in Gmail" was deleted — logged as a rejection (via gmail-deleted)
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `reason` (string, required)
+
 ### `deals.blotter.opportunities.list`
 
 `GET /api/deals/blotter/opportunities`
@@ -285,6 +401,15 @@ Body (application/json):
 Your Opportunities board
 
 Every Engage draft made for the caller, open ones first by expected value. Drafts the caller has since sent straight from Gmail are credited first.
+
+### `deals.blotter.opportunities.not-now.create`
+
+`POST /api/deals/blotter/opportunities/{id}/not-now`
+
+Set a card aside without a rejection — no rule is learned; the person is skipped for 10 days
+
+Path params (positional, in order):
+  - `id`
 
 ### `deals.blotter.opportunities.reject.create`
 
@@ -370,6 +495,24 @@ Body (application/json):
   - `dealId` (string, required)
   - `runId` (string)
 
+### `deals.blotter.rulebook.list`
+
+`GET /api/deals/blotter/rulebook`
+
+The desk's rulebook every drafting and ranking prompt carries, with version, date and freshness
+
+### `deals.blotter.rulebook.set`
+
+`PUT /api/deals/blotter/rulebook`
+
+Replace the rulebook (drafting ≤ 6.5 KB, matching ≤ 2.5 KB); it layers on the Blotter's rules, the stricter wins
+
+Body (application/json):
+  - `drafting` (string)
+  - `matching` (string)
+  - `version` (string)
+  - `source` (string)
+
 ### `deals.blotter.settings.list`
 
 `GET /api/deals/blotter/settings`
@@ -387,6 +530,36 @@ Body `{ expectedWorkspaceId?, settings: { enabled, netFeePct, netFeeLabel, horiz
 Body (application/json):
   - `expectedWorkspaceId` (string)
   - `settings` (object, required)
+
+### `deals.blotter.signals.create`
+
+`POST /api/deals/blotter/signals`
+
+Log an off-email hot signal or a net-new party for the next Generate press
+
+Body (application/json):
+  - `kind` (string, required) — one of: `hot`, `net_new`
+  - `email` (string, required)
+  - `text` (string)
+  - `source` (string)
+  - `deal_id` (string)
+  - `gmail_thread_id` (string)
+  - `type` (string)
+  - `strength` (integer)
+  - `name` (string)
+  - `org` (string)
+  - `tier` (string)
+  - `why` (string)
+  - `size` (string)
+  - `role` (string)
+  - `side` (string)
+  - `principal` (boolean)
+
+### `deals.blotter.signals.list`
+
+`GET /api/deals/blotter/signals`
+
+Your open hot signals and net-new parties — what the next Generate press pins and serves
 
 ### `deals.blotter.signoff.set`
 

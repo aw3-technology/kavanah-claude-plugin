@@ -1,6 +1,6 @@
 # Integrations
 
-163 commands. Generated — run `npm run skill:gen` to refresh.
+164 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -15,6 +15,7 @@
 | `browser.sessions.keepalive.create` | POST | `/api/browser/sessions/{id}/keepalive` | Refresh a session's idle timer without acting on the page |
 | `browser.sessions.list` | GET | `/api/browser/sessions` | List browser sessions visible to the caller |
 | `browser.sessions.navigate.create` | POST | `/api/browser/sessions/{id}/navigate` | Navigate a session to a URL |
+| `browser.sessions.recording.list` | GET | `/api/browser/sessions/{id}/recording` | Stream a browser session's finished screen recording (MP4) |
 | `browser.sessions.scrape-mode.create` | POST | `/api/browser/sessions/{id}/scrape-mode` | Turn extraction rendering on or off for a live session |
 | `browser.sessions.share.create` | POST | `/api/browser/sessions/{id}/share` | Share a browser session with the workspace, or revoke sharing |
 | `browser.sessions.viewer-token.create` | POST | `/api/browser/sessions/{id}/viewer-token` | Mint a short-lived viewer URL for the embedded browser |
@@ -305,6 +306,17 @@ Path params (positional, in order):
 
 Body (application/json):
   - `url` (string, required)
+
+### `browser.sessions.recording.list`
+
+`GET /api/browser/sessions/{id}/recording`
+
+Stream a browser session's finished screen recording (MP4)
+
+Proxies the recording through Kavanah, because Scrappy's own download URL needs the user's Scrappy API key. Same ACL as every other session route (anyone who may drive the session). Not gated by browser_sessions_enabled: retrieving what was already recorded spends nothing. Once the session is released upstream the recording is gone (404).
+
+Path params (positional, in order):
+  - `id`
 
 ### `browser.sessions.scrape-mode.create`
 

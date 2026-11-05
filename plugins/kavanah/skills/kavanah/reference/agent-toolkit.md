@@ -1,6 +1,6 @@
 # Agent toolkit
 
-1257 tools the Kavanah AI agent can call (564 read-only).
+1294 tools the Kavanah AI agent can call (574 read-only).
 Generated from the live registry by `npm run skill:gen` — do not hand-edit.
 
 ## How to reach these
@@ -24,11 +24,11 @@ the full agent, not a read-only sandbox.
 
 | Scope | Tools |
 | --- | --- |
+| crm | 242 |
 | tasks_projects | 239 |
-| crm | 216 |
 | knowledge_files | 180 |
 | finance | 153 |
-| workflows_automations | 114 |
+| workflows_automations | 125 |
 | admin | 95 |
 | reports_analytics | 78 |
 | email_calendar | 71 |
@@ -286,9 +286,9 @@ the full agent, not a read-only sandbox.
 - **`update_boardroom`** — Change a standing exec meeting: rename it, reset the agenda or chair, change the cadence, change how many discussion rounds it runs, replace who sits at the table, or arm/disarm it. Only the fields you pass change. Passing `seats` REPLACES the whole table, so include every exec who should stay.
   - required: `boardroom`
 
-## crm (216)
+## crm (242)
 
-- **`add_blotter_tasks`** — Put emails you wrote in chat (a chat Play) onto the user's Tasks board, so they can be reviewed and Executed there like any Grow task. Supersedes the board's earlier open Grow / chat tasks unless keep_existing. Each email: to, subject, body (no sign-off name — it is added), and optionally deal_id, gmail_thread_id to reply on, ev_class, minutes, rationale. EV is computed by the Blotter, not by you. Your reply automatically gets the live Tasks card, where they can review, edit and send what you added.
+- **`add_blotter_tasks`** — Put emails you wrote in chat (a chat Play) onto the user's Tasks board, so they can be reviewed and Executed there like any Grow task. Supersedes the board's earlier open Grow / chat tasks unless keep_existing. Each email: to, subject, body (no sign-off name — it is added), deal_id — or gates_deal_ids for an internal / compliance task (a task that names no fee it unblocks is not added) — and optionally gmail_thread_id to reply on, ev_class, minutes, principal, rationale. EV is computed by the Blotter, not by you. Your reply automatically gets the live Tasks card, where they can review, edit and send what you added.
   - required: `emails`
 - **`add_client_employee`** — Add an employee record to a client's roster.
   - required: `client_id`, `name`
@@ -420,6 +420,8 @@ the full agent, not a read-only sandbox.
   - required: `request_page_id`
 - **`list_request_pages`** _(read-only)_ — List the public request-intake pages this workspace has published. Returns each page's title, share token, status, and submission counts.
 - **`list_stale_deals`** _(read-only)_ — List deals that have crossed their per-stage staleness threshold and need follow-up. Optionally filter by owner_name. Use this as the source for the daily follow-up brief.
+- **`log_blotter_signal`** — Feed the next Generate revenue press (a Play never writes Gmail drafts itself). kind hot: an off-email hot signal (WhatsApp, Slack, a call) — email, text, source, deal_id, gmail_thread_id, type (closing|commitment|supply_match|demand_match|price_move|deadline|fee|decision|at_risk|paper|call|intro), strength 1-3; it is pinned to the top. kind net_new: a party with no Gmail thread — email, name, org, deal_id, tier (blue_chips|all_deals|opportunities), why, size, role, side (buy|sell), principal.
+  - required: `kind`, `email`
 - **`manage_blotter_play`** — The Opportunities list — firm-level strategic plays the desk curates. action add (firm, title, notes), update (play_id + fields), remove (play_id), list.
   - required: `action`
 - **`merge_contacts`** — Merge a DUPLICATE contact into the one to keep. Admin only. The kept contact's empty fields are filled from the duplicate — nothing it already holds is overwritten, and any disagreement is reported. Every deal link, cadence enrollment, email/meeting activity, document view and sheet record pointing at the duplicate moves to the kept contact; if both were enrolled in the same sequence, the duplicate's enrollment is cancelled so the person is not mailed twice. The duplicate is archived, and future sheet syncs and AngelSend pulls route its email to the kept contact. Undoable (fields edited since are kept; cancelled enrollments stay cancelled). Confirm which record is kept before calling.
@@ -438,7 +440,7 @@ the full agent, not a read-only sandbox.
 - **`reconcile_contacts_into_firms`** — Build the institution layer from contacts that already exist: group them by their free-text employer, create a firm for each, and attach them. This is what turns 'two contacts at the same fund are two strings that happen to match' into one firm with two relationships. Run it once after importing a contact list, and whenever a bulk import lands. Idempotent — it only ever fills an EMPTY firm link, so a contact someone deliberately pointed elsewhere is never overruled. Pass dry_run to see the plan before writing.
 - **`record_deal_activity`** — Append a free-form activity row to a deal's timeline. Use for notes, manual call/meeting logs, and outbound communication that didn't flow through Kavanah.
   - required: `deal_id`, `kind`, `summary`
-- **`reject_blotter_task`** — Take a task off the board with the user's reason. The next Grow batch reads every reason as a rule, so pass their words ("the ball is with Umergence").
+- **`reject_blotter_task`** — Take a task off the board with the user's reason (its Gmail draft is removed too). Every later batch reads the reason as a rule, so pass their words ("the ball is with the broker-dealer").
   - required: `blotter_task_id`, `reason`
 - **`release_next_investor_batch`** — Move the next tranche of ranked investors into the working set for a deal — the 'now do the next hundred' step. REFUSES while firms from the current set are still open, and that refusal is the point: a second tranche arriving while the first is half-worked turns a priority order into a dump. Mark firms approached or dismissed to clear the set, or pass force to override deliberately. Releasing sends nothing; it marks who is in play.
   - required: `deal_id`
@@ -451,33 +453,77 @@ the full agent, not a read-only sandbox.
   - required: `blotter_task_id`
 - **`revert_blotter_change`** — Undo one logged Blotter change (from get_blotter_deal). Refused when the field has changed again since.
   - required: `change_id`
-- **`run_blotter_play`** — Run a Blotter Play (billed to the caller; nothing is sent). grow: write the next batch of revenue-generating emails onto the Tasks board from the mail, Drive and intel since the last Play. close: put one sell-side Blue Chip's supply in front of every buy-side contact (one per firm), as Gmail drafts. engage: draft replies for one Blue Chip's most likely buyers, as Gmail drafts. refresh: re-read one deal's mail (Blue Chip status, buyers, supply, fee, stage, probability), every change logged and revertible. Confirm with the user before running. When automatic refresh is on and the Blue Chips were last refreshed over 20 hours ago, grow and close refresh them first (also billed), as the page does. Afterwards your reply automatically gets the live Tasks card, so summarize what the Play produced.
+- **`run_blotter_matching`** — Matching Engine (no model call): every buy-box against every supply block, fit enforced in code — tier A (all fits incl. price inside their max all-in), B (name + size, price unknown), C (theme only, redirect use). Crossable pairs first, with the metrics vs the targets (supply match 60%+, demand fill 50%+, known ceilings 70%+, Qualified→Diligence above 45%). Pass buybox_id + deal_id + status (offered | declined | open, reason) to record a person's call on one pair; a decline is appended to the buy-box.
+- **`run_blotter_play`** — Run a Blotter Play (billed to the caller; nothing is sent). generate: Generate revenue — the ONE button: the top 10 revenue-generating emails across every deal and party, the hot lane first, straight into Gmail Drafts and onto the board; run again for the next ten (anything on the board, cleared in 10 days or in Gmail Drafts is skipped). Prefer it over grow / close. grow: write the next batch of revenue-generating emails onto the Tasks board from the mail, Drive and intel since the last Play. close: put one sell-side Blue Chip's supply in front of every buy-side contact (one per firm), as Gmail drafts. engage: draft replies for one Blue Chip's most likely buyers, as Gmail drafts. refresh: re-read one deal's mail (Blue Chip status, buyers, supply, fee, stage, probability), every change logged and revertible. Confirm with the user before running. When automatic refresh is on and the Blue Chips were last refreshed over 20 hours ago, grow and close refresh them first (also billed), as the page does. Afterwards your reply automatically gets the live Tasks card, so summarize what the Play produced.
   - required: `play`
+- **`save_blotter_buybox`** — Matching Engine: write a buyer's buy-box, keyed by email — the names and themes they want, ticket size, layers (L1/L2/L3), the max all-in they will pay per name (ceilings: {"<name or deal_id>": {maxValuationUsd, maxPps, note}}), fee tolerance, declines [{name, reason, date}] (a declined name is never re-offered), status live|cooling|dead, principal, sources (field → thread/quote). Fields you leave out are kept. Every number they state goes here with its source; unknowns stay blank. Returns their matches. Never reveal a buyer's identity, ceiling or fee tolerance to anyone.
+  - required: `email`
 - **`save_blotter_intel`** — Save intel the next Grow batch reads: web research you did (kind web, with the source URL) or an internal note (kind internal). Optional deal_id.
   - required: `body`
 - **`scrappy_bulk_update_leads`** — Update many Scrappy leads at once (max 1000). Set a common `status`, and/or add/remove tags across all of them. Use for bulk qualification or re-tagging.
   - required: `lead_ids`
 - **`scrappy_bulk_validate_emails`** — Queue Scrappy email validation for many leads at once (max 1000). Validation runs asynchronously; poll individual leads afterward with `scrappy_get_lead`.
   - required: `lead_ids`
-- **`scrappy_create_campaign`** — Create a new Scrappy deal campaign. Only `name` is required; the target fields (industry/geography/company size) steer Scrappy's AI source discovery and account ranking.
+- **`scrappy_create_campaign`** — Create a new Scrappy deal campaign (it starts as DRAFT). Only `name` is required; the optional target fields are saved into the campaign's deal notes.
   - required: `name`
 - **`scrappy_create_lead`** — Manually create a Scrappy lead. `source_url` is required (the URL the lead was found at); everything else is optional contact detail. To push an existing Kavanah client into Scrappy, prefer `scrappy_push_kavanah_client` (idempotent).
   - required: `source_url`
+- **`scrappy_create_outreach_sequence`** — Create a DRAFT Scrappy email sequence (nothing is sent). The from address must be on a domain verified in Scrappy. Subject and body support {{firstName}}, {{company}} and similar variables.
+  - required: `name`, `from_email`, `reply_to`, `subject`, `body_html`
+- **`scrappy_delete_outreach_sequence`** — Delete a Scrappy email outreach sequence.
+  - required: `sequence_id`
+- **`scrappy_enrich_lead`** — Enrich one Scrappy lead from the web: finds a LinkedIn / Twitter profile, company domain and likely email addresses (with confidence). Fills ONLY empty fields on the lead.
+  - required: `lead_id`
 - **`scrappy_get_lead`** _(read-only)_ — Fetch a single Scrappy lead by id, including job and source info. Use to inspect one lead in detail before qualifying it.
   - required: `lead_id`
+- **`scrappy_get_outreach_sequence`** _(read-only)_ — One Scrappy email outreach sequence, including its subject and body.
+  - required: `sequence_id`
+- **`scrappy_import_leads`** — Bulk-import up to 1000 leads into Scrappy. Each row needs firstName, lastName or fullName; rows whose email already exists are skipped as duplicates.
+  - required: `rows`
+- **`scrappy_linkedin_account_viewer`** — Get a fresh link to the LinkedIn sign-in browser for an account (the previous link expires in ~5 minutes).
+  - required: `account_id`
+- **`scrappy_linkedin_cancel_action`** — Cancel a LinkedIn invite or message that has not been sent yet (queued, rate-limited or held).
+  - required: `action_id`
+- **`scrappy_linkedin_connect_account`** — Start connecting the user's LinkedIn: returns a short-lived link to a live browser on linkedin.com where THEY sign in (including 2FA). Then call scrappy_linkedin_verify_account. Opens a browser billed to their Scrappy credits. Also the fix for an account in needs_reauth.
+- **`scrappy_linkedin_delete_account`** — Remove a LinkedIn account from Scrappy, with its saved login, queued actions and synced messages. Irreversible.
+  - required: `account_id`
+- **`scrappy_linkedin_get_action`** _(read-only)_ — The current status of one LinkedIn invite or message (queued / sent / failed …), with any error.
+  - required: `action_id`
+- **`scrappy_linkedin_list_accepted_connections`** _(read-only)_ — List invitations sent through Scrappy that the recipient accepted.
+  - required: `account_id`
+- **`scrappy_linkedin_list_accounts`** _(read-only)_ — List the user's LinkedIn accounts connected through Scrappy, with status (active / not_signed_in / needs_reauth / restricted) and today's invite and message usage against the daily limits.
+- **`scrappy_linkedin_list_actions`** _(read-only)_ — List queued and completed LinkedIn invites and messages, most recently updated first.
+- **`scrappy_linkedin_list_messages`** _(read-only)_ — Read the synced LinkedIn inbox for an account (oldest first; syncs about every 15 minutes, recent threads only). Page with `since` = the last message's sentAt.
+  - required: `account_id`
+- **`scrappy_linkedin_send_invite`** — Queue a LinkedIn connection request from the user's own account to a member profile (linkedin.com/in/…). Reaches a real person. Optional note ≤300 chars. Costs Scrappy credits only if sent. Pass an idempotency_key when retrying so it is never sent twice.
+  - required: `account_id`, `profile_url`
+- **`scrappy_linkedin_send_message`** — Queue a LinkedIn direct message from the user's own account. Reaches a real person. Only works for 1st-degree connections — otherwise it ends not_connected and is not charged. Pass an idempotency_key when retrying.
+  - required: `account_id`, `profile_url`, `text`
+- **`scrappy_linkedin_verify_account`** — Check whether a LinkedIn account is signed in, after the user finished signing in through the viewer. On success it saves the login and requeues any held actions.
+  - required: `account_id`
 - **`scrappy_list_accounts`** _(read-only)_ — List Scrappy 'accounts' — aggregated company view, one row per company domain with lead counts. Useful when the user asks 'which companies has Scrappy found leads at?'.
 - **`scrappy_list_campaigns`** _(read-only)_ — List Scrappy campaigns (lead-gen programs) with status (ACTIVE/PAUSED/COMPLETED/ARCHIVED) and target attributes.
 - **`scrappy_list_leads`** _(read-only)_ — List leads in the user's Scrappy account. Filter by `status` (Scrappy's lifecycle stage) and/or `company` (substring match). For the calling Kavanah workspace's clients use `list_clients` instead; Scrappy is the upstream lead funnel.
-- **`scrappy_pipeline_overview`** _(read-only)_ — Get the Scrappy pipeline funnel: total leads, leads by lifecycle status, email-validation rate, new-leads-last-7-days, and conversion rate. Use when the user asks 'how's my Scrappy pipeline?' or wants a dashboard snapshot.
+- **`scrappy_list_outreach_emails`** _(read-only)_ — Per-recipient delivery status (sent / failed / skipped) for one Scrappy email sequence.
+  - required: `sequence_id`
+- **`scrappy_list_outreach_sequences`** _(read-only)_ — List Scrappy email outreach sequences with status and sent / failed counts.
+- **`scrappy_merge_leads`** — Merge duplicate Scrappy leads into one primary: first non-empty field wins and tags are combined. The duplicates are DELETED from Scrappy and cannot be un-merged — confirm the ids with the user first.
+  - required: `primary_id`, `secondary_ids`
+- **`scrappy_outreach_send_emails`** — SEND a Scrappy email sequence to up to 500 Scrappy leads, immediately. Real emails to real people; cannot be recalled. Unsubscribed addresses are skipped and an unsubscribe footer is added. Confirm the sequence and recipients with the user first.
+  - required: `sequence_id`, `lead_ids`
+- **`scrappy_pipeline_overview`** _(read-only)_ — Get a Scrappy pipeline snapshot for the whole account: total leads, active sources, running and queued jobs, and the most recent jobs. Use when the user asks 'how's my Scrappy pipeline?' or wants a dashboard snapshot.
 - **`scrappy_push_kavanah_client`** — Push a Kavanah client into Scrappy as a lead. Idempotent — if the client was already pushed, returns the existing Scrappy lead id without creating a duplicate. Requires the client to have either a website or a contact email (used to derive Scrappy's required sourceUrl).
   - required: `client_id`
 - **`scrappy_update_lead`** — Update a Scrappy lead: change `status` (lifecycle stage), replace `tags`, or set `notes`. Use after the user qualifies/disqualifies a lead in conversation.
   - required: `lead_id`
+- **`scrappy_update_outreach_sequence`** — Edit a Scrappy email sequence. Refused while it is sending.
+  - required: `sequence_id`
 - **`scrappy_validate_lead_email`** — Trigger Scrappy's email validation for a single lead. Returns status (VALID/INVALID/UNKNOWN) and tier. Errors if the lead has no email.
   - required: `lead_id`
 - **`scrappy_who_am_i`** _(read-only)_ — Confirm Scrappy is connected for the calling user and return the linked account's email plus lifetime stats (sources, jobs, leads). Use as a quick health check before recommending Scrappy actions.
 - **`search_companies`** — Search Apollo.io for companies — issuers, funds, broker-dealers — by employee count, revenue, funding, industry keywords and location. Uses the CALLER'S OWN Apollo key (Settings → Integrations; organization search is on paid Apollo plans only). COSTS ONE APOLLO CREDIT PER PAGE, whatever the page holds, so use per_page up to 100 and narrow filters rather than paging. What Apollo CANNOT do, and you must not claim it did: it has no filter for funding STAGE (Series C, pre-IPO) and no knowledge of a raise IN PROGRESS. For 'later-stage companies raising $100M+', the closest honest proxy is latest_funding_min_dollars=100000000 (the LATEST COMPLETED round was $100M or more) plus exclude_public=true (drops companies Apollo lists with a stock ticker — applied after the page is fetched, so it does not save the credit). Say that it is a proxy. Results are not saved; add the ones worth keeping with add_firm_from_search.
 - **`search_prospects`** _(read-only)_ — Search millions of professional profiles for people matching a role, firm, sector or location — the discovery step for building an investor, issuer or partner list. FREE: this costs nothing and does not reveal email addresses. Results carry a record id you pass to unlock_prospect_email when you have decided who is worth paying for. Use this to build and rank a candidate list BEFORE spending anything.
+- **`set_blotter_rulebook`** — Replace the desk's rulebook — every email rule from the chat workflows, carried into every drafting prompt (drafting, max 6.5 KB) and every ranking prompt (matching, max 2.5 KB). It layers on the Blotter's own rules (the stricter wins) and never switches off a code-enforced gate. Rewrite it whenever the chat rules change; the Tasks page flags it red past 3 days.
 - **`set_client_health`** — Set client health to Healthy, Watch, or At Risk.
   - required: `client_id`, `health`
 - **`set_client_links`** — Replace the full set of reference links on a client. This is a REPLACE, not an append — call get_client_links first and include any existing links you want to keep, or they are removed. Pass an empty array to clear all links.
@@ -521,7 +567,7 @@ the full agent, not a read-only sandbox.
 - **`sync_network_sheet`** — Run the network sheet sync now instead of waiting for the hourly job: re-import (gap-filling) and, when the mirror is on, rewrite the mirror tab with Kavanah's whole network. WRITES TO THE CUSTOMER'S SPREADSHEET when the mirror is armed. Pass link_id when more than one sheet is linked; omit it to sync every linked sheet.
 - **`unlink_network_sheet`** — Stop syncing a sheet with the network: the hourly import and mirror stop for it. Nothing already imported is removed, and the sheet itself is not touched. Relinking the same tab later picks up where it left off. Undoable.
 - **`unlock_prospect_email`** — Obtain a verified email address for ONE person. THIS SPENDS MONEY — roughly $0.02 per contact on ppl.contact, or a plan credit on Apollo or Hunter. Providers are tried cheapest-first and the first real address wins. Pass the record id from search_prospects when you have one; otherwise a name plus a company domain. Confirm with the user before unlocking in bulk, and tell them the expected cost. A record that comes back with no address still may have cost a credit.
-- **`update_blotter_deal`** — Edit a deal's Blotter inputs, logged and revertible: supply, terms, next_action, next_deadline (YYYY-MM-DD), side (sell|buy), stage_label, client_role, manual_blue_chip ("added" / "removed" — never reversed by a refresh — or null to follow the refresh). Pass null to clear.
+- **`update_blotter_deal`** — Edit a deal's Blotter inputs, logged and revertible: supply, terms, next_action, next_deadline (YYYY-MM-DD), side (sell|buy), stage_label, client_role, manual_blue_chip ("added" / "removed" — never reversed by a refresh — or null to follow the refresh); bankable (above Verbal); fee_papered (fee first: until true, an unpapered Blue Chip is marketed to nobody and its only task is the fee letter); umg_cleared, supply_hold; price_book {ask, bid, lastTrade, basis, spread, view — the desk's view overrides every draft}; path {buyer, supply, economics, paper, walkaway, steps: [{id, text, owner, due, done}]}; supply_ledger {sizeUsd, minimumUsd, layer L1|L2|L3, valuationUsd (the all-in ask incl. every fee), pps, fees, chain, confirmedAt (YYYY-MM-DD, written confirmation), source}. Every number a counterparty states goes in with its source; unknowns stay blank. Pass null to clear.
   - required: `deal_id`
 - **`update_client`** — Update fields on an existing client. Provide only fields to change. To change the client's links use set_client_links instead.
   - required: `client_id`
@@ -1112,7 +1158,7 @@ the full agent, not a read-only sandbox.
   - required: `template_id`
 - **`create_glossary_term`** — Add a glossary term.
   - required: `term`
-- **`create_knowledge_document`** — Create a knowledge document. Prefer structured `blocks` over `body` — each block has {id, type, text} where type is one of paragraph, heading_1..3, bulleted_list_item, numbered_list_item, todo, quote, callout, code, divider. Use [[Page Title]] inside text to link to another doc. Set is_template=true to register a reusable template; pair with template_category to surface it under a heading in the templates gallery.
+- **`create_knowledge_document`** — Create a knowledge document. Prefer structured `blocks` over `body` — each block has {id, type, text} where type is one of paragraph, heading_1..3, bulleted_list_item, numbered_list_item, todo, quote, callout, code, divider, equation. An equation block's text is TeX source with no $$ delimiters; inline math in any other block is $…$ or \(…\). Use [[Page Title]] inside text to link to another doc. Set is_template=true to register a reusable template; pair with template_category to surface it under a heading in the templates gallery.
   - required: `title`
 - **`create_onboarding_doc`** — Create or replace an onboarding doc for a role.
   - required: `role`
@@ -1943,7 +1989,7 @@ the full agent, not a read-only sandbox.
 - **`twin_respond_to_meeting`** _(read-only)_ — After a meeting the twin's owner missed: read the transcript and give their response — what they would have said, where they would disagree, what they want followed up, and a draft reply to the participants. Grounded in their indexed work, and explicit about anything it cannot judge on their behalf. Requires a recorded meeting with a finished transcript.
   - required: `meeting_id`
 
-## workflows_automations (114)
+## workflows_automations (125)
 
 - **`advance_runbook`** — Record the current step of a runbook run as done (or skipped) and get the next step. Pass a short `note` on what you did. If the run is paused at a CHECKPOINT, you must first surface it to the user and get their go-ahead, then call this with confirmed=true to pass the checkpoint. Returns the next step, or a completion message when the runbook is finished.
   - required: `run_id`
@@ -2010,6 +2056,10 @@ the full agent, not a read-only sandbox.
   - required: `followup_id`
 - **`scrappy_activate_source`** — Activate a DRAFT Scrappy source so it can be scraped. Returns the updated source. No-op error if it's already active.
   - required: `source_id`
+- **`scrappy_browser_batch`** — Run up to 25 steps in one call. Each step is `{action, ...params}` with the single-step tool's params; names use underscores (wait_for_selector, read_page) plus `wait {ms}`. Check each step's result. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`, `steps`
+- **`scrappy_browser_cancel_agent_run`** — Stop a Scrappy agent run at its next turn.
+  - required: `run_id`
 - **`scrappy_browser_captcha`** — Check whether a captcha is blocking the page, and optionally attempt to solve it. Run `detect` first and treat it as diagnosis — it tells you a selector will never appear because the page is challenged, which is otherwise indistinguishable from a slow load. `solve` SPENDS the user's money on a third-party solving service per attempt, so only use it when they have asked you to get through a specific blocked page, and tell them it is being used. A cleared challenge is not a guarantee: these systems also score the session server-side.
   - required: `session_id`
 - **`scrappy_browser_capture_profile`** — Save a live session's signed-in state into a saved login, so later sessions start already authenticated. Only works on a session the user owns. Confirm with the user before calling — this persists their live login for reuse.
@@ -2030,6 +2080,10 @@ the full agent, not a read-only sandbox.
   - required: `session_id`, `selector`
 - **`scrappy_browser_evaluate`** — Run a JavaScript expression in the page and return its result. The escape hatch when no other tool fits — computing a value from many elements, reading a framework's in-memory state, or driving a control that responds to nothing else. Prefer a purpose-built tool when one exists: they report failure meaningfully and this returns whatever the expression happened to evaluate to. NEVER use it to read passwords, cookies, tokens or card numbers out of a page, and never send such values anywhere — the user signed in here on the understanding that their credentials stay in the browser.
   - required: `session_id`, `expression`
+- **`scrappy_browser_fill_form`** — Fill up to 50 fields, then optionally click submit (only if every field succeeded). Target each by `ref` (preferred) or `selector`; string value for text/select, boolean for a checkbox. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`, `fields`
+- **`scrappy_browser_get_agent_run`** _(read-only)_ — Status and summary of one Scrappy agent run.
+  - required: `run_id`
 - **`scrappy_browser_get_console`** — Read the page's console messages, for diagnosing a page that silently failed. NOTE this DRAINS the buffer: it returns what has accumulated since the last call and clears it, so read it once right after the action you are investigating rather than polling.
   - required: `session_id`
 - **`scrappy_browser_get_dom`** — Fetch the page's DOM structure. Use when you need the real element tree to build a selector — `scrappy_browser_scrape` with format 'skeleton' is usually better and much smaller, so try that first.
@@ -2048,6 +2102,7 @@ the full agent, not a read-only sandbox.
   - required: `session_id`, `enabled`
 - **`scrappy_browser_keepalive`** — Mark a session as still in use without acting on the page. Rarely needed from the agent — any action already counts as activity. Use it only when a human is doing something in the viewer (reading, completing MFA) and the session would otherwise look idle. This buys ONE idle window (~30 minutes); to hold a session open while nobody is watching it, use `scrappy_browser_keep_awake` instead.
   - required: `session_id`
+- **`scrappy_browser_list_agent_runs`** _(read-only)_ — Recent Scrappy agent runs, newest first.
 - **`scrappy_browser_list_profiles`** _(read-only)_ — List the user's saved logins — sites they have already signed in to, which a session can start from to act as them. Stored cookies are never returned, only labels. Read-only and free. These belong to the user who captured them and cannot be used for anyone else.
 - **`scrappy_browser_list_sessions`** _(read-only)_ — List the user's live browser sessions plus any shared with the workspace, with each one's id, status and whether it was started from a saved login. Call this first — every other browser tool needs a session id. Read-only and free.
 - **`scrappy_browser_list_tabs`** — List the session's open tabs with the tab id every tab operation needs. Call this before `scrappy_browser_manage_tab` — the id is an internal target id that appears in no other response, so there is no other way to name a tab. Also the way to notice that a click opened a popup you did not expect.
@@ -2061,6 +2116,10 @@ the full agent, not a read-only sandbox.
 - **`scrappy_browser_press_key`** — Press a key — 'Enter' to submit a search or form, 'Escape' to dismiss a modal, 'Tab' to move focus, 'ArrowDown'/'ArrowUp' to walk an autocomplete list. Many search boxes have no submit button at all and only respond to Enter, so this is often the only way to run a query. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
   - required: `session_id`, `key`
 - **`scrappy_browser_read_page`** — Read the page as a list of interactive elements — each with its role, its visible name, its state, and a `ref` to act on. START HERE before clicking or typing on any page you have not already read. Pass a returned `ref` to click, type, hover, press_key, select_option, scroll, drag_drop or element_info instead of writing a CSS selector. This is Chrome's own accessibility computation, so the name a node comes back with is the one a person reads off the screen — aria-label, label[for], alt text and content are already folded in, none of which a selector can see. Guessing a selector from a screenshot is how a form gets filled wrong in a way that reports success: typing a person's NAME into the field that wanted their record id looks identical to a correct type. Reading the page first removes the guess. Refs are invalidated by anything that re-renders the page. If one comes back stale, call this again for fresh refs — do not fall back to inventing a selector.
+  - required: `session_id`
+- **`scrappy_browser_recording`** — Screen-record a session. After `stop` the reply has a download link; fetch it BEFORE releasing the session.
+  - required: `session_id`, `action`
+- **`scrappy_browser_recover_tab`** — Replace a hung tab with a fresh one at the same URL, keeping sign-in. Old refs become invalid.
   - required: `session_id`
 - **`scrappy_browser_release_session`** — Close a browser session, freeing capacity and STOPPING the per-minute meter. Always do this when finished — an abandoned session bills until it is reaped 30 minutes later.
   - required: `session_id`
@@ -2086,6 +2145,8 @@ the full agent, not a read-only sandbox.
   - required: `session_id`, `width`, `height`
 - **`scrappy_browser_sleep_session`** — Snapshot the session's signed-in state and open tabs, then shut the browser down — which STOPS the per-minute meter while keeping the login. Returns a snapshot id for `scrappy_browser_wake_session`. This is the right way to pause work that resumes later: keepalive keeps paying, and releasing throws the state away.
   - required: `session_id`
+- **`scrappy_browser_start_agent_run`** — Hand a goal to Scrappy's own agent, which drives the session in the background (poll get_agent_run). BILLS Scrappy credits per token in a possibly signed-in browser: only when the user asked, with tight `allowed_hosts`. NEVER type passwords, credit-card numbers, one-time codes, or any other credential — if a page asks for one, stop and tell the user to sign in themselves on the Browser page.
+  - required: `session_id`, `task`
 - **`scrappy_browser_storage`** — Read, set, or delete localStorage / sessionStorage entries for the current page. Many single-page apps keep their auth token here, so the same rule as cookies applies: never echo a value that looks like a credential and never copy one out of the session. `action: 'delete'` with no key clears the whole store.
   - required: `session_id`
 - **`scrappy_browser_suppress_dialogs`** — Replace alert/confirm/prompt/beforeunload with no-ops on the current page. Call this BEFORE any click that might open one: an open dialog blocks its tab, so a Save or Delete that fires confirm() makes every later command on that tab time out with no way to answer it. Per-document — re-apply after each navigation.
@@ -2113,6 +2174,12 @@ the full agent, not a read-only sandbox.
   - required: `job_id`
 - **`scrappy_list_jobs`** _(read-only)_ — List Scrappy scraping jobs (the background tasks that produce leads) with status and progress %. Pair with `scrappy_list_leads` to track 'how many leads did the last job find?'.
 - **`scrappy_list_sources`** _(read-only)_ — List Scrappy data sources (the configured scrapers, one per target URL). Filter by `status` (DRAFT/ACTIVE/ARCHIVED). A source must be ACTIVE before `scrappy_create_job` can run against it.
+- **`scrappy_pause_job`** — Pause a RUNNING Scrappy scraping job. Reports the job's real status afterwards.
+  - required: `job_id`
+- **`scrappy_resume_job`** — Resume a PAUSED Scrappy scraping job (no extra charge).
+  - required: `job_id`
+- **`scrappy_retry_job`** — Re-queue a failed, cancelled or stuck Scrappy job. Retrying a FAILED or CANCELLED job charges a new scraping job's credits; a completed job cannot be retried.
+  - required: `job_id`
 - **`scrappy_source_analytics`** _(read-only)_ — Get per-source performance metrics: lead yield, success rate, and average run time. Use when the user asks 'which sources are producing the most leads?'.
 - **`soundgen_clone_voice`** — Clone a voice from 1–25 audio samples. Pass a human-readable `name` and an array of publicly reachable `audio_urls`. Returns a `voice_id` once training completes (2–5 minutes). DESTRUCTIVE: a cloned voice can be used to impersonate the source speaker — confirm consent before calling.
   - required: `name`, `audio_urls`
