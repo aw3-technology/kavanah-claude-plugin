@@ -116,6 +116,20 @@ deal-room sync, and every integration. Search it locally:
 
 Full list: `reference/agent-toolkit.md`.
 
+### Importing an export
+
+An Attio backup, a Jira export, or any CSV, TSV, JSON or XLSX file (a zip of them
+is fine, up to 50 MB) goes in through three steps. The import tools take an
+attachment id, so upload first:
+
+    kvn upload backup.zip                              # prints attachment_id
+    kvn tool inspect_import_file --attachment_id <id>  # files, mapping, order
+    kvn tool import_file_records --attachment_id <id> --path people.csv --target people
+
+Show the user the plan from `inspect_import_file` before importing. Import
+companies, then people, then deals, then notes, one call at a time. When a result
+says NOT FINISHED, repeat it with the `--start_row` it names.
+
 ### Running one tool deterministically
 
 When you know exactly which tool you want, skip the model:

@@ -1617,11 +1617,76 @@
       ]
     },
     {
+      "name": "ai-agent.attachments.chunks.complete.create",
+      "method": "POST",
+      "path": "/api/ai-agent/attachments/chunks/complete",
+      "group": "AI Agent",
+      "summary": "Join an uploaded file's parts into an attachment",
+      "description": "Joins the parts, validates the whole file and records it as a pending attachment.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "201",
+          "description": "Attachment created"
+        },
+        {
+          "code": "400",
+          "description": "Invalid request or a missing part"
+        },
+        {
+          "code": "404",
+          "description": "Conversation not found"
+        },
+        {
+          "code": "413",
+          "description": "File too large"
+        }
+      ]
+    },
+    {
+      "name": "ai-agent.attachments.chunks.create",
+      "method": "POST",
+      "path": "/api/ai-agent/attachments/chunks",
+      "group": "AI Agent",
+      "summary": "Upload one part of a large attachment",
+      "description": "Multipart form with chunk, conversation_id, upload_id and index. A file over the request-body limit goes up in parts.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Part stored"
+        },
+        {
+          "code": "400",
+          "description": "Invalid request"
+        },
+        {
+          "code": "404",
+          "description": "Conversation not found"
+        },
+        {
+          "code": "413",
+          "description": "Part too large"
+        }
+      ]
+    },
+    {
       "name": "ai-agent.attachments.create",
       "method": "POST",
       "path": "/api/ai-agent/attachments",
       "group": "AI Agent",
       "summary": "Create attachment",
+      "description": "One file up to about 4.5 MB, the request-body limit. Send anything larger through /api/ai-agent/attachments/chunks.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],

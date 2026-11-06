@@ -13,6 +13,7 @@
  *   kvn groups                    list command groups
  *   kvn help <command>            full detail for one command
  *   kvn call <METHOD> <path>      escape hatch for anything not in the index
+ *   kvn upload <file>             attach a file for the agent's import tools
  *   kvn login                     sign in through the browser and save an API key
  *   kvn logout [--keep-key]       revoke and forget the saved key for this base
  *   kvn whoami                    who the current API key authenticates as
@@ -30,8 +31,8 @@
  *   --include, -i                 print status + response headers to stderr
  *   --dry-run                     print the request without sending it
  */
-import { chmodSync, existsSync, fstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { chmodSync, existsSync, fstatSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { basename, join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { homedir, hostname } from "node:os";
 import { spawn } from "node:child_process";
@@ -40,6 +41,11 @@ const SKILL_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULT_BASE = "https://kavanah.ai";
 const LOCAL_BASE = "http://localhost:3000";
 const TIMEOUT_MS = Number(process.env.KAVANAH_TIMEOUT_MS ?? 60_000);
+// These mirror src/lib/ai-agent-attachment-limits.ts. A request over ~4.5 MB never
+// reaches the app, so a larger file goes up in parts.
+const UPLOAD_CHUNK_BYTES = 3.5 * 1024 * 1024;
+const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
+const MAX_IMPORT_FILE_BYTES = 50 * 1024 * 1024;
 
 // ── index ────────────────────────────────────────────────────────────────────
 
@@ -799,6 +805,74 @@ function openBrowser(url) {
   }
 }
 
+/**
+ * `kvn upload <file> [--conversation <id>]` — attach a file so the import tools
+ * can read it. Those tools take an attachment id, and without this nothing
+ * outside the chat composer could produce one. Prints the ids to pass on.
+ */
+async function cmdUpload(parsed) {
+  const { positional, globals, fields } = parsed;
+  const file = positional[0];
+  if (!file) die("usage: kvn upload <file> [--conversation <id>]");
+  if (!existsSync(file)) die(`no such file: ${file}`);
+
+  const name = basename(file);
+  const size = statSync(file).size;
+  const limit = /\.(zip|csv|tsv|json|xlsx)$/i.test(name) ? MAX_IMPORT_FILE_BYTES : MAX_ATTACHMENT_BYTES;
+  if (size > limit) die(`${name} is over the ${limit / (1024 * 1024)} MB limit.`);
+  if (size === 0) die(`${name} is empty.`);
+
+  const base = resolveBase(globals);
+  const parts = size > UPLOAD_CHUNK_BYTES ? Math.ceil(size / UPLOAD_CHUNK_BYTES) : 1;
+  if (globals["dry-run"]) return out(`POST ${base}/api/ai-agent/attachments (${name}, ${size} bytes, ${parts} part(s))`);
+  const key = requireKey(globals.key, base);
+  const headers = { Authorization: `Bearer ${key}`, Accept: "application/json", "User-Agent": "kvn-claude-code-skill" };
+  const send = async (path, body, extraHeaders = {}) => {
+    const res = await fetch(`${base}${path}`, {
+      method: "POST",
+      headers: { ...headers, ...extraHeaders },
+      body,
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    const payload = await res.json().catch(() => ({}));
+    if (!res.ok) die(`${path}: ${payload.error ?? `HTTP ${res.status}`}`);
+    return payload;
+  };
+  const json = { "Content-Type": "application/json" };
+
+  let conversationId = fields.get("conversation")?.raw;
+  if (!conversationId) {
+    const created = await send("/api/ai-agent/conversations", JSON.stringify({ title: `Import: ${name}` }), json);
+    conversationId = created.conversation?.id ?? created.id;
+    if (!conversationId) die("could not start a conversation for this file.");
+  }
+
+  const bytes = readFileSync(file);
+  let result;
+  if (parts === 1) {
+    const form = new FormData();
+    form.append("file", new Blob([bytes]), name);
+    form.append("conversation_id", conversationId);
+    result = await send("/api/ai-agent/attachments", form);
+  } else {
+    const uploadId = crypto.randomUUID();
+    for (let index = 0; index < parts; index += 1) {
+      const form = new FormData();
+      form.append("chunk", new Blob([bytes.subarray(index * UPLOAD_CHUNK_BYTES, (index + 1) * UPLOAD_CHUNK_BYTES)]), "chunk");
+      form.append("conversation_id", conversationId);
+      form.append("upload_id", uploadId);
+      form.append("index", String(index));
+      await send("/api/ai-agent/attachments/chunks", form);
+    }
+    result = await send(
+      "/api/ai-agent/attachments/chunks/complete",
+      JSON.stringify({ conversation_id: conversationId, upload_id: uploadId, chunk_count: parts, file_name: name }),
+      json,
+    );
+  }
+  out(JSON.stringify({ attachment_id: result.attachment?.id, conversation_id: conversationId, file_name: name, size_bytes: size }, null, 2));
+}
+
 async function postJson(url, body) {
   const res = await fetch(url, {
     method: "POST",
@@ -972,6 +1046,7 @@ async function main() {
   if (first === "logout") return cmdLogout(parsed);
   if (first === "agent") return cmdAgent(parsed);
   if (first === "tool") return cmdTool(parsed);
+  if (first === "upload") return cmdUpload(parsed);
   if (first === "tools") return cmdTools(parsed.positional[0]);
 
   if (first === "whoami") {

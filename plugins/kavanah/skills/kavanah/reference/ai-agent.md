@@ -1,6 +1,6 @@
 # AI Agent
 
-118 commands. Generated — run `npm run skill:gen` to refresh.
+120 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -14,6 +14,8 @@
 | `ai-agent.approvals.create` | POST | `/api/ai-agent/approvals/{approvalId}` | Approve or deny a parked agent action (admin) |
 | `ai-agent.approvals.get` | GET | `/api/ai-agent/approvals/{approvalId}` | One parked action, in full - the reply desk (admin) |
 | `ai-agent.approvals.list` | GET | `/api/ai-agent/approvals` | Global agent approvals inbox (admin) |
+| `ai-agent.attachments.chunks.complete.create` | POST | `/api/ai-agent/attachments/chunks/complete` | Join an uploaded file's parts into an attachment |
+| `ai-agent.attachments.chunks.create` | POST | `/api/ai-agent/attachments/chunks` | Upload one part of a large attachment |
 | `ai-agent.attachments.create` | POST | `/api/ai-agent/attachments` | Create attachment |
 | `ai-agent.attachments.delete` | DELETE | `/api/ai-agent/attachments` | Delete attachments |
 | `ai-agent.attachments.list` | GET | `/api/ai-agent/attachments` | List attachments |
@@ -243,11 +245,29 @@ Every action the agent has parked for a human, workspace-wide, plus the pending 
 Query:
   - `limit` (integer)
 
+### `ai-agent.attachments.chunks.complete.create`
+
+`POST /api/ai-agent/attachments/chunks/complete`
+
+Join an uploaded file's parts into an attachment
+
+Joins the parts, validates the whole file and records it as a pending attachment.
+
+### `ai-agent.attachments.chunks.create`
+
+`POST /api/ai-agent/attachments/chunks`
+
+Upload one part of a large attachment
+
+Multipart form with chunk, conversation_id, upload_id and index. A file over the request-body limit goes up in parts.
+
 ### `ai-agent.attachments.create`
 
 `POST /api/ai-agent/attachments`
 
 Create attachment
+
+One file up to about 4.5 MB, the request-body limit. Send anything larger through /api/ai-agent/attachments/chunks.
 
 Body: application/json (free-form — pass with `--data`)
 
