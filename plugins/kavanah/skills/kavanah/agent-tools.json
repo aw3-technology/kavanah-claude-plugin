@@ -5900,7 +5900,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Default: the default pipeline."
+          "description": "Pipeline id, slug or name. Default: the default pipeline."
         },
         {
           "name": "stage",
@@ -6348,7 +6348,7 @@
     },
     {
       "name": "create_calendar_event",
-      "description": "Schedule a meeting / calendar event. Stored as a task with tag='Meeting' so it appears on calendars, timelines, and reminders. Use this when the user asks to schedule a meeting, set up an event, book time on the calendar, or anything similar — do not fall back to create_task for time-of-day events.",
+      "description": "Schedule a meeting / calendar event. Stored as a task with tag='Meeting' so it appears on calendars, timelines, and reminders. Use this when the user asks to schedule a meeting, set up an event, book time on the calendar, or anything similar — do not fall back to create_task for time-of-day events. If google_calendar_create_event is available and the user means their own calendar, use that instead.",
       "readOnly": false,
       "scope": "email_calendar",
       "params": [
@@ -6675,7 +6675,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to workspace default."
+          "description": "Pipeline id, slug or name. Defaults to workspace default."
         },
         {
           "name": "stage",
@@ -7431,6 +7431,30 @@
       ]
     },
     {
+      "name": "create_pipeline",
+      "description": "Create a new Deal Room pipeline. Admin only. template picks its starting stages: 'standard' (Interest, Verbal, Diligence, Collected, Lost), 'rain_room' (Prospect, Signed, Investor Interest, Closed, Referral/Testimonial), or 'blank' (no stages; add them with create_pipeline_stage before creating deals). Never changes the workspace default pipeline.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "template",
+          "type": "standard|rain_room|blank",
+          "required": false,
+          "description": "Defaults to standard."
+        }
+      ]
+    },
+    {
       "name": "create_pipeline_stage",
       "description": "Add a stage to a pipeline (e.g. building a custom funnel like Prospect → Signed → Investor Interest → Closed → Referral). kind controls closing behavior: 'open' stages stay on the board, 'won'/'lost' mark deals closed and hide them from default views — so a mid-funnel stage like 'Signed' must be 'open' even though it sounds final. New stages append to the end unless sort_order is given.",
       "readOnly": false,
@@ -7440,7 +7464,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to the workspace default."
+          "description": "Pipeline id, slug or name. Defaults to the workspace default."
         },
         {
           "name": "name",
@@ -9549,6 +9573,38 @@
       ]
     },
     {
+      "name": "drive_share_file",
+      "description": "Give one person access to a Google Drive file or folder. Confirm the file, the person and the role with the user first, because this exposes the file to them, and sharing a folder exposes everything in it. Only a named email address: never public or link sharing. Undoable.",
+      "readOnly": false,
+      "scope": "knowledge_files",
+      "params": [
+        {
+          "name": "file_id",
+          "type": "string",
+          "required": true,
+          "description": "The Drive file or folder id, or its URL."
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "required": true,
+          "description": "The person's email address."
+        },
+        {
+          "name": "role",
+          "type": "reader|commenter|writer",
+          "required": false,
+          "description": "Defaults to reader."
+        },
+        {
+          "name": "notify",
+          "type": "boolean",
+          "required": false,
+          "description": "Have Google email them the link. Default true."
+        }
+      ]
+    },
+    {
       "name": "duplicate_project_file",
       "description": "Duplicate a project file (creates a `_copy` version).",
       "readOnly": false,
@@ -10042,7 +10098,7 @@
         },
         {
           "name": "course",
-          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
+          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-65-uniform-investment-adviser-law|series-66-uniform-combined-state-law|series-82-private-securities-offerings-representative",
           "required": false,
           "description": "Optional course slug to restrict the search to. Omit to search everything."
         },
@@ -10800,7 +10856,7 @@
         },
         {
           "name": "course",
-          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
+          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-65-uniform-investment-adviser-law|series-66-uniform-combined-state-law|series-82-private-securities-offerings-representative",
           "required": false,
           "description": "Optional course slug. Omit to search the whole catalogue."
         }
@@ -10898,7 +10954,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Omit for every pipeline."
+          "description": "Pipeline id, slug or name. Omit for every pipeline."
         },
         {
           "name": "include_deals",
@@ -10938,7 +10994,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to the workspace default pipeline."
+          "description": "Pipeline id, slug or name. Defaults to the workspace default pipeline."
         }
       ]
     },
@@ -11362,7 +11418,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to the workspace default."
+          "description": "Pipeline id, slug or name. Defaults to the workspace default."
         }
       ]
     },
@@ -12305,8 +12361,22 @@
       ]
     },
     {
+      "name": "google_chat_delete_message",
+      "description": "Delete a Google Chat message. Irreversible. Google allows this only on the user's own messages. Get the name from google_chat_list_messages, and confirm the message with the user first.",
+      "readOnly": false,
+      "scope": "communications",
+      "params": [
+        {
+          "name": "message_name",
+          "type": "string",
+          "required": true,
+          "description": "'spaces/<id>/messages/<id>'."
+        }
+      ]
+    },
+    {
       "name": "google_chat_list_messages",
-      "description": "List recent messages in a Google Chat space. Returns sender, text, and time. Read-only.",
+      "description": "List recent messages in a Google Chat space. Returns sender, text, time, and each message's name for google_chat_update_message and google_chat_delete_message. Read-only.",
       "readOnly": true,
       "scope": "communications",
       "params": [
@@ -12342,6 +12412,26 @@
           "type": "string",
           "required": true,
           "description": "Message text to send."
+        }
+      ]
+    },
+    {
+      "name": "google_chat_update_message",
+      "description": "Edit the text of a Google Chat message. Google allows this only on the user's own messages. Get the name from google_chat_list_messages.",
+      "readOnly": false,
+      "scope": "communications",
+      "params": [
+        {
+          "name": "message_name",
+          "type": "string",
+          "required": true,
+          "description": "'spaces/<id>/messages/<id>'."
+        },
+        {
+          "name": "text",
+          "type": "string",
+          "required": true,
+          "description": "The full replacement text."
         }
       ]
     },
@@ -14260,13 +14350,13 @@
     },
     {
       "name": "list_course_lessons",
-      "description": "List the course curriculum. Kavanah ships 10 free courses, 291 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `sales-with-kavanah` (20 lessons, 5 modules) — How B2B buyers actually decide, and how to sell to them without spamming anyone. · `marketing-with-kavanah` (20 lessons, 5 modules) — How marketing actually works, and how to run it as disciplined, measurable work. · `fundraising-with-kavanah` (20 lessons, 5 modules) — Raise capital the way a desk does: a ranked list, a tracked pipeline, and the rules in view. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | sales-with-kavanah: foundations, the-buyer, prospecting, running-the-deal, operating | marketing-with-kavanah: marketing-strategy, brand-product-price, channels-and-content, campaigns-and-experiments, measurement-and-operations | fundraising-with-kavanah: fr-foundations, fr-instruments, fr-preparing, fr-process, fr-after | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.",
+      "description": "List the course curriculum. Kavanah ships 12 free courses, 325 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `sales-with-kavanah` (20 lessons, 5 modules) — How B2B buyers actually decide, and how to sell to them without spamming anyone. · `marketing-with-kavanah` (20 lessons, 5 modules) — How marketing actually works, and how to run it as disciplined, measurable work. · `fundraising-with-kavanah` (20 lessons, 5 modules) — Raise capital the way a desk does: a ranked list, a tracked pipeline, and the rules in view. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-65-uniform-investment-adviser-law` (22 lessons, 6 modules) — The investment adviser exam, and the path from passing it to a registered firm. · `series-66-uniform-combined-state-law` (12 lessons, 5 modules) — One state exam for dual registration, taught from the Act and the model rules. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | sales-with-kavanah: foundations, the-buyer, prospecting, running-the-deal, operating | marketing-with-kavanah: marketing-strategy, brand-product-price, channels-and-content, campaigns-and-experiments, measurement-and-operations | fundraising-with-kavanah: fr-foundations, fr-instruments, fr-preparing, fr-process, fr-after | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-65-uniform-investment-adviser-law: s65-path, s65-economics, s65-vehicles, s65-recommendations, s65-law, s65-practice | series-66-uniform-combined-state-law: s66-path, s66-finance, s66-recommendations, s66-law, s66-preparation | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.",
       "readOnly": true,
       "scope": "knowledge_files",
       "params": [
         {
           "name": "course",
-          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-82-private-securities-offerings-representative",
+          "type": "mastering-kavanah|project-management-with-kavanah|art-of-management|sales-with-kavanah|marketing-with-kavanah|fundraising-with-kavanah|securities-industry-essentials-sie|series-7-general-securities-representative|series-63-uniform-securities-agent-state-law|series-65-uniform-investment-adviser-law|series-66-uniform-combined-state-law|series-82-private-securities-offerings-representative",
           "required": false,
           "description": "Optional course slug to scope the listing to. Omit to list every course."
         },
@@ -14343,7 +14433,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug (e.g. 'bau' or 'top-client')."
+          "description": "Pipeline id, slug or name (e.g. 'bau' or 'top-client')."
         },
         {
           "name": "stage",
@@ -15184,9 +15274,16 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to the workspace default."
+          "description": "Pipeline id, slug or name. Defaults to the workspace default."
         }
       ]
+    },
+    {
+      "name": "list_pipelines",
+      "description": "List the workspace's Deal Room pipelines: name, id, slug, stage count, and which is the default. Every other pipeline parameter takes the id, slug or name shown here.",
+      "readOnly": true,
+      "scope": "crm",
+      "params": []
     },
     {
       "name": "list_proactive_alerts",
@@ -23198,6 +23295,12 @@
           "description": "Default false; true only when the user asks about archived work."
         },
         {
+          "name": "sort",
+          "type": "importance|board",
+          "required": false,
+          "description": "importance puts open, overdue and urgent work first; board is column order. Defaults to importance when assigned_to is set."
+        },
+        {
           "name": "limit",
           "type": "number",
           "required": false,
@@ -23623,7 +23726,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to the workspace default pipeline."
+          "description": "Pipeline id, slug or name. Defaults to the workspace default pipeline."
         },
         {
           "name": "enabled",
@@ -26227,7 +26330,7 @@
           "name": "pipeline",
           "type": "string",
           "required": false,
-          "description": "Pipeline id or slug. Defaults to the workspace default pipeline."
+          "description": "Pipeline id, slug or name. Defaults to the workspace default pipeline."
         }
       ]
     },
@@ -28110,6 +28213,31 @@
           "name": "project_refs",
           "type": "array",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "update_pipeline",
+      "description": "Rename a Deal Room pipeline or change its description. Admin only. The slug stays the same after a rename.",
+      "readOnly": false,
+      "scope": "crm",
+      "params": [
+        {
+          "name": "pipeline",
+          "type": "string",
+          "required": true,
+          "description": "Pipeline id, slug or name."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "description": "Pass an empty string to clear it."
         }
       ]
     },

@@ -1,6 +1,6 @@
 # Deals
 
-109 commands. Generated — run `npm run skill:gen` to refresh.
+113 commands. Generated — run `npm run skill:gen` to refresh.
 
 | Command | Method | Path | Summary |
 | --- | --- | --- | --- |
@@ -80,6 +80,10 @@
 | `deals.issuer-campaigns.start.create` | POST | `/api/deals/issuer-campaigns/{id}/start` | Start, top up or resume an issuer campaign |
 | `deals.issuer-campaigns.update` | PATCH | `/api/deals/issuer-campaigns/{id}` | Edit an issuer campaign's definition |
 | `deals.list` | GET | `/api/deals` | The Deal Room board |
+| `deals.pipelines.create` | POST | `/api/deals/pipelines` | Create a pipeline |
+| `deals.pipelines.delete` | DELETE | `/api/deals/pipelines/{id}` | Delete an empty pipeline |
+| `deals.pipelines.list` | GET | `/api/deals/pipelines` | List Deal Room pipelines and their stages |
+| `deals.pipelines.update` | PATCH | `/api/deals/pipelines/{id}` | Rename a pipeline or change its description |
 | `deals.sheet-link.list` | GET | `/api/deals/sheet-link` | The Google Sheet linked to a pipeline |
 | `deals.sheet-link.sync.create` | POST | `/api/deals/sheet-link/sync` | Run a two-way sync of a pipeline with its linked sheet |
 | `deals.sheet-link.update` | PATCH | `/api/deals/sheet-link` | Configure the outbound mirror for a pipeline's sheet link |
@@ -1102,6 +1106,55 @@ Query:
   - `pipeline` (string)
   - `includeClosed` (string) — one of: `1`
   - `includeArchived` (string) — one of: `1`
+
+### `deals.pipelines.create`
+
+`POST /api/deals/pipelines`
+
+Create a pipeline
+
+Admins only. template sets the starting stages and defaults to standard; blank creates none. Never changes the workspace default pipeline.
+
+Body (application/json):
+  - `name` (string, required)
+  - `description` (string)
+  - `template` (string) — one of: `standard`, `rain_room`, `blank`
+
+### `deals.pipelines.delete`
+
+`DELETE /api/deals/pipelines/{id}`
+
+Delete an empty pipeline
+
+Admins only. Refused for the default pipeline, and while the pipeline holds any deal (archived included), a Google Sheet link, or an automation that refers to it.
+
+**Destructive** — needs `--yes` against a non-local base URL.
+
+Path params (positional, in order):
+  - `id`
+
+### `deals.pipelines.list`
+
+`GET /api/deals/pipelines`
+
+List Deal Room pipelines and their stages
+
+Creates the default pipeline first if the workspace has none.
+
+### `deals.pipelines.update`
+
+`PATCH /api/deals/pipelines/{id}`
+
+Rename a pipeline or change its description
+
+Admins only. The slug does not change.
+
+Path params (positional, in order):
+  - `id`
+
+Body (application/json):
+  - `name` (string)
+  - `description` (string|null)
 
 ### `deals.sheet-link.list`
 

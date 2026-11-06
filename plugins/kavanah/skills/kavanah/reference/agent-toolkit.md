@@ -1,6 +1,6 @@
 # Agent toolkit
 
-1296 tools the Kavanah AI agent can call (575 read-only).
+1302 tools the Kavanah AI agent can call (576 read-only).
 Generated from the live registry by `npm run skill:gen` — do not hand-edit.
 
 ## How to reach these
@@ -24,15 +24,15 @@ the full agent, not a read-only sandbox.
 
 | Scope | Tools |
 | --- | --- |
-| crm | 242 |
+| crm | 245 |
 | tasks_projects | 241 |
-| knowledge_files | 180 |
+| knowledge_files | 181 |
 | finance | 153 |
 | workflows_automations | 125 |
 | admin | 95 |
 | reports_analytics | 78 |
 | email_calendar | 71 |
-| communications | 53 |
+| communications | 55 |
 | dev_github | 49 |
 | unscoped | 9 |
 
@@ -195,7 +195,7 @@ the full agent, not a read-only sandbox.
 - **`vote_feature_request`** — Up-vote a feature request for the caller (idempotent), or withdraw the caller's vote when remove=true. Any workspace member may vote.
   - required: `id`
 
-## communications (53)
+## communications (55)
 
 - **`create_boardroom`** — Create a standing exec meeting between AI executive personas. The personas must already exist (create them first with the persona roster if needed) — a seat references a persona by id. The meeting runs in three phases: each exec delivers a performance update on its own area using read-only tools, then the table discusses, then the chair closes with action items which become tasks. IMPORTANT: this only creates the room. It does NOT start it meeting — the workspace admin must turn on 'Exec meetings' in Settings → AI Agent and arm the boardroom, because each meeting costs real model usage. Say so when you create one.
   - required: `name`
@@ -214,11 +214,15 @@ the full agent, not a read-only sandbox.
 - **`get_exec_meeting`** _(read-only)_ — Read the full minutes of one exec meeting: every exec's performance update, the discussion round by round, and the chair's close with its action items. Use when the user wants to know what was actually SAID, not just the summary.
   - required: `meeting_id`
 - **`get_sms_alert_status`** _(read-only)_ — Report whether SMS alerts can currently be delivered: whether the workspace has them switched on, whether a given member has a verified and consented number, and how much of the monthly message budget is spent. Read-only and free. Call this before sms_send_alert, and to answer 'why didn't I get a text?' — it distinguishes not-enrolled from opted-out from over-budget, which the send tool deliberately does not.
-- **`google_chat_list_messages`** _(read-only)_ — List recent messages in a Google Chat space. Returns sender, text, and time. Read-only.
+- **`google_chat_delete_message`** — Delete a Google Chat message. Irreversible. Google allows this only on the user's own messages. Get the name from google_chat_list_messages, and confirm the message with the user first.
+  - required: `message_name`
+- **`google_chat_list_messages`** _(read-only)_ — List recent messages in a Google Chat space. Returns sender, text, time, and each message's name for google_chat_update_message and google_chat_delete_message. Read-only.
   - required: `space_name`
 - **`google_chat_list_spaces`** _(read-only)_ — List the Google Chat spaces (rooms + DMs) the user belongs to, with their resource name + display name. Call this first to get a space name before reading or posting.
 - **`google_chat_send_message`** — Post a text message to a Google Chat space as the user. Confirm the destination space with the user before sending to an unfamiliar space.
   - required: `space_name`, `text`
+- **`google_chat_update_message`** — Edit the text of a Google Chat message. Google allows this only on the user's own messages. Get the name from google_chat_list_messages.
+  - required: `message_name`, `text`
 - **`inbox_list_unread`** _(read-only)_ — List unread messages in the user's inbox (`is:unread in:inbox` — spam, trash and archived mail excluded). Returns two sections: (1) exactly the messages the /inbox sidebar badge counts — mail synced from natively connected mailboxes — and (2) the AngelSend Gmail bridge mailbox, read live, when connected. These can be different accounts; when the user asks about the badge, answer from section 1 and never say you checked a mailbox you did not list. Bridge ids work with `inbox_reply` / `gmail_get_message`. For full Gmail search syntax use `gmail_list_messages` directly.
 - **`inbox_reply`** — Reply to a specific inbox message by id. Fetches the original message to populate Subject (`Re: …`), thread id, and In-Reply-To headers, then sends the reply via the user's connected Gmail. The agent only needs to supply the body — and optionally an explicit recipient override or HTML flag.
   - required: `message_id`, `body`
@@ -286,7 +290,7 @@ the full agent, not a read-only sandbox.
 - **`update_boardroom`** — Change a standing exec meeting: rename it, reset the agenda or chair, change the cadence, change how many discussion rounds it runs, replace who sits at the table, or arm/disarm it. Only the fields you pass change. Passing `seats` REPLACES the whole table, so include every exec who should stay.
   - required: `boardroom`
 
-## crm (242)
+## crm (245)
 
 - **`add_blotter_tasks`** — Put emails you wrote in chat (a chat Play) onto the user's Tasks board, so they can be reviewed and Executed there like any Grow task. Supersedes the board's earlier open Grow / chat tasks unless keep_existing. Each email: to, subject, body (no sign-off name — it is added), deal_id — or gates_deal_ids for an internal / compliance task (a task that names no fee it unblocks is not added) — and optionally gmail_thread_id to reply on, ev_class, minutes, principal, rationale. EV is computed by the Blotter, not by you. Your reply automatically gets the live Tasks card, where they can review, edit and send what you added.
   - required: `emails`
@@ -335,6 +339,8 @@ the full agent, not a read-only sandbox.
 - **`create_deal_cadence`** — Define a reusable follow-up cadence: an ordered list of email steps, each a number of days after the previous. Bodies/subjects may use {{contact_name}}, {{contact_first_name}}, {{deal_name}}, {{sender_name}}, and {{booking_link}} (the cadence's booking_url — a step using it is refused unless booking_url is set). Or start from a TEMPLATE: template 'issuer-curious' is a 3-step NETWORK cadence for issuer prospecting in a curious tone — wanting to learn about their business, offering to sign their NDA first, exploring fit — that never assumes the prospect is raising; it fills the steps, kind and name you leave out. Show the user the template's copy before you create it. Creating a cadence sends NOTHING — sends only start when someone explicitly enrolls a deal contact.
 - **`create_network_contact`** — Create or update ONE person in the Deal Room network — an investor, a family-office principal, a broker-dealer contact — with NO deal attached. This is the tool for someone you found rather than someone on a live deal; add_deal_contact is for the latter and needs a deal_id. GAP-FILLS: a value already on the record is never replaced, tags are added rather than swapped, and a contact already attached to a firm keeps that firm. An address whose contact was merged away lands on the record it was merged INTO, so a scan can never un-merge what a person just merged. Undoable while nothing has used the contact.
   - required: `full_name`
+- **`create_pipeline`** — Create a new Deal Room pipeline. Admin only. template picks its starting stages: 'standard' (Interest, Verbal, Diligence, Collected, Lost), 'rain_room' (Prospect, Signed, Investor Interest, Closed, Referral/Testimonial), or 'blank' (no stages; add them with create_pipeline_stage before creating deals). Never changes the workspace default pipeline.
+  - required: `name`
 - **`create_pipeline_stage`** — Add a stage to a pipeline (e.g. building a custom funnel like Prospect → Signed → Investor Interest → Closed → Referral). kind controls closing behavior: 'open' stages stay on the board, 'won'/'lost' mark deals closed and hide them from default views — so a mid-funnel stage like 'Signed' must be 'open' even though it sounds final. New stages append to the end unless sort_order is given.
   - required: `name`
 - **`dismiss_bd_partner_match`** — Mark a surfaced partner pairing as not worth making. Dismissed is durable: the scan never alerts on that pairing again. Undoable.
@@ -416,6 +422,7 @@ the full agent, not a read-only sandbox.
   - required: `campaign`
 - **`list_network_contacts`** _(read-only)_ — List PEOPLE in the network — the way to read back what a scan, an import or a research pass saved. Filter by tags (all of them must be present), by source ('linkedin', 'sheet', 'agent'), by a text search across name, email and company, or by firm_id. This is how you answer 'the family offices we found on LinkedIn': list by the tag or source you saved them under, then feed the ids to get_contact_warmth, enroll_contacts_in_cadence or merge_contacts. For the institutions rather than the people, use list_firms; for everyone at ONE firm, get_firm.
 - **`list_pipeline_stages`** _(read-only)_ — List the stages of a pipeline in board order, with each stage's kind (open = in motion, won/lost = closed), default probability, staleness threshold, and color. Use before create_deal/update_deal_stage when unsure what stages exist, or before reconfiguring stages.
+- **`list_pipelines`** _(read-only)_ — List the workspace's Deal Room pipelines: name, id, slug, stage count, and which is the default. Every other pipeline parameter takes the id, slug or name shown here.
 - **`list_request_page_fields`** _(read-only)_ — List the custom form fields on a request-intake page, including each field's key, label, kind, whether it's required, and its conditional visibility rule (if any). Use this to discover field keys before setting a visibility rule, or to audit a page's form.
   - required: `request_page_id`
 - **`list_request_pages`** _(read-only)_ — List the public request-intake pages this workspace has published. Returns each page's title, share token, status, and submission counts.
@@ -587,6 +594,8 @@ the full agent, not a read-only sandbox.
   - required: `deal_id`, `firm_id`, `status`
 - **`update_issuer_match_status`** — Mark where a prospect stands in a campaign: 'approached' once outreach went out outside a cadence (a call, a personal email), 'engaged' when they responded through a channel the sync cannot see (a phone call, a conference), or 'dismissed' when they should not be contacted. All three clear the firm from the working set, which is what lets the next tranche release. Dismissed is durable — a later re-ranking will not resurrect it. You rarely need the first two for a cadence: the 6-hourly scan sets approached from real sends and engaged from real replies and meetings. When a prospect becomes a client, use convert_issuer_to_deal instead.
   - required: `campaign`, `firm_id`, `status`
+- **`update_pipeline`** — Rename a Deal Room pipeline or change its description. Admin only. The slug stays the same after a rename.
+  - required: `pipeline`
 - **`update_pipeline_stage`** — Rename, reorder, recolor, or reclassify a pipeline stage. Changing kind to won/lost marks every deal currently in the stage closed (and open does the reverse) — say so when you do it. Stage deletion is deliberately not available here; point the user at the board's Manage stages dialog.
   - required: `stage_id`
 - **`update_request_field`** — Update presentational properties of an existing field on a request-intake page: its label, whether it's required, placeholder text, or help text. Only the properties you pass are changed; the field's key, kind, options, order, and visibility rule are preserved. Use set_request_field_visibility to change conditional visibility.
@@ -801,7 +810,7 @@ the full agent, not a read-only sandbox.
   - required: `id`
 - **`cancel_scheduled_email`** — Cancel a pending scheduled email so it will not be sent. Only emails that are still pending (not yet sent) can be cancelled. Get the id from list_scheduled_emails.
   - required: `id`
-- **`create_calendar_event`** — Schedule a meeting / calendar event. Stored as a task with tag='Meeting' so it appears on calendars, timelines, and reminders. Use this when the user asks to schedule a meeting, set up an event, book time on the calendar, or anything similar — do not fall back to create_task for time-of-day events.
+- **`create_calendar_event`** — Schedule a meeting / calendar event. Stored as a task with tag='Meeting' so it appears on calendars, timelines, and reminders. Use this when the user asks to schedule a meeting, set up an event, book time on the calendar, or anything similar — do not fall back to create_task for time-of-day events. If google_calendar_create_event is available and the user means their own calendar, use that instead.
   - required: `project_ref`, `title`, `start`
 - **`dispatch_meeting_twin`** — Send the caller's OWN AI twin (audio voice or video avatar) or the silent notetaker into an outside Zoom / Google Meet / Microsoft Teams / Webex meeting. Only ever the caller's own — there is no way to send someone else's. The bot is named as an AI assistant/notetaker, announces first that it is AI and that the meeting is recorded, cannot agree to terms, prices or commitments or give investment advice, leaves when anyone asks, and leaves at the minute cap. Afterwards the transcript becomes notes, action items and tasks. Call estimate_meeting_twin_cost first and tell the user the cost and the disclosure before calling this.
   - required: `meeting_url`, `mode`
@@ -1134,7 +1143,7 @@ the full agent, not a read-only sandbox.
 - **`stripe_send_invoice`** — Finalize a DRAFT Stripe invoice and EMAIL it to the customer. This is the moment the invoice becomes a real demand for payment and leaves the building — it cannot be un-sent, and finalizing also locks the amounts. Confirm the invoice id and its total with the user before calling. Nobody is charged by this; the customer receives a payment link and chooses to pay.
   - required: `invoice_id`
 
-## knowledge_files (180)
+## knowledge_files (181)
 
 - **`add_document_block_comment`** — Comment on a specific block within a document. Reply to an existing comment by passing parent_comment_id.
   - required: `document_id`, `block_id`, `body`
@@ -1204,6 +1213,8 @@ the full agent, not a read-only sandbox.
   - required: `file_id`
 - **`drive_rename_file`** — Rename a Google Drive file OR folder. Pass the item's id (the `/d/<id>` or `/folders/<id>` segment of a Drive URL — ignore any `/u/<N>/` part) and the new name. Returns the updated name and link.
   - required: `file_id`, `new_name`
+- **`drive_share_file`** — Give one person access to a Google Drive file or folder. Confirm the file, the person and the role with the user first, because this exposes the file to them, and sharing a folder exposes everything in it. Only a named email address: never public or link sharing. Undoable.
+  - required: `file_id`, `email`
 - **`duplicate_project_file`** — Duplicate a project file (creates a `_copy` version).
   - required: `project_ref`, `file_id`
 - **`find_course_lessons`** _(read-only)_ — Search the course catalogue for lessons relevant to a topic. Scores each lesson against the query using title, subtitle, learning objectives, and section headings, and returns the top matches with their slugs, their course, and why they matched. Use whenever a user asks a how-to, setup, or methodology question the courses cover — 'how do I connect Gmail?', 'what can the AI agent actually do?', 'how do I set up approvals?', 'what's the right way to estimate?'. Then call get_course_lesson on the top hit if the user wants the full answer.
@@ -1284,7 +1295,7 @@ the full agent, not a read-only sandbox.
 - **`list_app_navigation`** _(read-only)_ — List the whole Kavanah navigation map — every page/surface grouped by area (Main, Inbox, Build, Insights, Workspace, Settings, Admin, global), each with its sidebar location, route, and a one-line description, plus the keyboard shortcuts. Use to answer broad questions like 'what can Kavanah do?', 'give me a tour', 'what's in the sidebar?', or to orient a brand-new user during onboarding.
 - **`list_autolink_rules`** _(read-only)_ — List this workspace's auto-link rules — patterns (literal or regex) that turn matching phrases in text into links to a doc, decision, glossary term, or code target. Read-only.
 - **`list_condensable_threads`** _(read-only)_ — List discussion threads that are long enough to be worth condensing into a clean document (enough replies or body). Read-only. Returns each thread's id, title, message count, and participants — feed an id to condense_thread_to_document.
-- **`list_course_lessons`** _(read-only)_ — List the course curriculum. Kavanah ships 10 free courses, 291 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `sales-with-kavanah` (20 lessons, 5 modules) — How B2B buyers actually decide, and how to sell to them without spamming anyone. · `marketing-with-kavanah` (20 lessons, 5 modules) — How marketing actually works, and how to run it as disciplined, measurable work. · `fundraising-with-kavanah` (20 lessons, 5 modules) — Raise capital the way a desk does: a ranked list, a tracked pipeline, and the rules in view. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | sales-with-kavanah: foundations, the-buyer, prospecting, running-the-deal, operating | marketing-with-kavanah: marketing-strategy, brand-product-price, channels-and-content, campaigns-and-experiments, measurement-and-operations | fundraising-with-kavanah: fr-foundations, fr-instruments, fr-preparing, fr-process, fr-after | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.
+- **`list_course_lessons`** _(read-only)_ — List the course curriculum. Kavanah ships 12 free courses, 325 lessons total: `mastering-kavanah` (68 lessons, 12 modules) — Beginner to expert on the actual application — every page, every setting, every workflow. · `project-management-with-kavanah` (28 lessons, 7 modules) — The discipline of management, taught against the surfaces you already use. · `art-of-management` (33 lessons, 7 modules) — Five thousand years of the craft, from the granaries of Sumer to the age of the agent. · `sales-with-kavanah` (20 lessons, 5 modules) — How B2B buyers actually decide, and how to sell to them without spamming anyone. · `marketing-with-kavanah` (20 lessons, 5 modules) — How marketing actually works, and how to run it as disciplined, measurable work. · `fundraising-with-kavanah` (20 lessons, 5 modules) — Raise capital the way a desk does: a ranked list, a tracked pipeline, and the rules in view. · `securities-industry-essentials-sie` (20 lessons, 5 modules) — The foundation exam, taught from the rules themselves. · `series-7-general-securities-representative` (55 lessons, 11 modules) — The securities broker licence, taught from the rules themselves. · `series-63-uniform-securities-agent-state-law` (12 lessons, 4 modules) — The state law exam, taught from the Act and the statements of policy. · `series-65-uniform-investment-adviser-law` (22 lessons, 6 modules) — The investment adviser exam, and the path from passing it to a registered firm. · `series-66-uniform-combined-state-law` (12 lessons, 5 modules) — One state exam for dual registration, taught from the Act and the model rules. · `series-82-private-securities-offerings-representative` (15 lessons, 5 modules) — The private placement licence, taught from Regulation D itself.. Returns lesson numbers, slugs, titles, subtitles, and estimated reading times, grouped by module. Omit `course` to list the whole catalogue; pass it to scope to one. Pass `module` to filter to a single module. Use as a discovery tool before recommending a specific lesson, or to answer 'what does the course cover?'. Valid module ids by course — mastering-kavanah: getting-started, projects-and-tasks, people-and-clients, communication, time-and-planning, knowledge-tools, agent-basics, agent-governance, integrations, build-and-extend, administration, expert-practice | project-management-with-kavanah: foundations, conversation-to-commitment, right-person-right-work, estimation-and-time, operating-cadence, metrics, agentic-management | art-of-management: foundations, ancient, classical, industrial, modern, contemporary, future | sales-with-kavanah: foundations, the-buyer, prospecting, running-the-deal, operating | marketing-with-kavanah: marketing-strategy, brand-product-price, channels-and-content, campaigns-and-experiments, measurement-and-operations | fundraising-with-kavanah: fr-foundations, fr-instruments, fr-preparing, fr-process, fr-after | securities-industry-essentials-sie: sie-exam, sie-economics, sie-products, sie-trading, sie-framework | series-7-general-securities-representative: exam-and-license, equity-securities, debt-securities, municipal-securities, packaged-products, options, markets-and-trading, new-issues, customer-accounts, conduct-and-records, passing | series-63-uniform-securities-agent-state-law: usa-foundations, usa-registration, usa-conduct, usa-enforcement | series-65-uniform-investment-adviser-law: s65-path, s65-economics, s65-vehicles, s65-recommendations, s65-law, s65-practice | series-66-uniform-combined-state-law: s66-path, s66-finance, s66-recommendations, s66-law, s66-preparation | series-82-private-securities-offerings-representative: s82-licence-and-exam, s82-exemptions, s82-distribution, s82-customers, s82-transactions-and-exam.
 - **`list_decision_suggestions`** _(read-only)_ — List AI-DETECTED decision candidates awaiting human review — statements in documents or meeting transcripts that look like decisions worth recording. Each carries the suggested title, what was decided, a verbatim source quote, the source it came from, and a confidence level. Read-only. The suggestions are assistive and may miss decisions; only a human review (review_decision_suggestion, or Knowledge → Decisions → Suggested) turns one into a real decision record.
 - **`list_decisions`** _(read-only)_ — List architecture / product decisions, most-recently decided first.
 - **`list_docs_pages`** _(read-only)_ — List every page of Kavanah's official documentation, grouped by section (Getting Started, Core Features, Dev & AI, Integrations & Apps, API Reference), with each page's slug and title. Use to see what documentation exists before reading a page, or to tell the user what the /docs site covers.

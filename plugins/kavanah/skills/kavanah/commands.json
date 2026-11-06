@@ -12467,6 +12467,164 @@
       ]
     },
     {
+      "name": "deals.pipelines.create",
+      "method": "POST",
+      "path": "/api/deals/pipelines",
+      "group": "Deals",
+      "summary": "Create a pipeline",
+      "description": "Admins only. template sets the starting stages and defaults to standard; blank creates none. Never changes the workspace default pipeline.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "template",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "standard",
+            "rain_room",
+            "blank"
+          ]
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "{ pipeline, stages }"
+        },
+        {
+          "code": "400",
+          "description": "Missing or invalid name, description or template"
+        },
+        {
+          "code": "403",
+          "description": "Not an admin"
+        },
+        {
+          "code": "409",
+          "description": "A pipeline with that name already exists"
+        }
+      ]
+    },
+    {
+      "name": "deals.pipelines.delete",
+      "method": "DELETE",
+      "path": "/api/deals/pipelines/{id}",
+      "group": "Deals",
+      "summary": "Delete an empty pipeline",
+      "description": "Admins only. Refused for the default pipeline, and while the pipeline holds any deal (archived included), a Google Sheet link, or an automation that refers to it.",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "{ ok: true }"
+        },
+        {
+          "code": "403",
+          "description": "Not an admin"
+        },
+        {
+          "code": "404",
+          "description": "Pipeline not found"
+        },
+        {
+          "code": "409",
+          "description": "The pipeline is the default, or something still depends on it"
+        }
+      ]
+    },
+    {
+      "name": "deals.pipelines.list",
+      "method": "GET",
+      "path": "/api/deals/pipelines",
+      "group": "Deals",
+      "summary": "List Deal Room pipelines and their stages",
+      "description": "Creates the default pipeline first if the workspace has none.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "{ pipelines, stages }"
+        }
+      ]
+    },
+    {
+      "name": "deals.pipelines.update",
+      "method": "PATCH",
+      "path": "/api/deals/pipelines/{id}",
+      "group": "Deals",
+      "summary": "Rename a pipeline or change its description",
+      "description": "Admins only. The slug does not change.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "string|null",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "{ pipeline, stages }"
+        },
+        {
+          "code": "400",
+          "description": "Invalid field, or no fields to update"
+        },
+        {
+          "code": "403",
+          "description": "Not an admin"
+        },
+        {
+          "code": "404",
+          "description": "Pipeline not found"
+        },
+        {
+          "code": "409",
+          "description": "A pipeline with that name already exists"
+        }
+      ]
+    },
+    {
       "name": "deals.sheet-link.list",
       "method": "GET",
       "path": "/api/deals/sheet-link",
