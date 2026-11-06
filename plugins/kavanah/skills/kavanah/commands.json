@@ -14938,6 +14938,416 @@
       ]
     },
     {
+      "name": "expenses.create",
+      "method": "POST",
+      "path": "/api/expenses",
+      "group": "Expenses",
+      "summary": "Log an expense for the caller",
+      "description": "Mileage takes miles and the server prices it. Everything else takes amount.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "mileage",
+            "fuel",
+            "parking_tolls",
+            "meals",
+            "lodging",
+            "transport",
+            "supplies",
+            "other"
+          ]
+        },
+        {
+          "name": "expenseDate",
+          "type": "string<date>",
+          "required": true
+        },
+        {
+          "name": "miles",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "amount",
+          "type": "string",
+          "required": false,
+          "description": "Dollars"
+        },
+        {
+          "name": "tripFrom",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "tripTo",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "vendor",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "projectRef",
+          "type": "string",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "code": "201",
+          "description": "Expense logged"
+        }
+      ]
+    },
+    {
+      "name": "expenses.delete",
+      "method": "DELETE",
+      "path": "/api/expenses/{id}",
+      "group": "Expenses",
+      "summary": "Delete an expense that is not approved",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Deleted"
+        },
+        {
+          "code": "409",
+          "description": "Approved or reimbursed expenses are locked"
+        }
+      ]
+    },
+    {
+      "name": "expenses.export.list",
+      "method": "GET",
+      "path": "/api/expenses/export",
+      "group": "Expenses",
+      "summary": "Export expenses as CSV",
+      "description": "Takes the same filters as GET /api/expenses.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "text/csv"
+        }
+      ]
+    },
+    {
+      "name": "expenses.get",
+      "method": "GET",
+      "path": "/api/expenses/{id}",
+      "group": "Expenses",
+      "summary": "Get one expense",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The expense"
+        },
+        {
+          "code": "404",
+          "description": "Not found, or not the caller's"
+        }
+      ]
+    },
+    {
+      "name": "expenses.list",
+      "method": "GET",
+      "path": "/api/expenses",
+      "group": "Expenses",
+      "summary": "List expenses with a summary",
+      "description": "A member gets their own. An owner or admin may pass scope=team.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [
+        {
+          "name": "scope",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "mine",
+            "team"
+          ]
+        },
+        {
+          "name": "memberName",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "submitted",
+            "approved",
+            "rejected",
+            "reimbursed"
+          ]
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "projectRef",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "startDate",
+          "type": "string<date>",
+          "required": false
+        },
+        {
+          "name": "endDate",
+          "type": "string<date>",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": false
+        }
+      ],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Expenses, summary, the workspace mileage rate and the viewer"
+        }
+      ]
+    },
+    {
+      "name": "expenses.receipt.create",
+      "method": "POST",
+      "path": "/api/expenses/{id}/receipt",
+      "group": "Expenses",
+      "summary": "Attach or replace the receipt (photo or PDF, up to 4 MB)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "multipart/form-data",
+      "body": [
+        {
+          "name": "file",
+          "type": "string<binary>",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Attached"
+        }
+      ]
+    },
+    {
+      "name": "expenses.receipt.delete",
+      "method": "DELETE",
+      "path": "/api/expenses/{id}/receipt",
+      "group": "Expenses",
+      "summary": "Remove the receipt",
+      "source": "handwritten",
+      "destructive": true,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Removed"
+        }
+      ]
+    },
+    {
+      "name": "expenses.receipt.list",
+      "method": "GET",
+      "path": "/api/expenses/{id}/receipt",
+      "group": "Expenses",
+      "summary": "Read an expense's receipt",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The receipt file"
+        }
+      ]
+    },
+    {
+      "name": "expenses.review.create",
+      "method": "POST",
+      "path": "/api/expenses/{id}/review",
+      "group": "Expenses",
+      "summary": "Approve, reject, reimburse or reopen an expense (owner or admin)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "approve",
+            "reject",
+            "reimburse",
+            "reopen"
+          ]
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "required": false,
+          "description": "Required to reject"
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Reviewed"
+        },
+        {
+          "code": "403",
+          "description": "Not an admin, or an admin approving their own expense"
+        },
+        {
+          "code": "409",
+          "description": "The expense is not in a status this action can start from"
+        }
+      ]
+    },
+    {
+      "name": "expenses.settings.list",
+      "method": "GET",
+      "path": "/api/expenses/settings",
+      "group": "Expenses",
+      "summary": "Get the workspace mileage rate",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": false,
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "The rate, or null when following the IRS rate"
+        }
+      ]
+    },
+    {
+      "name": "expenses.settings.update",
+      "method": "PATCH",
+      "path": "/api/expenses/settings",
+      "group": "Expenses",
+      "summary": "Set the workspace mileage rate (owner or admin)",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [
+        {
+          "name": "mileageRateCents",
+          "type": "number",
+          "required": true,
+          "description": "Cents a mile. Null follows the IRS rate. Past expenses keep theirs."
+        }
+      ],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Saved"
+        }
+      ]
+    },
+    {
+      "name": "expenses.update",
+      "method": "PATCH",
+      "path": "/api/expenses/{id}",
+      "group": "Expenses",
+      "summary": "Correct an expense that is not approved",
+      "description": "Same fields as POST, all optional. A rejected expense returns to submitted.",
+      "source": "handwritten",
+      "destructive": false,
+      "pathParams": [
+        "id"
+      ],
+      "query": [],
+      "bodyRequired": true,
+      "bodyContentType": "application/json",
+      "body": [],
+      "responses": [
+        {
+          "code": "200",
+          "description": "Updated"
+        },
+        {
+          "code": "409",
+          "description": "Approved or reimbursed expenses are locked"
+        }
+      ]
+    },
+    {
       "name": "feature-requests.create",
       "method": "POST",
       "path": "/api/feature-requests",

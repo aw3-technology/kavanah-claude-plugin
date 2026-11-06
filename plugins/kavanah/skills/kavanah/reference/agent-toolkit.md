@@ -1,6 +1,6 @@
 # Agent toolkit
 
-1302 tools the Kavanah AI agent can call (576 read-only).
+1307 tools the Kavanah AI agent can call (578 read-only).
 Generated from the live registry by `npm run skill:gen` — do not hand-edit.
 
 ## How to reach these
@@ -24,8 +24,8 @@ the full agent, not a read-only sandbox.
 
 | Scope | Tools |
 | --- | --- |
+| tasks_projects | 246 |
 | crm | 245 |
-| tasks_projects | 241 |
 | knowledge_files | 181 |
 | finance | 153 |
 | workflows_automations | 125 |
@@ -820,7 +820,7 @@ the full agent, not a read-only sandbox.
   - required: `session_id`
 - **`gmail_create_draft`** — Write an email and save it as a Gmail draft WITHOUT sending it — use this when the user wants to review or edit before it goes out, or asks you to 'draft'/'write up' an email. Same backends as gmail_send_email (AngelSend Gmail bridge preferred, native Gmail OAuth fallback). The draft appears in the user's Gmail Drafts folder. To send immediately instead, use gmail_send_email; to send it later automatically, use schedule_email.
   - required: `to`, `subject`, `body`
-- **`gmail_get_message`** _(read-only)_ — Fetch a single Gmail message by id, including the FULL parsed body, sender, recipients, subject, and labels. Use after `gmail_list_messages` to read a message's full content — this is the right tool when you need details that aren't in the list snippet (e.g. a contact's email address inside the message). Works with both the AngelSend bridge and a native Gmail connection. If only a snippet is available the response says so explicitly.
+- **`gmail_get_message`** _(read-only)_ — Fetch a single Gmail message by id, including the FULL parsed body, sender, recipients, subject, labels, and attachment names. Use after `gmail_list_messages` to read a message's full content — this is the right tool when you need details that aren't in the list snippet (e.g. a contact's email address inside the message). Works with both the AngelSend bridge and a native Gmail connection. If only a snippet is available the response says so explicitly.
   - required: `message_id`
 - **`gmail_get_thread`** _(read-only)_ — Fetch a Gmail conversation thread by id, returning every message in the thread with bodies. Use after `gmail_list_threads` to read a conversation. AngelSend-backed only.
   - required: `thread_id`
@@ -1581,7 +1581,7 @@ the full agent, not a read-only sandbox.
 - **`update_weekly_checkin_draft`** — Edit a DRAFT weekly check-in: replace its summary markdown and/or its recipient list. Only drafts can be edited (scheduled/sent ones are locked). Does not send anything.
   - required: `id`
 
-## tasks_projects (241)
+## tasks_projects (246)
 
 - **`accept_detected_activity`** — Accept one of the caller's own pending detected activities, logging it as a real time entry under the caller's name. Optionally override the project or task. Only the current user's own detected activities can be accepted.
   - required: `activity_id`
@@ -1686,6 +1686,8 @@ the full agent, not a read-only sandbox.
 - **`delete_custom_status`** — Delete a custom status. If the column has tasks, pass `move_tasks_to` (the slug of another column in the same project) so the tasks land somewhere; otherwise the column must already be empty. Destructive — confirm with the user first.
   - required: `id`
 - **`delete_department`** — Delete a department. Tasks routed to it lose their department (set to null); member rows in the department are removed. Does not delete tasks or members themselves.
+- **`delete_expense`** — Delete an expense that was logged by mistake. Refuses an approved or reimbursed expense, and a member may only delete their own. Prefer update_expense when it is real but wrong. Undoable.
+  - required: `expense_id`
 - **`delete_my_note`** — Delete one of the caller's own notes by id. Personal data only.
   - required: `id`
 - **`delete_my_reminder`** — Delete one of the caller's own reminders by id. Personal data only.
@@ -1740,6 +1742,7 @@ the full agent, not a read-only sandbox.
 - **`get_entity_properties`** _(read-only)_ — Resolved custom-property values for one entity. Returns literal values plus computed values (formula + rollup) evaluated at read time. Use for 'what's this task's story points?' / 'what's the rollup total?' style questions.
   - required: `entity_type`, `entity_id`
 - **`get_estimate_calibration`** _(read-only)_ — Estimate-vs-actual accuracy over the last 90 days of completed tasks (with both an estimate and logged actual hours). Per assignee: mean actual/estimate ratio (>1 = under-estimating, <1 = over-estimating), sample count, and a recent-vs-older trend, plus a team-wide ratio. Read-only.
+- **`get_expense_summary`** _(read-only)_ — Total expenses and miles driven, broken down by category, by person and by status. Use for 'how many miles did I drive this quarter' or 'what do we owe the team'. Rejected expenses are left out of the totals. Same scope rule as list_expenses.
 - **`get_focus_mode`** _(read-only)_ — Read the caller's own Focus Mode snapshot: whether a focus session is active (and when it ends), plus the caller's batched drafts awaiting review and the workspace's async-meeting candidates. This is the current user's personal focus state — never another member's.
 - **`get_grooming_proposals`** _(read-only)_ — Generate backlog-grooming proposals (read-only — this only PROPOSES, it does not apply anything): close stale open tasks (>90 days), deprioritize long-blocked tasks (>30 days), retag untagged tasks, split chronically underestimated tasks (actual ≥1.5× estimate), and merge likely-duplicate clusters by title. Read-only.
 - **`get_manager_agreement`** _(read-only)_ — Read the caller's own Manager Mode agreement: whether Kavanah is acting as their manager, their management style, stated objectives, working capacity (days per week, focused hours per day), deadline confidence level, check-in cadence, and reward settings. Returns a disabled default if they have never set one up — call this before any other manager tool so you know whether the feature is on. Personal data only.
@@ -1814,6 +1817,7 @@ the full agent, not a read-only sandbox.
 - **`list_department_members`** _(read-only)_ — List the people (and AI personas) that belong to a department. Use to see who's responsible for a queue.
 - **`list_departments`** _(read-only)_ — List all departments in the current workspace, with member counts. Use to discover what teams exist before routing a task or assigning members.
 - **`list_detected_activities`** _(read-only)_ — List the caller's own captured work: pending detected activities awaiting review (from their connected sources), their connected activity sources, and their snoozed/blocked tasks. All rows are scoped to the CURRENT user — never another member's captured activity.
+- **`list_expenses`** _(read-only)_ — List expenses, newest first, with the id update_expense and delete_expense need. Returns the current user's own; an owner or admin can pass scope 'team' to see everyone's. Filter by status, category, project or date range.
 - **`list_learned_task_templates`** _(read-only)_ — List the smart task templates this workspace has learned from its own completed work (typical subtask checklist, effort, priority, skill mix per tag). Use to offer a proven starting point when creating a similar task. Read-only.
 - **`list_manager_checkins`** _(read-only)_ — List the caller's own manager check-ins, newest first, with the prompt they were asked and their answer if they gave one. Use unanswered_only to find what is still outstanding. Personal data only.
 - **`list_member_profiles`** _(read-only)_ — List every workspace member's experience profile (LinkedIn URL, self-described experience, whether a resume is on file) together with their declared/learned skills. Use before assignment decisions when recommend_assignees' skill scores need human context — e.g. to break a tie or when nobody has skill chips yet.
@@ -1850,6 +1854,8 @@ the full agent, not a read-only sandbox.
 - **`list_view_fields`** _(read-only)_ — List the task fields the views runtime knows about. Returns each field's key, label, type, and (for select fields) the valid option values. Use this BEFORE constructing a view config so filter/sort/group references hit real fields.
 - **`log_actual_hours`** — Set the actual_hours value on a task (cumulative, not additive).
   - required: `task_id`, `actual_hours`
+- **`log_expense`** — Log an expense for the current user: miles driven, gas, parking and tolls, meals, lodging, flights and transport, supplies, or anything else they spent on work. For mileage pass `miles` and never an amount: the reimbursement is computed from the rate for the trip's date. For everything else pass `amount`. It lands as Submitted for an owner or admin to review; you cannot approve it. Use this whenever someone says they drove somewhere for work, filled up, or paid for something they want back. Undoable.
+  - required: `kind`
 - **`log_time_entry`** — Log a closed time entry. Two ways: professional-services style, passing `hours` as decimal hours ("0.3") with `started_at` as the date the work happened — this is what someone means by "put 0.3 on the Acme matter"; or stopwatch style, passing explicit started_at and ended_at. `description` is the billing narrative and appears on the invoice line, so write what was actually done ("Drafted motion to dismiss"), not a category. The workspace's rounding policy is applied to the billed quantity.
   - required: `project_ref`, `started_at`
 - **`model_planning_scenario`** _(read-only)_ — Run a what-if scheduling scenario over the current OPEN tasks and their dependencies, and report the schedule delta vs. baseline, the new critical path, any auto-rebalancing, and risks. Presets: 'baseline' (no change), 'person-out' (simulate a teammate being unavailable — pass person_id), 'scope-bump' (+12 points of scope), 'double-down' (+20% capacity). Read-only simulation; changes nothing.
@@ -1960,6 +1966,8 @@ the full agent, not a read-only sandbox.
 - **`update_custom_status`** — Rename, recolor, or otherwise edit an existing custom status. Only the fields you pass are changed; omit fields you want to leave alone. Pass `wip_limit: null` to clear the WIP cap.
   - required: `id`
 - **`update_department`** — Rename a department, change its description, or re-parent it. Pass only the fields you want to change.
+- **`update_expense`** — Correct an expense that has not been approved: its category, date, miles, amount, trip, vendor, purpose or project. Pass only what changes. A rejected expense goes back to Submitted. Refuses an approved or reimbursed expense, and a member may only change their own. Undoable.
+  - required: `expense_id`
 - **`update_my_note`** — Update one of the caller's own notes by id. Only the fields you pass are changed (title and/or body); the body fully replaces the existing body. Personal data only.
   - required: `id`
 - **`update_my_reminder`** — Update one of the caller's own reminders by id. Only fields you pass are changed. Personal data only.

@@ -8678,6 +8678,20 @@
       ]
     },
     {
+      "name": "delete_expense",
+      "description": "Delete an expense that was logged by mistake. Refuses an approved or reimbursed expense, and a member may only delete their own. Prefer update_expense when it is real but wrong. Undoable.",
+      "readOnly": false,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "expense_id",
+          "type": "string",
+          "required": true,
+          "description": "From list_expenses."
+        }
+      ]
+    },
+    {
       "name": "delete_glossary_term",
       "description": "Delete a glossary term. Confirm before calling.",
       "readOnly": false,
@@ -11107,6 +11121,36 @@
       "params": []
     },
     {
+      "name": "get_expense_summary",
+      "description": "Total expenses and miles driven, broken down by category, by person and by status. Use for 'how many miles did I drive this quarter' or 'what do we owe the team'. Rejected expenses are left out of the totals. Same scope rule as list_expenses.",
+      "readOnly": true,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "scope",
+          "type": "mine|team",
+          "required": false
+        },
+        {
+          "name": "member_name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "start_date",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD"
+        },
+        {
+          "name": "end_date",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD"
+        }
+      ]
+    },
+    {
       "name": "get_feature_guide",
       "description": "Get full detail for one Kavanah surface: exactly where it is (sidebar path + route), the key buttons/actions on the page, a step-by-step how-to for the common task, the page's own in-app tutorial (the same steps its 'How to use …' button shows), and related surfaces. Use after find_ui_feature identifies the right feature, or directly when you already know the feature id/name (e.g. 'projects-tasks', 'Integrations', 'KVN'). This is the canonical source for walking a user through a task — quote its steps rather than improvising UI directions.",
       "readOnly": true,
@@ -11939,10 +11983,16 @@
     },
     {
       "name": "gmail_get_message",
-      "description": "Fetch a single Gmail message by id, including the FULL parsed body, sender, recipients, subject, and labels. Use after `gmail_list_messages` to read a message's full content — this is the right tool when you need details that aren't in the list snippet (e.g. a contact's email address inside the message). Works with both the AngelSend bridge and a native Gmail connection. If only a snippet is available the response says so explicitly.",
+      "description": "Fetch a single Gmail message by id, including the FULL parsed body, sender, recipients, subject, labels, and attachment names. Use after `gmail_list_messages` to read a message's full content — this is the right tool when you need details that aren't in the list snippet (e.g. a contact's email address inside the message). Works with both the AngelSend bridge and a native Gmail connection. If only a snippet is available the response says so explicitly.",
       "readOnly": true,
       "scope": "email_calendar",
       "params": [
+        {
+          "name": "mailbox",
+          "type": "native",
+          "required": false,
+          "description": "Skip the AngelSend bridge, which may be a different account."
+        },
         {
           "name": "message_id",
           "type": "string",
@@ -11978,6 +12028,12 @@
       "readOnly": true,
       "scope": "email_calendar",
       "params": [
+        {
+          "name": "mailbox",
+          "type": "native",
+          "required": false,
+          "description": "Skip the AngelSend bridge, which may be a different account."
+        },
         {
           "name": "query",
           "type": "string",
@@ -14659,6 +14715,59 @@
       ]
     },
     {
+      "name": "list_expenses",
+      "description": "List expenses, newest first, with the id update_expense and delete_expense need. Returns the current user's own; an owner or admin can pass scope 'team' to see everyone's. Filter by status, category, project or date range.",
+      "readOnly": true,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "scope",
+          "type": "mine|team",
+          "required": false,
+          "description": "'team' needs an owner or admin."
+        },
+        {
+          "name": "member_name",
+          "type": "string",
+          "required": false,
+          "description": "With scope 'team', one person's."
+        },
+        {
+          "name": "status",
+          "type": "submitted|approved|rejected|reimbursed",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "project_ref",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "start_date",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD"
+        },
+        {
+          "name": "end_date",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD"
+        },
+        {
+          "name": "limit",
+          "type": "number",
+          "required": false,
+          "description": "Default 50."
+        }
+      ]
+    },
+    {
       "name": "list_feature_requests",
       "description": "List the product feature-request board (public ideas, most-upvoted first) plus the caller's own submissions and summary counts by status. Optional filters: status, category, search.",
       "readOnly": true,
@@ -16169,6 +16278,68 @@
           "type": "boolean",
           "required": false,
           "description": "net_new: they asked about the deal themselves (offerable with no buy-box)."
+        }
+      ]
+    },
+    {
+      "name": "log_expense",
+      "description": "Log an expense for the current user: miles driven, gas, parking and tolls, meals, lodging, flights and transport, supplies, or anything else they spent on work. For mileage pass `miles` and never an amount: the reimbursement is computed from the rate for the trip's date. For everything else pass `amount`. It lands as Submitted for an owner or admin to review; you cannot approve it. Use this whenever someone says they drove somewhere for work, filled up, or paid for something they want back. Undoable.",
+      "readOnly": false,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "kind",
+          "type": "mileage|fuel|parking_tolls|meals|lodging|transport|supplies|other",
+          "required": true,
+          "description": "`fuel` is gas. A drive reimbursed by the mile is `mileage`, not `fuel`."
+        },
+        {
+          "name": "expense_date",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD, the day it happened. Defaults to today in the user's zone."
+        },
+        {
+          "name": "miles",
+          "type": "number",
+          "required": false,
+          "description": "Distance driven. Required for mileage."
+        },
+        {
+          "name": "amount",
+          "type": "number|string",
+          "required": false,
+          "description": "Dollars, e.g. 42.50. Required unless kind is mileage."
+        },
+        {
+          "name": "trip_from",
+          "type": "string",
+          "required": false,
+          "description": "Where a drive started."
+        },
+        {
+          "name": "trip_to",
+          "type": "string",
+          "required": false,
+          "description": "Where a drive ended."
+        },
+        {
+          "name": "vendor",
+          "type": "string",
+          "required": false,
+          "description": "Who was paid, e.g. Shell."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false,
+          "description": "The business purpose: why this was spent."
+        },
+        {
+          "name": "project_ref",
+          "type": "string",
+          "required": false,
+          "description": "Project it was for, if any."
         }
       ]
     },
@@ -27904,6 +28075,66 @@
         {
           "name": "enabled",
           "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "update_expense",
+      "description": "Correct an expense that has not been approved: its category, date, miles, amount, trip, vendor, purpose or project. Pass only what changes. A rejected expense goes back to Submitted. Refuses an approved or reimbursed expense, and a member may only change their own. Undoable.",
+      "readOnly": false,
+      "scope": "tasks_projects",
+      "params": [
+        {
+          "name": "expense_id",
+          "type": "string",
+          "required": true,
+          "description": "From list_expenses."
+        },
+        {
+          "name": "kind",
+          "type": "mileage|fuel|parking_tolls|meals|lodging|transport|supplies|other",
+          "required": false
+        },
+        {
+          "name": "expense_date",
+          "type": "string",
+          "required": false,
+          "description": "YYYY-MM-DD"
+        },
+        {
+          "name": "miles",
+          "type": "number",
+          "required": false
+        },
+        {
+          "name": "amount",
+          "type": "number|string",
+          "required": false
+        },
+        {
+          "name": "trip_from",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "trip_to",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "vendor",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "project_ref",
+          "type": "string",
           "required": false
         }
       ]
