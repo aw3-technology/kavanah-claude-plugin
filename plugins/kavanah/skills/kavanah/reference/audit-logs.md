@@ -188,6 +188,8 @@ Delete webhooks
 
 List webhooks
 
+Admins only. The signing secret is write-only: it is stored encrypted and each webhook reports only `has_secret`.
+
 ### `audit-logs.webhooks.update`
 
 `PATCH /api/audit-logs/webhooks`

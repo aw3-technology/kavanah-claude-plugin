@@ -111,6 +111,8 @@ Body (application/json):
 
 Update user profile
 
+Overlays only the fields the request carries. The sign-in email is never changed here: sending `email` with a different address is 400. To change it, add the address with POST /api/profile/emails, confirm it, then POST /api/profile/emails/{id}/promote. Addresses are unique case-insensitively.
+
 Body (application/json):
   - `firstName` (string)
   - `lastName` (string)

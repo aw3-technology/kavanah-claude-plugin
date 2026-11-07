@@ -36,6 +36,9 @@ Approving needs a **workspace admin**, and the key acts as the person who
 approved it, in the workspace active in their browser, with exactly their
 permissions, re-checked on every request. Approval does not change who the key
 acts as. If the user is not an admin, an admin can approve the code for them.
+The approver's email address must be verified: an unverified account cannot
+approve a `kvn login` or mint a key (403 `email_unverified`), so the fix is to
+verify the address in Kavanah, not to retry.
 
 Other ways to supply a key, in order of precedence: `--key kvn_live_…`, then
 `$KAVANAH_API_KEY`, then the saved login, then `~/.kavanah/api-key`, then

@@ -23,7 +23,7 @@
 | `search.recents.list` | GET | `/api/search/recents` | Recents feed for the command palette |
 | `workspace.create.create` | POST | `/api/workspace/create` | Create a new workspace |
 | `workspace.delete` | DELETE | `/api/workspace` | Delete workspace |
-| `workspace.guests.create` | POST | `/api/workspace/guests` | Create guest |
+| `workspace.guests.create` | POST | `/api/workspace/guests` | Add a guest scoped to specific projects |
 | `workspace.guests.delete` | DELETE | `/api/workspace/guests/{userId}` | Delete guest |
 | `workspace.guests.list` | GET | `/api/workspace/guests` | List guests |
 | `workspace.guests.update` | PATCH | `/api/workspace/guests/{userId}` | Update guest |
@@ -36,13 +36,13 @@
 | `workspace.invites.resend.create` | POST | `/api/workspace/invites/{inviteId}/resend` | Create resend |
 | `workspace.invites.update` | PATCH | `/api/workspace/invites/{inviteId}` | Update invite |
 | `workspace.list.list` | GET | `/api/workspace/list` | List the caller's workspaces |
-| `workspace.members.create` | POST | `/api/workspace/members` | Create member |
+| `workspace.members.create` | POST | `/api/workspace/members` | Invite an account or change a member's role |
 | `workspace.members.delete` | DELETE | `/api/workspace/members/{userId}` | Delete member |
 | `workspace.members.deprovision.create` | POST | `/api/workspace/members/{userId}/deprovision` | Create deprovision |
 | `workspace.members.deprovision.list` | GET | `/api/workspace/members/{userId}/deprovision` | List deprovision |
 | `workspace.members.list` | GET | `/api/workspace/members` | List members |
 | `workspace.members.mfa-reset.create` | POST | `/api/workspace/members/{userId}/mfa-reset` | Reset a member's two-factor authentication |
-| `workspace.members.provision.create` | POST | `/api/workspace/members/provision` | Create an account for a teammate and add them to the workspace |
+| `workspace.members.provision.create` | POST | `/api/workspace/members/provision` | Create an account for a teammate, or invite an existing account |
 | `workspace.members.transfer.create` | POST | `/api/workspace/members/{userId}/transfer` | Create transfer |
 | `workspace.members.transfer.list` | GET | `/api/workspace/members/{userId}/transfer` | List transfer |
 | `workspace.members.update` | PATCH | `/api/workspace/members/{userId}` | Update member |
@@ -280,9 +280,15 @@ Delete workspace
 
 `POST /api/workspace/guests`
 
-Create guest
+Add a guest scoped to specific projects
 
-Body: application/json (free-form — pass with `--data`)
+Admins only. `projectRefs` (at least one) limits what the guest can see; `expiresAt` (optional, ISO, in the future, at most one year out) ends their access. Scope and expiry are enforced on every surface, including API keys the guest mints. An address that already has a Kavanah account is sent an invite to accept rather than added (`invited: true`). Counts against the seat limit.
+
+Body (application/json):
+  - `email` (string<email>, required)
+  - `fullName` (string)
+  - `projectRefs` (string[], required)
+  - `expiresAt` (string<date-time>)
 
 ### `workspace.guests.delete`
 
@@ -407,9 +413,13 @@ List the caller's workspaces
 
 `POST /api/workspace/members`
 
-Create member
+Invite an account or change a member's role
 
-Body: application/json (free-form — pass with `--data`)
+Admin only. For someone already in the workspace, sets their role (owner and admin need an owner; never your own role; never strands the last owner or admin) and ends their sessions in this workspace. For an account that is not yet a member, nothing is added: an invitation with that role is minted and emailed, and they join when they accept (202). The invite holds a seat, so a full workspace answers 403.
+
+Body (application/json):
+  - `userId` (string, required)
+  - `role` (string) — one of: `owner`, `admin`, `member`
 
 ### `workspace.members.delete`
 
@@ -474,9 +484,9 @@ Path params (positional, in order):
 
 `POST /api/workspace/members/provision`
 
-Create an account for a teammate and add them to the workspace
+Create an account for a teammate, or invite an existing account
 
-Admins only; rate-limited to 20 per minute. Enforces the seat limit. A new account gets a temporary password (returned once and emailed; must be changed at first login) and the signup credit bonus; an existing account is added and sent a member-added email. Writes an audit entry.
+Admins only; rate-limited to 20 per minute. Enforces the seat limit. A new account gets a temporary password (returned once and emailed; must be changed at first login), the signup credit bonus, and is added to the workspace. An address that already has a Kavanah account is NOT added; it is sent a workspace invite to accept (`createdAccount false`, `invited true`, no temporary password). Writes an audit entry.
 
 **Destructive** — needs `--yes` against a non-local base URL.
 

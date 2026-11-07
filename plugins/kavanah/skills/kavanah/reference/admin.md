@@ -17,9 +17,9 @@
 | `admin.scim.providers.tokens.delete` | DELETE | `/api/admin/scim/providers/{providerId}/tokens/{tokenId}` | Delete token |
 | `admin.scim.providers.tokens.list` | GET | `/api/admin/scim/providers/{providerId}/tokens` | List tokens |
 | `admin.scim.providers.update` | PATCH | `/api/admin/scim/providers/{providerId}` | Update provider |
-| `admin.security.domains.create` | POST | `/api/admin/security/domains` | Create domain |
+| `admin.security.domains.create` | POST | `/api/admin/security/domains` | Add, verify, or set the default role of an email domain |
 | `admin.security.domains.delete` | DELETE | `/api/admin/security/domains/{id}` | Delete domain |
-| `admin.security.domains.list` | GET | `/api/admin/security/domains` | List domains |
+| `admin.security.domains.list` | GET | `/api/admin/security/domains` | List the workspace's email domains |
 | `admin.security.ip-allowlist.create` | POST | `/api/admin/security/ip-allowlist` | Create ip allowlist |
 | `admin.security.ip-allowlist.delete` | DELETE | `/api/admin/security/ip-allowlist/{id}` | Delete ip allowlist |
 | `admin.security.ip-allowlist.list` | GET | `/api/admin/security/ip-allowlist` | List ip allowlist |
@@ -27,8 +27,8 @@
 | `admin.security.policies.list` | GET | `/api/admin/security/policies` | List policies |
 | `admin.security.sessions.delete` | DELETE | `/api/admin/security/sessions/{sessionId}` | Delete session |
 | `admin.security.sessions.list` | GET | `/api/admin/security/sessions` | List sessions |
-| `admin.security.sso.create` | POST | `/api/admin/security/sso` | Create sso |
-| `admin.security.sso.list` | GET | `/api/admin/security/sso` | List sso |
+| `admin.security.sso.create` | POST | `/api/admin/security/sso` | Create or update an SSO configuration |
+| `admin.security.sso.list` | GET | `/api/admin/security/sso` | List the workspace's SSO configurations |
 | `admin.users.duplicates.list` | GET | `/api/admin/users/duplicates` | List duplicates |
 | `admin.users.merge.create` | POST | `/api/admin/users/merge` | Create merge |
 
@@ -171,9 +171,15 @@ Body: application/json (free-form — pass with `--data`)
 
 `POST /api/admin/security/domains`
 
-Create domain
+Add, verify, or set the default role of an email domain
 
-Body: application/json (free-form — pass with `--data`)
+Admins only. `action: "add"` (default) with `domain` returns a `verificationToken`; publish it as a DNS TXT record at `_kavanah-verification.<domain>`. `action: "verify"` with `domainId` looks the record up and marks the domain verified only when the token is found; otherwise 400 (DNS can take a few minutes). A domain can be verified by only one workspace; a second attempt is 400. `action: "set-role"` with `domainId` and `defaultRole` (admin|member) sets the auto-join role.
+
+Body (application/json):
+  - `action` (string) — one of: `add`, `verify`, `set-role`
+  - `domain` (string)
+  - `domainId` (string)
+  - `defaultRole` (string) — one of: `admin`, `member`
 
 ### `admin.security.domains.delete`
 
@@ -190,7 +196,9 @@ Path params (positional, in order):
 
 `GET /api/admin/security/domains`
 
-List domains
+List the workspace's email domains
+
+Admins only. Each domain carries its verification token and whether it is verified. Only a verified domain is used for domain auto-join and SSO.
 
 ### `admin.security.ip-allowlist.create`
 
@@ -252,7 +260,9 @@ List sessions
 
 `POST /api/admin/security/sso`
 
-Create sso
+Create or update an SSO configuration
+
+Admins only. `providerType` is `saml` or `oidc`. Enabling SSO requires at least one verified domain (see /api/admin/security/domains); SSO only signs in addresses on a domain this workspace has verified. The response masks the secret and certificate.
 
 Body: application/json (free-form — pass with `--data`)
 
@@ -260,7 +270,9 @@ Body: application/json (free-form — pass with `--data`)
 
 `GET /api/admin/security/sso`
 
-List sso
+List the workspace's SSO configurations
+
+Admins only. The OIDC client secret and SAML certificate are stored encrypted and are never returned: a configured value reads back as a mask.
 
 ### `admin.users.duplicates.list`
 

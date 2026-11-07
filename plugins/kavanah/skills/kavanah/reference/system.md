@@ -100,5 +100,7 @@ Body: application/json (free-form — pass with `--data`)
 
 Fetch upload
 
+Serves a stored file after the same access check the screen that lists it applies, not just workspace membership: a project document needs access to its project, a task attachment needs access to the task (including the per-task ACL), a call recording needs participation in the call, and an agent chat attachment belongs to its owner. Guests are held to their project scope and expiry. Only branding, forecast-chart, profile-media and project-icon paths are readable without a session. HTML and SVG are never served inline; every response carries `X-Content-Type-Options: nosniff` and a sandboxing CSP.
+
 Path params (positional, in order):
   - `path`

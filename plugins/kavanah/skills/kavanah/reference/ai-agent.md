@@ -314,7 +314,7 @@ List config
 
 Update config
 
-Partial update of the workspace agent config. `background_model` sets the default model for unattended runs (schedules, task runs, exec meetings): a model id from `model_options`, `"auto"` (a small router model grades each run and picks the cheapest model that fits), or null to use `model`. `auto_optimize_for` (`cost` | `performance` | `speed`, null = cost) sets what auto mode optimizes for, in chat auto mode and unattended routing.
+Partial update of the workspace agent config. `background_model` sets the default model for unattended runs (schedules, task runs, exec meetings): a model id from `model_options`, `"auto"` (a small router model grades each run and picks the cheapest model that fits), or null to use `model`. `auto_optimize_for` (`cost` | `performance` | `speed`, null = cost) sets what auto mode optimizes for, in chat auto mode and unattended routing. `headless_daily_token_budget` caps the tokens all unattended runs in the workspace may spend per UTC day; null means the default ceiling of 50,000,000 tokens (there is no unlimited setting). Runs past the ceiling are skipped until the next UTC day.
 
 Body: application/json (free-form — pass with `--data`)
 

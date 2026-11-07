@@ -618,26 +618,65 @@
       "method": "POST",
       "path": "/api/admin/security/domains",
       "group": "Admin",
-      "summary": "Create domain",
+      "summary": "Add, verify, or set the default role of an email domain",
+      "description": "Admins only. `action: \"add\"` (default) with `domain` returns a `verificationToken`; publish it as a DNS TXT record at `_kavanah-verification.<domain>`. `action: \"verify\"` with `domainId` looks the record up and marks the domain verified only when the token is found; otherwise 400 (DNS can take a few minutes). A domain can be verified by only one workspace; a second attempt is 400. `action: \"set-role\"` with `domainId` and `defaultRole` (admin|member) sets the auto-join role.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
       "query": [],
       "bodyRequired": false,
       "bodyContentType": "application/json",
-      "body": [],
+      "body": [
+        {
+          "name": "action",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "add",
+            "verify",
+            "set-role"
+          ]
+        },
+        {
+          "name": "domain",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "domainId",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "defaultRole",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "admin",
+            "member"
+          ]
+        }
+      ],
       "responses": [
         {
           "code": "200",
-          "description": "Success"
+          "description": "Verified"
+        },
+        {
+          "code": "201",
+          "description": "Domain added; returns domainId and verificationToken"
         },
         {
           "code": "400",
-          "description": "Invalid request"
+          "description": "Invalid request, no matching TXT record, or the domain is verified by another workspace"
         },
         {
           "code": "401",
           "description": "Unauthorized"
+        },
+        {
+          "code": "404",
+          "description": "Domain not found"
         }
       ]
     },
@@ -671,7 +710,8 @@
       "method": "GET",
       "path": "/api/admin/security/domains",
       "group": "Admin",
-      "summary": "List domains",
+      "summary": "List the workspace's email domains",
+      "description": "Admins only. Each domain carries its verification token and whether it is verified. Only a verified domain is used for domain auto-join and SSO.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -869,7 +909,8 @@
       "method": "POST",
       "path": "/api/admin/security/sso",
       "group": "Admin",
-      "summary": "Create sso",
+      "summary": "Create or update an SSO configuration",
+      "description": "Admins only. `providerType` is `saml` or `oidc`. Enabling SSO requires at least one verified domain (see /api/admin/security/domains); SSO only signs in addresses on a domain this workspace has verified. The response masks the secret and certificate.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -897,7 +938,8 @@
       "method": "GET",
       "path": "/api/admin/security/sso",
       "group": "Admin",
-      "summary": "List sso",
+      "summary": "List the workspace's SSO configurations",
+      "description": "Admins only. The OIDC client secret and SAML certificate are stored encrypted and are never returned: a configured value reads back as a mask.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -1833,7 +1875,7 @@
       "path": "/api/ai-agent/config",
       "group": "AI Agent",
       "summary": "Update config",
-      "description": "Partial update of the workspace agent config. `background_model` sets the default model for unattended runs (schedules, task runs, exec meetings): a model id from `model_options`, `\"auto\"` (a small router model grades each run and picks the cheapest model that fits), or null to use `model`. `auto_optimize_for` (`cost` | `performance` | `speed`, null = cost) sets what auto mode optimizes for, in chat auto mode and unattended routing.",
+      "description": "Partial update of the workspace agent config. `background_model` sets the default model for unattended runs (schedules, task runs, exec meetings): a model id from `model_options`, `\"auto\"` (a small router model grades each run and picks the cheapest model that fits), or null to use `model`. `auto_optimize_for` (`cost` | `performance` | `speed`, null = cost) sets what auto mode optimizes for, in chat auto mode and unattended routing. `headless_daily_token_budget` caps the tokens all unattended runs in the workspace may spend per UTC day; null means the default ceiling of 50,000,000 tokens (there is no unlimited setting). Runs past the ceiling are skipped until the next UTC day.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -5790,6 +5832,7 @@
       "path": "/api/audit-logs/webhooks",
       "group": "Audit Logs",
       "summary": "List webhooks",
+      "description": "Admins only. The signing secret is write-only: it is stored encrypted and each webhook reports only `has_secret`.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -14315,7 +14358,7 @@
       "path": "/api/entity-versions",
       "group": "Tasks",
       "summary": "List saved version snapshots of an entity",
-      "description": "Signed-in workspace members. Returns the version history recorded for one entity in the active workspace. Only `task` is supported as an entity type.",
+      "description": "Signed-in workspace members who can see the task (project visibility and the per-task ACL apply; a task the caller cannot see answers like an unknown one). Returns the version history recorded for one entity in the active workspace. Only `task` is supported as an entity type.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -14362,7 +14405,7 @@
       "path": "/api/entity-versions/{id}/restore",
       "group": "Tasks",
       "summary": "Restore a task to a saved version",
-      "description": "Signed-in workspace members. Snapshots the task's current state as a \"Before restore\" version, then overwrites the task's restorable fields from the chosen version. Writes a task-update audit entry. Only task versions can be restored.",
+      "description": "Requires the `tasks:edit` permission and edit access to the task itself (a task the caller cannot see is 404, one they can see but not edit is 403). Snapshots the task's current state as a \"Before restore\" version, then overwrites the task's restorable fields from the chosen version. Writes a task-update audit entry. Only task versions can be restored.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [
@@ -14383,6 +14426,10 @@
         {
           "code": "401",
           "description": "Not signed in"
+        },
+        {
+          "code": "403",
+          "description": "Missing `tasks:edit`, or no edit access to this task"
         },
         {
           "code": "404",
@@ -32732,6 +32779,7 @@
       "path": "/api/profile",
       "group": "Profile",
       "summary": "Update user profile",
+      "description": "Overlays only the fields the request carries. The sign-in email is never changed here: sending `email` with a different address is 400. To change it, add the address with POST /api/profile/emails, confirm it, then POST /api/profile/emails/{id}/promote. Addresses are unique case-insensitively.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -32789,6 +32837,10 @@
         {
           "code": "200",
           "description": "Profile updated"
+        },
+        {
+          "code": "400",
+          "description": "Invalid input, or an attempt to change the sign-in email"
         }
       ]
     },
@@ -37952,7 +38004,7 @@
       "path": "/api/settings/api-keys",
       "group": "Settings",
       "summary": "Mint a workspace API key",
-      "description": "Admins only. The plaintext token is returned once in this response and never again.",
+      "description": "Admins only, and the caller's email address must be verified (403 `email_unverified` otherwise). The plaintext token is returned once in this response and never again.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -37977,7 +38029,7 @@
         },
         {
           "code": "403",
-          "description": "Not an admin"
+          "description": "Not an admin, or the caller's email is unverified (`email_unverified`)"
         }
       ]
     },
@@ -40938,6 +40990,7 @@
       "path": "/api/tasks/approvals",
       "group": "Tasks",
       "summary": "List approvals",
+      "description": "Pass `taskId` (a task the caller can see) or `reviewerId` (only the caller's own id; the queue omits tasks the caller cannot see).",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -40960,7 +41013,8 @@
       "method": "PATCH",
       "path": "/api/tasks/approvals/{id}",
       "group": "Tasks",
-      "summary": "Update approval",
+      "summary": "Decide an approval",
+      "description": "Only the designated reviewer or a workspace owner/admin can decide an approval, and they must be able to see the task (view access is enough). An approval on a task the caller cannot see answers 404.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [
@@ -40976,8 +41030,20 @@
           "description": "Success"
         },
         {
+          "code": "400",
+          "description": "Invalid status or comments"
+        },
+        {
           "code": "401",
           "description": "Unauthorized"
+        },
+        {
+          "code": "403",
+          "description": "Not the reviewer or an admin"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
         }
       ]
     },
@@ -43683,6 +43749,7 @@
       "path": "/api/uploads/{path}",
       "group": "System",
       "summary": "Fetch upload",
+      "description": "Serves a stored file after the same access check the screen that lists it applies, not just workspace membership: a project document needs access to its project, a task attachment needs access to the task (including the per-task ACL), a call recording needs participation in the call, and an agent chat attachment belongs to its owner. Guests are held to their project scope and expiry. Only branding, forecast-chart, profile-media and project-icon paths are readable without a session. HTML and SVG are never served inline; every response carries `X-Content-Type-Options: nosniff` and a sandboxing CSP.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [
@@ -43699,6 +43766,14 @@
         {
           "code": "401",
           "description": "Unauthorized"
+        },
+        {
+          "code": "403",
+          "description": "Not allowed to read this file"
+        },
+        {
+          "code": "404",
+          "description": "Not found"
         }
       ]
     },
@@ -44877,14 +44952,36 @@
       "method": "POST",
       "path": "/api/workspace/guests",
       "group": "Workspace",
-      "summary": "Create guest",
+      "summary": "Add a guest scoped to specific projects",
+      "description": "Admins only. `projectRefs` (at least one) limits what the guest can see; `expiresAt` (optional, ISO, in the future, at most one year out) ends their access. Scope and expiry are enforced on every surface, including API keys the guest mints. An address that already has a Kavanah account is sent an invite to accept rather than added (`invited: true`). Counts against the seat limit.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
       "query": [],
       "bodyRequired": false,
       "bodyContentType": "application/json",
-      "body": [],
+      "body": [
+        {
+          "name": "email",
+          "type": "string<email>",
+          "required": true
+        },
+        {
+          "name": "fullName",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "projectRefs",
+          "type": "string[]",
+          "required": true
+        },
+        {
+          "name": "expiresAt",
+          "type": "string<date-time>",
+          "required": false
+        }
+      ],
       "responses": [
         {
           "code": "200",
@@ -45258,26 +45355,59 @@
       "method": "POST",
       "path": "/api/workspace/members",
       "group": "Workspace",
-      "summary": "Create member",
+      "summary": "Invite an account or change a member's role",
+      "description": "Admin only. For someone already in the workspace, sets their role (owner and admin need an owner; never your own role; never strands the last owner or admin) and ends their sessions in this workspace. For an account that is not yet a member, nothing is added: an invitation with that role is minted and emailed, and they join when they accept (202). The invite holds a seat, so a full workspace answers 403.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
       "query": [],
       "bodyRequired": false,
       "bodyContentType": "application/json",
-      "body": [],
+      "body": [
+        {
+          "name": "userId",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "owner",
+            "admin",
+            "member"
+          ]
+        }
+      ],
       "responses": [
         {
-          "code": "200",
-          "description": "Success"
+          "code": "201",
+          "description": "Role set for an existing member"
+        },
+        {
+          "code": "202",
+          "description": "Not a member yet: invited. Returns invited, alreadyInvited, email, role, emailStatus."
         },
         {
           "code": "400",
-          "description": "Invalid request"
+          "description": "Invalid request, your own role, or owner for someone not yet a member (invite, then promote)"
         },
         {
           "code": "401",
           "description": "Unauthorized"
+        },
+        {
+          "code": "403",
+          "description": "Owner required"
+        },
+        {
+          "code": "404",
+          "description": "No account with that id"
+        },
+        {
+          "code": "409",
+          "description": "Would leave no owner or admin"
         }
       ]
     },
@@ -45446,8 +45576,8 @@
       "method": "POST",
       "path": "/api/workspace/members/provision",
       "group": "Workspace",
-      "summary": "Create an account for a teammate and add them to the workspace",
-      "description": "Admins only; rate-limited to 20 per minute. Enforces the seat limit. A new account gets a temporary password (returned once and emailed; must be changed at first login) and the signup credit bonus; an existing account is added and sent a member-added email. Writes an audit entry.",
+      "summary": "Create an account for a teammate, or invite an existing account",
+      "description": "Admins only; rate-limited to 20 per minute. Enforces the seat limit. A new account gets a temporary password (returned once and emailed; must be changed at first login), the signup credit bonus, and is added to the workspace. An address that already has a Kavanah account is NOT added; it is sent a workspace invite to accept (`createdAccount false`, `invited true`, no temporary password). Writes an audit entry.",
       "source": "handwritten",
       "destructive": true,
       "pathParams": [],
@@ -45483,7 +45613,7 @@
       "responses": [
         {
           "code": "201",
-          "description": "{ ok, email, role, createdAccount, temporaryPassword, emailStatus }"
+          "description": "{ ok, email, role, createdAccount, invited?, temporaryPassword, emailStatus }"
         },
         {
           "code": "400",

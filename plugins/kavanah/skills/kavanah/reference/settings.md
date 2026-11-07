@@ -154,7 +154,7 @@ Delete user account
 
 Mint a workspace API key
 
-Admins only. The plaintext token is returned once in this response and never again.
+Admins only, and the caller's email address must be verified (403 `email_unverified` otherwise). The plaintext token is returned once in this response and never again.
 
 Body (application/json):
   - `name` (string)

@@ -19,7 +19,7 @@
 | `tasks.agent-run.list` | GET | `/api/tasks/{id}/agent-run` | Latest autonomous agent run for a task |
 | `tasks.approvals.create` | POST | `/api/tasks/approvals` | Create approval |
 | `tasks.approvals.list` | GET | `/api/tasks/approvals` | List approvals |
-| `tasks.approvals.update` | PATCH | `/api/tasks/approvals/{id}` | Update approval |
+| `tasks.approvals.update` | PATCH | `/api/tasks/approvals/{id}` | Decide an approval |
 | `tasks.archive.create` | POST | `/api/tasks/{id}/archive` | Archive or restore a task in place |
 | `tasks.attachments.create` | POST | `/api/tasks/{id}/attachments` | Create attachment |
 | `tasks.attachments.delete` | DELETE | `/api/tasks/{id}/attachments` | Delete attachments |
@@ -89,7 +89,7 @@
 
 List saved version snapshots of an entity
 
-Signed-in workspace members. Returns the version history recorded for one entity in the active workspace. Only `task` is supported as an entity type.
+Signed-in workspace members who can see the task (project visibility and the per-task ACL apply; a task the caller cannot see answers like an unknown one). Returns the version history recorded for one entity in the active workspace. Only `task` is supported as an entity type.
 
 Query:
   - `entity_type` (string, required) — one of: `task`
@@ -102,7 +102,7 @@ Query:
 
 Restore a task to a saved version
 
-Signed-in workspace members. Snapshots the task's current state as a "Before restore" version, then overwrites the task's restorable fields from the chosen version. Writes a task-update audit entry. Only task versions can be restored.
+Requires the `tasks:edit` permission and edit access to the task itself (a task the caller cannot see is 404, one they can see but not edit is 403). Snapshots the task's current state as a "Before restore" version, then overwrites the task's restorable fields from the chosen version. Writes a task-update audit entry. Only task versions can be restored.
 
 Path params (positional, in order):
   - `id`
@@ -265,11 +265,15 @@ Body: application/json (free-form — pass with `--data`)
 
 List approvals
 
+Pass `taskId` (a task the caller can see) or `reviewerId` (only the caller's own id; the queue omits tasks the caller cannot see).
+
 ### `tasks.approvals.update`
 
 `PATCH /api/tasks/approvals/{id}`
 
-Update approval
+Decide an approval
+
+Only the designated reviewer or a workspace owner/admin can decide an approval, and they must be able to see the task (view access is enough). An approval on a task the caller cannot see answers 404.
 
 Path params (positional, in order):
   - `id`
