@@ -202,6 +202,8 @@ Path params (positional, in order):
 
 Create duplicate
 
+Builds a copy of a project for the caller to save; nothing is written. `duplicatedProject.id` is a free id (past every stored, hidden and deleted project's id) to save it under with PATCH /api/projects.
+
 Body: application/json (free-form — pass with `--data`)
 
 ### `projects.folders.create`
@@ -491,6 +493,7 @@ Body (application/json):
   - `workspaceTeams` (object[])
   - `notifications` (object)
   - `integrations` (object)
+  - `nextProjectIdFloor` (integer) — Returned on every bundle, never stored. The lowest id a NEW project added through PATCH may take: one past every id already spoken for, including private projects the caller cannot see and deleted projects whose trash entry or settings still exist. Use max(highest visible id + 1, nextProjectIdFloor), or create with POST /api/projects and let the server pick.
   - `workspaceId` (string) — The workspace this bundle was loaded from, as returned by GET /api/projects. Required for browser sessions.
   - `bundleVersion` (string) — The `version` of the bundle this save was built on, as returned by GET /api/projects (the row's `updated_at`). Required for browser sessions.
 

@@ -81,7 +81,7 @@
 | `messages.threads.messages.update` | PATCH | `/api/messages/threads/{contactId}/messages/{messageId}` | Edit a message |
 | `messages.threads.pinned.list` | GET | `/api/messages/threads/{contactId}/pinned` | List pinned |
 | `messages.threads.typing.update` | PATCH | `/api/messages/threads/{contactId}/typing` | Set typing state |
-| `messages.threads.update` | PATCH | `/api/messages/threads/{contactId}` | Update thread flags (pin, mute, block, etc.) |
+| `messages.threads.update` | PATCH | `/api/messages/threads/{contactId}` | Update thread flags (pin, mute, block, report, etc.) |
 | `messages.update` | PATCH | `/api/messages` | Update chat preferences |
 
 ---
@@ -850,7 +850,9 @@ Body (application/json):
 
 `PATCH /api/messages/threads/{contactId}`
 
-Update thread flags (pin, mute, block, etc.)
+Update thread flags (pin, mute, block, report, etc.)
+
+`blocked: true` stops the contact's messages and typing from reaching you. `reported: true` files an urgent support ticket with a snapshot of their messages; with `reportedMessageId` it reports that one received message, and in a group chat or channel it reports the message's author (a group itself cannot be reported). More than 10 reports an hour returns 429.
 
 Path params (positional, in order):
   - `contactId`
@@ -861,6 +863,9 @@ Body (application/json):
   - `blocked` (boolean)
   - `archived` (boolean)
   - `hidden` (boolean)
+  - `reported` (boolean)
+  - `reportReason` (string) — one of: `spam`, `harassment`, `inappropriate`, `impersonation`, `other`
+  - `reportedMessageId` (string)
 
 ### `messages.update`
 

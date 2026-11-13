@@ -14237,7 +14237,8 @@
       "method": "PATCH",
       "path": "/api/discussions",
       "group": "Discussions",
-      "summary": "Toggle star or add reaction",
+      "summary": "Star, react to, mark read, or report a discussion",
+      "description": "`report` files an urgent support ticket about a thread or reply written by someone else (`targetType` + `targetId`, optional `reportReason`). A repeat report of the same post within the hour is a no-op; more than 10 reports an hour returns 429.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -14251,7 +14252,21 @@
           "required": false,
           "enum": [
             "toggle-star",
-            "add-reaction"
+            "add-reaction",
+            "mark-read",
+            "report"
+          ]
+        },
+        {
+          "name": "reportReason",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "spam",
+            "harassment",
+            "inappropriate",
+            "impersonation",
+            "other"
           ]
         },
         {
@@ -28233,7 +28248,8 @@
       "method": "PATCH",
       "path": "/api/messages/threads/{contactId}",
       "group": "Messages",
-      "summary": "Update thread flags (pin, mute, block, etc.)",
+      "summary": "Update thread flags (pin, mute, block, report, etc.)",
+      "description": "`blocked: true` stops the contact's messages and typing from reaching you. `reported: true` files an urgent support ticket with a snapshot of their messages; with `reportedMessageId` it reports that one received message, and in a group chat or channel it reports the message's author (a group itself cannot be reported). More than 10 reports an hour returns 429.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [
@@ -28266,6 +28282,28 @@
         {
           "name": "hidden",
           "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "reported",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "reportReason",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "spam",
+            "harassment",
+            "inappropriate",
+            "impersonation",
+            "other"
+          ]
+        },
+        {
+          "name": "reportedMessageId",
+          "type": "string",
           "required": false
         }
       ],
@@ -33571,6 +33609,7 @@
       "path": "/api/projects/duplicate",
       "group": "Projects",
       "summary": "Create duplicate",
+      "description": "Builds a copy of a project for the caller to save; nothing is written. `duplicatedProject.id` is a free id (past every stored, hidden and deleted project's id) to save it under with PATCH /api/projects.",
       "source": "handwritten",
       "destructive": false,
       "pathParams": [],
@@ -34526,6 +34565,12 @@
           "name": "integrations",
           "type": "object",
           "required": false
+        },
+        {
+          "name": "nextProjectIdFloor",
+          "type": "integer",
+          "required": false,
+          "description": "Returned on every bundle, never stored. The lowest id a NEW project added through PATCH may take: one past every id already spoken for, including private projects the caller cannot see and deleted projects whose trash entry or settings still exist. Use max(highest visible id + 1, nextProjectIdFloor), or create with POST /api/projects and let the server pick."
         },
         {
           "name": "workspaceId",

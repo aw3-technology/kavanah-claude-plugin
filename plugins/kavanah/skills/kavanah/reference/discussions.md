@@ -8,7 +8,7 @@
 | `discussions.create` | POST | `/api/discussions` | Create a thread or reply (multipart form or JSON) |
 | `discussions.delete` | DELETE | `/api/discussions` | Delete a thread or reply |
 | `discussions.list` | GET | `/api/discussions` | Get discussions for a project |
-| `discussions.update` | PATCH | `/api/discussions` | Toggle star or add reaction |
+| `discussions.update` | PATCH | `/api/discussions` | Star, react to, mark read, or report a discussion |
 
 ---
 
@@ -70,10 +70,13 @@ Query:
 
 `PATCH /api/discussions`
 
-Toggle star or add reaction
+Star, react to, mark read, or report a discussion
+
+`report` files an urgent support ticket about a thread or reply written by someone else (`targetType` + `targetId`, optional `reportReason`). A repeat report of the same post within the hour is a no-op; more than 10 reports an hour returns 429.
 
 Body (application/json):
-  - `action` (string) — one of: `toggle-star`, `add-reaction`
+  - `action` (string) — one of: `toggle-star`, `add-reaction`, `mark-read`, `report`
+  - `reportReason` (string) — one of: `spam`, `harassment`, `inappropriate`, `impersonation`, `other`
   - `projectRef` (string)
   - `threadId` (string)
   - `starred` (boolean)
